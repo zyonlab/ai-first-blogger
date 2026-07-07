@@ -1,0 +1,54 @@
+---
+import ArticleCard from '@components/ArticleCard.astro';
+import SeriesCard from '@components/SeriesCard.astro';
+import PageLayout from '@layouts/PageLayout.astro';
+import { seriesList } from '@data/series';
+import { topicList, topics, type TopicSlug } from '@data/topics';
+import { getPublishedPosts } from '@lib/content';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+export function getStaticPaths() {
+  return topicList.map((topic) => ({ params: { slug: topic.slug } }));
+}
+
+const slug = Astro.params.slug as TopicSlug;
+const topic = topics[slug];
+const posts = (await getPublishedPosts()).filter((post) => post.data.category === slug);
+const matchedSeries = seriesList.filter((item) => item.topic === slug);
+const canonical = `/topics/${slug}/`;
+const jsonLd = [
+  collectionPageSchema(topic.title, topic.description, canonical),
+  itemListSchema(
+    `${topic.title} Articles`,
+    posts.map((post) => ({
+      name: post.data.title,
+      description: post.data.description,
+      url: `/writing/${post.data.slug}/`,
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Topics', url: '/topics/' },
+    { name: topic.title, url: canonical },
+  ]),
+];
+---
+
+<PageLayout title={topic.title} description={topic.description} eyebrow="Topic" canonical={canonical} jsonLd={jsonLd}>
+  <section class="section">
+    <div class="section-head">
+      <h2>精选系列</h2>
+    </div>
+    <div class="grid">
+      {matchedSeries.map((item) => <SeriesCard item={item} />)}
+    </div>
+  </section>
+  <section class="section">
+    <div class="section-head">
+      <h2>相关文章</h2>
+    </div>
+    <div class="grid two">
+      {posts.map((post) => <ArticleCard post={post} />)}
+    </div>
+  </section>
+</PageLayout>

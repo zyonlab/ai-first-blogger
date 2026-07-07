@@ -1,0 +1,30 @@
+---
+import SeriesCard from '@components/SeriesCard.astro';
+import PageLayout from '@layouts/PageLayout.astro';
+import { seriesList } from '@data/series';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+const title = 'Series';
+const description = '把高价值主题拆成可连续阅读的学习路径，适合搜索、AI 摘要和长期复用。';
+const jsonLd = [
+  collectionPageSchema(title, description, '/series/'),
+  itemListSchema(
+    'ZyonCode Series',
+    seriesList.map((item) => ({
+      name: item.title,
+      description: item.description,
+      url: `/series/${item.slug}/`,
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: title, url: '/series/' },
+  ]),
+];
+---
+
+<PageLayout title={title} description={description} canonical="/series/" jsonLd={jsonLd}>
+  <section class="section grid">
+    {seriesList.map((item) => <SeriesCard item={item} />)}
+  </section>
+</PageLayout>

@@ -1,0 +1,23 @@
+<div class="reading-progress" aria-hidden="true">
+  <span></span>
+</div>
+
+<script>
+  const progress = document.querySelector('.reading-progress span');
+  const article = document.querySelector('.article-shell');
+
+  function updateProgress() {
+    if (!progress || !article) return;
+
+    const articleTop = article.getBoundingClientRect().top + window.scrollY;
+    const articleHeight = article.scrollHeight - window.innerHeight;
+    const current = window.scrollY - articleTop;
+    const ratio = articleHeight > 0 ? Math.min(1, Math.max(0, current / articleHeight)) : 0;
+
+    progress.setAttribute('style', `transform: scaleX(${ratio})`);
+  }
+
+  updateProgress();
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  window.addEventListener('resize', updateProgress);
+</script>

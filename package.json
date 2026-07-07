@@ -1,0 +1,27 @@
+{
+  "name": "zyoncode-astro",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "migrate:ghost": "tsx scripts/convert-ghost-to-mdx.ts"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "latest",
+    "@astrojs/rss": "latest",
+    "@astrojs/sitemap": "latest",
+    "astro": "latest",
+    "gray-matter": "latest",
+    "mermaid": "^11.16.0",
+    "turndown": "latest"
+  },
+  "devDependencies": {
+    "@astrojs/check": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,17 @@
+---
+type Props = {
+  topic: {
+    slug: string;
+    title: string;
+    description: string;
+  };
+};
+
+const { topic } = Astro.props;
+---
+
+<article class="card topic-card">
+  <div class="topic-orb" aria-hidden="true"></div>
+  <h3><a href={`/topics/${topic.slug}/`}>{topic.title}</a></h3>
+  <p>{topic.description}</p>
+</article>

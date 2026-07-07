@@ -1,0 +1,29 @@
+---
+import PageLayout from '@layouts/PageLayout.astro';
+import { breadcrumbSchema, personSchema } from '@lib/schema';
+
+const title = 'About';
+const description = '我是 Zyon，一名关注前端架构、全栈工程、Web3 系统和 AI 工程效率的软件工程师。';
+const jsonLd = [
+  personSchema(),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: title, url: '/about/' },
+  ]),
+];
+---
+
+<PageLayout title={title} description={description} canonical="/about/" jsonLd={jsonLd}>
+  <section class="section prose narrow">
+    <h2>个人定位</h2>
+    <p>我长期写作和研究：Vue / React 框架内部机制、前端工程化、Node.js 全栈架构、DeFi 协议、加密货币交易所系统设计，以及 AI 辅助开发工作流。</p>
+    <h2>技术方向</h2>
+    <ul>
+      <li>前端架构、组件体系、状态管理和源码机制。</li>
+      <li>Web3、DeFi、交易所系统和链上数据产品。</li>
+      <li>AI 工程化、Agent 工作流和开发者效率工具。</li>
+    </ul>
+    <h2>可合作方式</h2>
+    <p>技术咨询、架构 Review、内容合作、开发者工具推广、视频或博客赞助。</p>
+  </section>
+</PageLayout>

@@ -1,0 +1,67 @@
+---
+import { topics } from '@data/topics';
+import { series } from '@data/series';
+import { formatDate } from '@lib/dates';
+import AIStudyLinks from './AIStudyLinks.astro';
+
+type Props = {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  category: string;
+  tags: string[];
+  seriesSlug?: string;
+  readingMinutes?: number;
+  articleUrl: string;
+};
+
+const { title, description, pubDate, updatedDate, category, tags, seriesSlug, readingMinutes, articleUrl } = Astro.props;
+const topic = topics[category as keyof typeof topics];
+const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : undefined;
+---
+
+<header class="article-header">
+  <div class="article-header-main">
+    <div class="eyebrow">{topic?.title ?? category}</div>
+    <h1>{title}</h1>
+    <p>{description}</p>
+    <div class="meta">
+      <time datetime={pubDate.toISOString()}>发布于 {formatDate(pubDate)}</time>
+      {updatedDate && <time datetime={updatedDate.toISOString()}>更新于 {formatDate(updatedDate)}</time>}
+      {readingMinutes && <span>{readingMinutes} 分钟阅读</span>}
+      {seriesSlug && seriesItem && <a href={`/series/${seriesSlug}/`}>{seriesItem.title}</a>}
+    </div>
+    {tags.length > 0 && (
+      <div class="tags">
+        {tags.map((tag) => <span>{tag}</span>)}
+      </div>
+    )}
+  </div>
+
+  <aside class="article-brief" aria-label="Article overview">
+    <div class="article-brief-card">
+      <strong>本文重点</strong>
+      <p>{description}</p>
+      <dl>
+        <div>
+          <dt>Topic</dt>
+          <dd>{topic?.title ?? category}</dd>
+        </div>
+        {readingMinutes && (
+          <div>
+            <dt>Read</dt>
+            <dd>{readingMinutes} min</dd>
+          </div>
+        )}
+        {seriesItem && (
+          <div>
+            <dt>Series</dt>
+            <dd><a href={`/series/${seriesSlug}/`}>{seriesItem.title}</a></dd>
+          </div>
+        )}
+      </dl>
+      <AIStudyLinks title={title} description={description} url={articleUrl} />
+    </div>
+  </aside>
+</header>

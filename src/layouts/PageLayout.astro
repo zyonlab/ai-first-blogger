@@ -1,0 +1,22 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+type Props = {
+  title: string;
+  description: string;
+  eyebrow?: string;
+  canonical?: string;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+};
+
+const { title, description, eyebrow, canonical, jsonLd } = Astro.props;
+---
+
+<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+  <section class="page-hero narrow">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h1>{title}</h1>
+    <p>{description}</p>
+  </section>
+  <slot />
+</BaseLayout>

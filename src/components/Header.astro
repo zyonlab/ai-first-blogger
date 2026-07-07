@@ -1,0 +1,24 @@
+---
+import { navItems } from '@data/nav';
+import ThemeToggle from './ThemeToggle.astro';
+
+const currentPath = Astro.url.pathname;
+const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+---
+
+<header class="site-header">
+  <a class="brand" href="/" aria-label="ZyonCode home">
+    <span class="brand-mark">Z</span>
+    <span>ZyonCode</span>
+  </a>
+  <nav class="desktop-nav" aria-label="Primary navigation">
+    {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    <ThemeToggle />
+  </nav>
+  <details class="mobile-nav">
+    <summary aria-label="Open navigation">Menu</summary>
+    <div>
+      {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    </div>
+  </details>
+</header>

@@ -1,0 +1,18 @@
+---
+type Props = {
+  item: {
+    slug: string;
+    title: string;
+    description: string;
+    topic: string;
+  };
+};
+
+const { item } = Astro.props;
+---
+
+<article class="card series-card">
+  <div class="eyebrow">{item.topic}</div>
+  <h3><a href={`/series/${item.slug}/`}>{item.title}</a></h3>
+  <p>{item.description}</p>
+</article>

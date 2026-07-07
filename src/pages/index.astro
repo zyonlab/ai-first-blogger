@@ -1,0 +1,119 @@
+---
+import ArticleCard from '@components/ArticleCard.astro';
+import ProjectCard from '@components/ProjectCard.astro';
+import SeriesCard from '@components/SeriesCard.astro';
+import TopicCard from '@components/TopicCard.astro';
+import VideoCard from '@components/VideoCard.astro';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { seriesList } from '@data/series';
+import { topicList } from '@data/topics';
+import { getPublishedPosts, getPublishedVideos } from '@lib/content';
+import { getCollection } from 'astro:content';
+import { itemListSchema, websiteSchema, personSchema } from '@lib/schema';
+
+const posts = (await getPublishedPosts()).slice(0, 6);
+const videos = (await getPublishedVideos()).slice(0, 3);
+const projects = (await getCollection('projects')).slice(0, 3);
+const jsonLd = [
+  websiteSchema(),
+  personSchema(),
+  itemListSchema(
+    'ZyonCode Featured Content',
+    posts.map((post) => ({
+      name: post.data.title,
+      description: post.data.description,
+      url: `/writing/${post.data.slug}/`,
+    })),
+  ),
+];
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Frontend Architecture · Web3 Systems · AI Engineering</p>
+      <h1>ZyonCode</h1>
+      <p>专注前端架构、Web3 系统、AI 工程化的软件工程师内容站，沉淀长期可复用的工程认知。</p>
+      <div class="actions">
+        <a class="button primary" href="/writing/">阅读文章</a>
+        <a class="button" href="/series/">查看系列</a>
+        <a class="button" href="/videos/">观看视频</a>
+        <a class="button" href="/work-with-me/">咨询合作</a>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <p class="eyebrow">Focus Map</p>
+      <div class="signal-grid">
+        <span>Framework internals</span>
+        <span>Exchange systems</span>
+        <span>DeFi architecture</span>
+        <span>AI workflows</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Topics</p>
+        <h2>Featured Topics</h2>
+      </div>
+      <p>围绕长期主题组织内容，而不是依赖松散标签。</p>
+    </div>
+    <div class="grid">
+      {topicList.map((topic) => <TopicCard topic={topic} />)}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Learning Paths</p>
+        <h2>Featured Series</h2>
+      </div>
+      <a class="button" href="/series/">全部系列</a>
+    </div>
+    <div class="grid">
+      {seriesList.map((item) => <SeriesCard item={item} />)}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Writing</p>
+        <h2>Latest Writing</h2>
+      </div>
+      <a class="button" href="/writing/">全部文章</a>
+    </div>
+    <div class="grid two">
+      {posts.map((post) => <ArticleCard post={post} />)}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Videos</p>
+        <h2>YouTube / Videos</h2>
+      </div>
+      <p>视频页预留摘要、文字稿、章节和转化入口。</p>
+    </div>
+    <div class="grid">
+      {videos.length > 0 ? videos.map((video) => <VideoCard video={video} />) : <p>Coming soon.</p>}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Projects</p>
+        <h2>Projects / Case Studies</h2>
+      </div>
+      <a class="button" href="/projects/">全部项目</a>
+    </div>
+    <div class="grid">
+      {projects.map((project) => <ProjectCard project={project} />)}
+    </div>
+  </section>
+</BaseLayout>

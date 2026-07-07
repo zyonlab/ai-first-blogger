@@ -1,0 +1,46 @@
+---
+import ArticleCard from '@components/ArticleCard.astro';
+import PageLayout from '@layouts/PageLayout.astro';
+import { series, seriesList } from '@data/series';
+import { getPublishedPosts } from '@lib/content';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+export function getStaticPaths() {
+  return seriesList.map((item) => ({ params: { slug: item.slug } }));
+}
+
+const slug = Astro.params.slug as keyof typeof series;
+const item = series[slug];
+const posts = (await getPublishedPosts())
+  .filter((post) => post.data.series === slug)
+  .sort((a, b) => (a.data.seriesOrder ?? 999) - (b.data.seriesOrder ?? 999));
+const canonical = `/series/${slug}/`;
+const jsonLd = [
+  collectionPageSchema(item.title, item.description, canonical),
+  itemListSchema(
+    `${item.title} Reading Path`,
+    posts.map((post) => ({
+      name: post.data.title,
+      description: post.data.description,
+      url: `/writing/${post.data.slug}/`,
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Series', url: '/series/' },
+    { name: item.title, url: canonical },
+  ]),
+];
+---
+
+<PageLayout title={item.title} description={item.description} eyebrow="Series" canonical={canonical} jsonLd={jsonLd}>
+  <section class="section">
+    <div class="section-head">
+      <h2>推荐阅读顺序</h2>
+      <p>按系列顺序组织；未完成内容后续可继续追加。</p>
+    </div>
+    <div class="grid two">
+      {posts.map((post) => <ArticleCard post={post} />)}
+    </div>
+  </section>
+</PageLayout>

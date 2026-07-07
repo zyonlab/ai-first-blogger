@@ -1,0 +1,76 @@
+---
+import Footer from '@components/Footer.astro';
+import Header from '@components/Header.astro';
+import JsonLd from '@components/JsonLd.astro';
+import SEO from '@components/SEO.astro';
+import { site } from '@data/site';
+import { personSchema, websiteSchema } from '@lib/schema';
+import '../styles/global.css';
+
+type Props = {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  publishedTime?: Date | string;
+  modifiedTime?: Date | string;
+  tags?: string[];
+};
+
+const {
+  title = site.name,
+  description = site.description,
+  canonical,
+  image,
+  type = 'website',
+  noindex = false,
+  jsonLd,
+  publishedTime,
+  modifiedTime,
+  tags,
+} = Astro.props;
+
+const defaultJsonLd = [websiteSchema(), personSchema()];
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#0b1020" data-theme-color />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <SEO
+      title={title}
+      description={description}
+      canonical={canonical}
+      image={image}
+      type={type}
+      noindex={noindex}
+      publishedTime={publishedTime}
+      modifiedTime={modifiedTime}
+      tags={tags}
+    />
+    <JsonLd data={jsonLd ?? defaultJsonLd} />
+    <script is:inline>
+      const theme = localStorage.getItem('zyoncode-theme');
+      const resolvedTheme = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = resolvedTheme;
+      document.querySelector('[data-theme-color]')?.setAttribute('content', resolvedTheme === 'light' ? '#f7f8fb' : '#0b1020');
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="site-shell">
+      <Header />
+      <main id="main">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>

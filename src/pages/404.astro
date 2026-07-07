@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page Not Found" description="The requested page does not exist." noindex>
+  <section class="page-hero narrow">
+    <p class="eyebrow">404</p>
+    <h1>页面不存在</h1>
+    <p>旧 Ghost URL 不作为硬约束。你可以从文章、专题或系列页重新进入内容库。</p>
+    <div class="actions">
+      <a class="button primary" href="/writing/">阅读文章</a>
+      <a class="button" href="/topics/">查看专题</a>
+    </div>
+  </section>
+</BaseLayout>

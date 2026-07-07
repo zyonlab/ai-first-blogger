@@ -1,0 +1,49 @@
+---
+import PageLayout from '@layouts/PageLayout.astro';
+import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
+
+const title = 'Work With Me';
+const description = '面向企业、开发者工具、Web3 项目和内容合作方的技术咨询与赞助入口。';
+const jsonLd = [
+  collectionPageSchema(title, description, '/work-with-me/'),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'ZyonCode Technical Consulting',
+    description,
+    provider: {
+      '@type': 'Person',
+      name: 'Zyon',
+      url: 'https://zyoncode.com',
+    },
+    areaServed: 'Global',
+    serviceType: ['Frontend Architecture Review', 'Web3 System Design', 'AI Engineering Workflow'],
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: title, url: '/work-with-me/' },
+  ]),
+];
+---
+
+<PageLayout title={title} description={description} canonical="/work-with-me/" jsonLd={jsonLd}>
+  <section class="section grid two">
+    {[
+      ['企业技术咨询', '前端架构评审、Web3 / 交易所系统方案、AI 工程化工作流。'],
+      ['开发者工具推广', '围绕真实工程场景做博客、视频、案例或教程合作。'],
+      ['Web3 / 交易所系统方案', '账户、撮合、风控、持仓、链上交互和数据架构分析。'],
+      ['视频 / 博客赞助合作', '长期内容主题、系列赞助、技术产品落地页和 YouTube 承接。'],
+    ].map(([title, description]) => (
+      <article class="card">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </article>
+    ))}
+  </section>
+  <section class="cta-panel">
+    <p>请通过邮箱联系：hello@zyoncode.com。后续可替换为表单、日历预约或 Newsletter 服务。</p>
+    <div class="actions">
+      <a class="button primary" href="mailto:hello@zyoncode.com">发送邮件</a>
+    </div>
+  </section>
+</PageLayout>

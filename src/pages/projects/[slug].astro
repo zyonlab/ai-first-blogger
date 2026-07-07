@@ -1,0 +1,91 @@
+---
+import NewsletterCTA from '@components/NewsletterCTA.astro';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { breadcrumbSchema } from '@lib/schema';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({ params: { slug: project.data.slug }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+const canonical = `/projects/${project.data.slug}/`;
+const statusLabel = {
+  active: 'Active',
+  archived: 'Archived',
+  planned: 'Planned',
+}[project.data.status];
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: project.data.title,
+    description: project.data.description,
+    url: canonical,
+    keywords: project.data.techStack,
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Projects', url: '/projects/' },
+    { name: project.data.title, url: canonical },
+  ]),
+];
+---
+
+<BaseLayout title={project.data.title} description={project.data.description} canonical={canonical} jsonLd={jsonLd}>
+  <article class="project-page">
+    <header class="project-hero">
+      <div class="project-hero-copy">
+        <p class="eyebrow">Project · {statusLabel}</p>
+        <h1>{project.data.title}</h1>
+        <p class="project-description">{project.data.description}</p>
+        {(project.data.demoUrl || project.data.repoUrl) && (
+          <div class="actions">
+            {project.data.demoUrl && <a class="button primary" href={project.data.demoUrl}>查看 Demo</a>}
+            {project.data.repoUrl && <a class="button" href={project.data.repoUrl}>查看源码</a>}
+          </div>
+        )}
+      </div>
+
+      <aside class="project-summary-card" aria-label="Project summary">
+        <dl>
+          <div>
+            <dt>Status</dt>
+            <dd>{statusLabel}</dd>
+          </div>
+          {project.data.role && (
+            <div>
+              <dt>Role</dt>
+              <dd>{project.data.role}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Stack</dt>
+            <dd class="project-tech-list">
+              {project.data.techStack.map((tech) => <span>{tech}</span>)}
+            </dd>
+          </div>
+        </dl>
+      </aside>
+    </header>
+
+    <div class="project-content-grid">
+      <div class="prose project-prose">
+        <Content />
+      </div>
+
+      {project.data.highlights.length > 0 && (
+        <aside class="project-highlights" aria-label="Project highlights">
+          <h2>Highlights</h2>
+          <ul>
+            {project.data.highlights.map((item) => <li>{item}</li>)}
+          </ul>
+        </aside>
+      )}
+    </div>
+
+    <NewsletterCTA />
+  </article>
+</BaseLayout>

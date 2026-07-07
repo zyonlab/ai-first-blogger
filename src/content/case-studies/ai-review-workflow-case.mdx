@@ -1,0 +1,28 @@
+---
+title: AI 代码审查工作流案例
+description: 从规则定义、上下文收集、模型输出和人工复核拆解一个 AI Review 工作流。
+slug: ai-review-workflow-case
+pubDate: 2026-07-10
+category: ai-engineering
+tags:
+  - AI
+  - Review
+  - Workflow
+relatedProject: ai-code-review-workflow
+---
+
+## 背景
+
+团队希望减少低价值代码审查噪音，但不希望把合并决策交给模型。
+
+## 问题
+
+模型容易给出泛泛建议，尤其是在缺少项目上下文和规则约束时。
+
+## 方案
+
+把输入限制在当前 diff、项目规则和变更文件列表内，并要求输出按风险等级分组。
+
+## 结果
+
+示例案例用于本地测试。真实案例后续替换为项目复盘。

@@ -1,0 +1,32 @@
+---
+title: React Suspense 数据流的工程边界
+description: 用工程视角理解 Suspense 在数据加载、渲染中断和用户体验之间的边界。
+slug: react-suspense-data-flow
+pubDate: 2026-07-06
+category: vue-react-internals
+tags:
+  - React
+  - Suspense
+  - Rendering
+series: react-state-management
+seriesOrder: 1
+---
+
+## Suspense 不是请求库
+
+Suspense 更接近一种渲染协调机制。它让组件可以表达“当前还不能完整渲染”，但缓存、请求生命周期和错误恢复仍然需要明确设计。
+
+## 数据流模型
+
+```mermaid
+flowchart TD
+  A["component render"] --> B["read resource"]
+  B --> C{"ready?"}
+  C -->|yes| D["render content"]
+  C -->|no| E["throw promise"]
+  E --> F["show fallback"]
+```
+
+## 工程判断
+
+如果业务只是普通列表加载，不需要强行引入 Suspense。它更适合框架级数据层、路由级 loading 边界和复杂交互中的一致体验。

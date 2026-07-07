@@ -1,0 +1,24 @@
+---
+title: AI Code Review Workflow
+description: 面向个人和小团队的 AI 辅助代码审查流程，强调可追踪、可复现和低维护成本。
+slug: ai-code-review-workflow
+status: active
+role: Architect / Developer
+techStack:
+  - TypeScript
+  - GitHub Actions
+  - LLM
+  - Static Analysis
+highlights:
+  - 将 AI 建议约束在 diff 和规则上下文中
+  - 输出可审计的 review comment
+  - 保留人工最终决策权
+---
+
+## 背景
+
+AI Code Review 的核心不是“让模型替你看代码”，而是把重复、低层次、可规则化的问题前置暴露出来。
+
+## 方案
+
+工作流把静态检查、diff 摘要、规则上下文和人工复核放在同一条链路中，避免模型脱离代码事实做泛泛建议。

@@ -1,0 +1,142 @@
+<script>
+  type MermaidModule = typeof import('mermaid').default;
+
+  const originalBlocks = [
+    ...document.querySelectorAll<HTMLElement>('pre code.language-mermaid'),
+    ...document.querySelectorAll<HTMLElement>('pre[data-language="mermaid"] code'),
+  ];
+
+  if (originalBlocks.length > 0) {
+    const { default: mermaid } = await import('mermaid');
+
+    const diagrams = originalBlocks
+      .map((block, index) => {
+        const source = block.textContent?.trim() ?? '';
+        const pre = block.closest('pre');
+
+        if (!source || !pre) return null;
+
+        const wrapper = document.createElement('figure');
+        const container = document.createElement('div');
+
+        wrapper.className = 'mermaid-figure';
+        wrapper.dataset.mermaidSource = source;
+        wrapper.dataset.mermaidIndex = String(index);
+        container.className = 'mermaid-diagram';
+        container.setAttribute('role', 'img');
+        container.setAttribute('aria-label', 'Mermaid architecture diagram');
+        wrapper.append(container);
+        pre.replaceWith(wrapper);
+
+        return { wrapper, container, source, index };
+      })
+      .filter(Boolean);
+
+    const getThemeName = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+
+    const getMermaidConfig = (themeName: 'light' | 'dark') => ({
+      startOnLoad: false,
+      theme: 'base',
+      securityLevel: 'strict',
+      fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      themeVariables:
+        themeName === 'light'
+          ? {
+              background: '#ffffff',
+              mainBkg: '#f8fafc',
+              secondBkg: '#eef6f8',
+              tertiaryBkg: '#f1f5f9',
+              primaryColor: '#ecfeff',
+              primaryTextColor: '#101725',
+              primaryBorderColor: '#0891b2',
+              secondaryColor: '#ecfdf5',
+              secondaryTextColor: '#101725',
+              secondaryBorderColor: '#047857',
+              tertiaryColor: '#f8fafc',
+              tertiaryTextColor: '#334155',
+              tertiaryBorderColor: '#cbd5e1',
+              lineColor: '#64748b',
+              textColor: '#101725',
+              nodeTextColor: '#101725',
+              clusterBkg: '#ffffff',
+              clusterBorder: '#cbd5e1',
+              edgeLabelBackground: '#ffffff',
+              labelBackground: '#ffffff',
+              actorBkg: '#f8fafc',
+              actorBorder: '#0891b2',
+              actorTextColor: '#101725',
+              noteBkgColor: '#fef3c7',
+              noteTextColor: '#101725',
+              noteBorderColor: '#f59e0b',
+            }
+          : {
+              background: '#0d1424',
+              mainBkg: '#111a2d',
+              secondBkg: '#0d1424',
+              tertiaryBkg: '#172033',
+              primaryColor: '#102334',
+              primaryTextColor: '#e8eefc',
+              primaryBorderColor: '#67e8f9',
+              secondaryColor: '#10251f',
+              secondaryTextColor: '#e8eefc',
+              secondaryBorderColor: '#a7f3d0',
+              tertiaryColor: '#111827',
+              tertiaryTextColor: '#cbd5e1',
+              tertiaryBorderColor: '#334155',
+              lineColor: '#94a3b8',
+              textColor: '#e8eefc',
+              nodeTextColor: '#e8eefc',
+              clusterBkg: '#0d1424',
+              clusterBorder: '#334155',
+              edgeLabelBackground: '#0d1424',
+              labelBackground: '#0d1424',
+              actorBkg: '#111a2d',
+              actorBorder: '#67e8f9',
+              actorTextColor: '#e8eefc',
+              noteBkgColor: '#3a2f14',
+              noteTextColor: '#fff7ed',
+              noteBorderColor: '#fbbf24',
+            },
+    });
+
+    let renderToken = 0;
+    let renderedTheme = '';
+
+    const renderDiagrams = async () => {
+      const token = ++renderToken;
+      const themeName = getThemeName();
+
+      if (themeName === renderedTheme) return;
+
+      renderedTheme = themeName;
+      mermaid.initialize(getMermaidConfig(themeName) as Parameters<MermaidModule['initialize']>[0]);
+
+      await Promise.all(
+        diagrams.map(async (diagram) => {
+          if (!diagram) return;
+
+          try {
+            const renderId = `mermaid-diagram-${diagram.index}-${themeName}-${token}`;
+            const { svg } = await mermaid.render(renderId, diagram.source);
+            if (token !== renderToken) return;
+            diagram.wrapper.dataset.theme = themeName;
+            diagram.container.innerHTML = svg;
+          } catch (error) {
+            console.error('Failed to render Mermaid diagram', error);
+            diagram.wrapper.classList.add('mermaid-error');
+          }
+        }),
+      );
+    };
+
+    await renderDiagrams();
+
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.attributeName === 'data-theme')) {
+        void renderDiagrams();
+      }
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+</script>

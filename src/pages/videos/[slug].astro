@@ -1,0 +1,104 @@
+---
+import NewsletterCTA from '@components/NewsletterCTA.astro';
+import YouTubeEmbed from '@components/YouTubeEmbed.astro';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { site } from '@data/site';
+import { getPublishedVideos } from '@lib/content';
+import { formatDate } from '@lib/dates';
+import { absoluteUrl } from '@lib/seo';
+import { render } from 'astro:content';
+import { breadcrumbSchema } from '@lib/schema';
+
+export async function getStaticPaths() {
+  const videos = await getPublishedVideos();
+  return videos.map((video) => ({ params: { slug: video.data.slug }, props: { video } }));
+}
+
+const { video } = Astro.props;
+const { Content } = await render(video);
+const canonical = `/videos/${video.data.slug}/`;
+const chapterCount = video.data.chapters.length;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: video.data.title,
+    description: video.data.description,
+    uploadDate: video.data.pubDate.toISOString(),
+    embedUrl: `https://www.youtube-nocookie.com/embed/${video.data.youtubeId}`,
+    url: absoluteUrl(canonical),
+    author: { '@type': 'Person', name: site.author.name, url: site.url },
+    inLanguage: 'zh-CN',
+    keywords: video.data.topics,
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Videos', url: '/videos/' },
+    { name: video.data.title, url: canonical },
+  ]),
+];
+---
+
+<BaseLayout title={video.data.title} description={video.data.description} canonical={canonical} jsonLd={jsonLd}>
+  <article class="video-page">
+    <header class="video-hero">
+      <div class="video-hero-copy">
+        <p class="eyebrow">Video</p>
+        <h1>{video.data.title}</h1>
+        <p class="video-description">{video.data.description}</p>
+        <div class="tags">
+          {video.data.topics.map((topic) => <span>{topic}</span>)}
+        </div>
+      </div>
+
+      <aside class="video-meta-card" aria-label="Video summary">
+        <dl>
+          {video.data.duration && (
+            <div>
+              <dt>Duration</dt>
+              <dd>{video.data.duration}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Published</dt>
+            <dd>{formatDate(video.data.pubDate)}</dd>
+          </div>
+          <div>
+            <dt>Chapters</dt>
+            <dd>{chapterCount || 'TBD'}</dd>
+          </div>
+          <div>
+            <dt>Transcript</dt>
+            <dd>{video.data.transcript ? 'Available' : 'Planned'}</dd>
+          </div>
+        </dl>
+      </aside>
+    </header>
+
+    <section class="video-player-card" aria-label="Video player">
+      <YouTubeEmbed youtubeId={video.data.youtubeId} title={video.data.title} />
+    </section>
+
+    <div class="video-content-grid">
+      <div class="prose video-prose">
+        <Content />
+      </div>
+
+      {video.data.chapters.length > 0 && (
+        <aside class="video-chapters" aria-label="Video chapters">
+          <h2>Chapters</h2>
+          <ol>
+            {video.data.chapters.map((chapter) => (
+              <li>
+                <span>{chapter.time}</span>
+                <strong>{chapter.title}</strong>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      )}
+    </div>
+
+    <NewsletterCTA />
+  </article>
+</BaseLayout>

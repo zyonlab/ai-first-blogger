@@ -1,0 +1,38 @@
+---
+title: AI Agent 代码审查规则如何设计
+description: 设计 AI 代码审查工作流时，重点不是模型能力，而是规则边界、上下文输入和人工复核。
+slug: ai-agent-code-review-rules
+pubDate: 2026-07-07
+category: ai-engineering
+tags:
+  - AI
+  - Code Review
+  - Agent
+series: engineering-tools
+seriesOrder: 2
+---
+
+## 规则先于模型
+
+AI Code Review 的质量取决于输入边界。没有规则上下文，模型很容易给出泛泛建议。
+
+## 最小流程
+
+```ts
+type ReviewInput = {
+  diff: string;
+  rules: string[];
+  changedFiles: string[];
+};
+
+function shouldAskModel(input: ReviewInput) {
+  return input.diff.length > 0 && input.rules.length > 0;
+}
+```
+
+## 推荐边界
+
+- 只审查当前 diff。
+- 明确项目代码规范。
+- 将建议区分为 bug、风险、可维护性和风格。
+- 保留人工最终决策权。

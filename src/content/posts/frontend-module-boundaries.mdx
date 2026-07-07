@@ -1,0 +1,31 @@
+---
+title: 前端模块边界设计：从目录结构到依赖方向
+description: 目录不是架构，依赖方向和变更边界才是前端模块化的核心。
+slug: frontend-module-boundaries
+pubDate: 2026-07-08
+category: frontend-architecture
+tags:
+  - Frontend
+  - Architecture
+  - Modularity
+series: engineering-tools
+seriesOrder: 3
+---
+
+## 目录结构不是边界
+
+很多项目把页面、组件、hooks、utils 分开放，但业务依赖仍然四处穿透。真正的边界来自模块之间允许什么依赖、禁止什么依赖。
+
+## 推荐方向
+
+```txt
+app -> pages -> features -> entities -> shared
+```
+
+## 关键问题
+
+每个模块都应该回答三个问题：
+
+1. 谁可以依赖我？
+2. 我可以依赖谁？
+3. 我暴露哪些稳定 API？

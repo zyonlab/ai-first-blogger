@@ -1,0 +1,46 @@
+---
+title: Vue nextTick 深度解析：从调度队列到 DOM 更新
+description: 拆解 Vue nextTick 的执行时机、微任务调度和组件更新队列，建立可验证的源码理解。
+slug: vue-nexttick-deep-dive-part-1
+pubDate: 2026-07-01
+updatedDate: 2026-07-06
+category: vue-react-internals
+tags:
+  - Vue
+  - nextTick
+  - Scheduler
+series: vue-internals
+seriesOrder: 1
+---
+
+## 问题边界
+
+`nextTick` 不是“让代码晚一点执行”的通用工具。它真正解决的是：当响应式状态变化已经进入组件更新队列后，如何在 DOM patch 完成之后执行回调。
+
+## 调度流程
+
+```mermaid
+flowchart TD
+  A["state mutation"] --> B["queue component update"]
+  B --> C["flush jobs in microtask"]
+  C --> D["patch DOM"]
+  D --> E["resolve nextTick callbacks"]
+```
+
+## 最小示例
+
+```ts
+import { nextTick, ref } from 'vue';
+
+const count = ref(0);
+
+async function increment() {
+  count.value += 1;
+  await nextTick();
+  console.log('DOM is patched');
+}
+```
+
+## 工程判断
+
+如果代码依赖 `nextTick` 才能稳定工作，需要先确认依赖的是 DOM 更新、第三方组件生命周期，还是状态模型设计不清晰。大多数业务场景不应把 `nextTick` 当成流程控制中心。
