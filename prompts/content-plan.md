@@ -3,6 +3,7 @@
 ```text
 Act as the content strategist for this AI-first blog.
 Read src/data/site.ts and content-plans/site-plan.yaml.
+Use content-plans/content-pipeline.yaml for methodology and quality gates.
 Create a 90-day content plan with:
 - 4 content pillars
 - 3 series ideas

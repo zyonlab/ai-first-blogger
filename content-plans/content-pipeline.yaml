@@ -1,0 +1,142 @@
+pipeline:
+  purpose: "Help agents plan, research, write, edit, optimize, and maintain technical blog content without relying on vague one-shot prompts."
+  default_output_language: "zh-CN"
+  operating_rule: "Never write the final article before the research brief, series plan, or article brief is explicit."
+
+methodologies:
+  backward_design:
+    use_for: "Series planning and article objectives."
+    rule: "Start with what the reader should be able to understand, decide, or do after reading."
+  diataxis:
+    use_for: "Classifying content type."
+    types:
+      tutorial: "Learning-oriented, step-by-step path."
+      how_to: "Task-oriented procedure."
+      explanation: "Understanding-oriented conceptual model."
+      reference: "Information-oriented facts, APIs, options, tables."
+  cognitive_load_theory:
+    use_for: "Readability and structure."
+    rule: "Reduce unnecessary load, split concepts, introduce terms before using them, and avoid parallel abstractions too early."
+  worked_examples:
+    use_for: "Technical teaching."
+    rule: "Prefer complete examples, annotated code, before/after comparisons, and error cases over abstract claims."
+  scaffolding:
+    use_for: "Series sequencing."
+    rule: "Give more guidance early in the series, then gradually increase independence."
+  pyramid_principle:
+    use_for: "Executive summaries and AI-readable answer blocks."
+    rule: "Lead with the answer, then support it with reasons, examples, and tradeoffs."
+
+stages:
+  - id: topic_research
+    goal: "Understand reader intent, source material, competing content, and missing angles."
+    inputs: ["topic", "target_reader", "business_goal", "content_pillar"]
+    outputs:
+      [
+        "reader_problem",
+        "search_intents",
+        "source_list",
+        "competitor_patterns",
+        "content_gap",
+        "angle",
+      ]
+    agent_should:
+      - "Use primary sources when facts or APIs can change."
+      - "Separate stable conceptual claims from time-sensitive details."
+      - "Record unanswered questions instead of filling gaps with generic text."
+  - id: series_planning
+    goal: "Turn a domain into a teachable sequence."
+    inputs: ["domain", "audience_level", "reader_outcome", "content_pillar"]
+    outputs:
+      [
+        "series_title",
+        "learning_path",
+        "article_sequence",
+        "internal_links",
+        "difficulty_curve",
+      ]
+    agent_should:
+      - "Use backward design for the series outcome."
+      - "Use scaffolding to order articles from foundation to applied judgment."
+      - "Avoid mixing tutorial, reference, and opinion goals in the same article unless intentional."
+  - id: article_brief
+    goal: "Create a precise writing contract before drafting."
+    inputs: ["topic_research", "series_plan", "target_reader", "search_intent"]
+    outputs:
+      [
+        "title",
+        "description",
+        "slug",
+        "outline",
+        "definitions",
+        "examples",
+        "diagrams",
+        "faq",
+        "internal_links",
+      ]
+    agent_should:
+      - "Mark every H2 with its reader job."
+      - "Specify where code, Mermaid, tables, or images are needed."
+      - "Include a direct answer block for GEO."
+  - id: draft
+    goal: "Write a useful first version."
+    inputs: ["article_brief"]
+    outputs: ["mdx_article"]
+    agent_should:
+      - "Use concrete examples before broad abstractions."
+      - "Prefer short paragraphs and explicit transitions."
+      - "Include tradeoffs, failure modes, and decision criteria."
+  - id: teaching_review
+    goal: "Improve comprehension."
+    inputs: ["mdx_article", "article_brief"]
+    outputs: ["readability_fixes", "missing_examples", "structure_changes"]
+    agent_should:
+      - "Check whether each section answers one clear reader question."
+      - "Reduce cognitive load by splitting dense sections."
+      - "Add worked examples where claims are abstract."
+  - id: human_edit
+    goal: "Remove generic AI tone and add credible judgment."
+    inputs: ["mdx_article"]
+    outputs: ["edited_article", "voice_notes"]
+    agent_should:
+      - "Delete filler claims, symmetrical lists, and vague superlatives."
+      - "Add constraints, personal judgment, edge cases, and practical tradeoffs."
+      - "Keep the author's style consistent with src/data/site.ts and existing articles."
+  - id: seo_geo_optimization
+    goal: "Make the article discoverable by search engines and answer engines."
+    inputs: ["edited_article", "site_context", "content_inventory"]
+    outputs:
+      [
+        "title_meta",
+        "description_meta",
+        "entity_coverage",
+        "faq",
+        "internal_links",
+        "schema_notes",
+      ]
+    agent_should:
+      - "Use one primary intent per page."
+      - "Add clear definitions, summaries, FAQs, and internal links."
+      - "Verify canonical, JSON-LD, sitemap, RSS, robots.txt, and llms.txt build."
+  - id: publishing_review
+    goal: "Ship safely."
+    inputs: ["changed_files"]
+    outputs: ["validation_result", "deployment_target", "follow_up_tasks"]
+    agent_should:
+      - "Run pnpm check."
+      - "Run pnpm build for content, SEO/GEO, layout, MCP, or deploy changes."
+      - "Use release for staging and main for production."
+
+quality_gates:
+  article:
+    - "The reader can identify the article promise in the first screen."
+    - "Every H2 has a distinct reader job."
+    - "Key terms are defined before use."
+    - "At least one concrete example, code block, diagram, table, or decision checklist supports the main claim."
+    - "The article includes tradeoffs or failure modes."
+    - "Internal links connect to related topics, series, projects, or posts."
+  series:
+    - "The series has an explicit reader outcome."
+    - "Article order follows a difficulty curve."
+    - "Each article has a distinct intent and does not duplicate another article."
+    - "The final article helps the reader make or execute a real decision."

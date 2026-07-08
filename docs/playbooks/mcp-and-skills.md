@@ -9,11 +9,11 @@ This project should use both layers:
 
 Skills are useful for agent-native triggering, but they are not equally portable across tools. MCP is the portable integration layer. The practical split is:
 
-| Layer | Responsibility |
-| --- | --- |
-| Skill | Trigger words, workflow rules, editing discipline, validation expectations |
-| MCP | Read project context, expose prompt templates, list content inventory, return workflow contracts |
-| Agent | Apply edits, run checks, commit, deploy, and make judgment calls |
+| Layer | Responsibility                                                                                   |
+| ----- | ------------------------------------------------------------------------------------------------ |
+| Skill | Trigger words, workflow rules, editing discipline, validation expectations                       |
+| MCP   | Read project context, expose prompt templates, list content inventory, return workflow contracts |
+| Agent | Apply edits, run checks, commit, deploy, and make judgment calls                                 |
 
 ## Local MCP command
 
@@ -63,12 +63,14 @@ AI_FIRST_BLOGGER_ROOT=/absolute/path/to/ai-first-blogger
 - `list_prompts`: lists bundled prompt templates.
 - `read_prompt`: reads one prompt template.
 - `get_workflow_contract`: returns the prompt, required files, and checklist for setup, planning, writing, SEO/GEO, deployment, or maintenance.
+- `get_content_pipeline`: returns methodology, pipeline stages, and quality gates for research, series planning, article briefs, editing, and SEO/GEO.
 - `get_content_inventory`: lists MD/MDX content files with collection, title, slug, status, and tags.
 
 ## Recommended agent flow
 
 1. Call `healthcheck`.
 2. Call `get_workflow_contract` with the closest workflow.
-3. Read only the referenced files needed for the task.
-4. Edit repository files directly.
-5. Run `pnpm check`; run `pnpm build` for SEO/GEO, layout, schema, and deployment changes.
+3. For content tasks, call `get_content_pipeline`.
+4. Read only the referenced files needed for the task.
+5. Edit repository files directly.
+6. Run `pnpm check`; run `pnpm build` for SEO/GEO, layout, schema, and deployment changes.

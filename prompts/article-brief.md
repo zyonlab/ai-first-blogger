@@ -3,6 +3,7 @@
 ```text
 Create an MDX article brief for this Astro content system.
 Input: topic, target reader, search intent, conversion goal.
+Use content-plans/content-pipeline.yaml for methodology and docs/playbooks/content-pipeline.md for output contracts.
 Output:
 - title
 - description
