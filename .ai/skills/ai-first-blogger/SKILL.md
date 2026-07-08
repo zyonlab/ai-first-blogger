@@ -13,6 +13,13 @@ description: Configure, plan, write, optimize, deploy, and maintain this AI-firs
 5. Keep content strategy in `content-plans/site-plan.yaml`.
 6. Validate with `pnpm check` and `pnpm build` when code, schema, or content changes.
 
+## MCP
+- If the host supports MCP, connect this repository's `ai-first-blogger` server first.
+- Use `get_workflow_contract` to load the right prompt, required files, and validation checklist.
+- Use `get_site_context` before setup, planning, SEO/GEO, or maintenance tasks.
+- Use `get_content_inventory` before rewriting navigation, topic pages, or content plans.
+- Treat MCP output as context; make actual file edits in the repository so changes remain reviewable.
+
 ## Prompt Map
 - Site setup: `prompts/site-intake.md`
 - Content planning: `prompts/content-plan.md`

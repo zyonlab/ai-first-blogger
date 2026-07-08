@@ -8,5 +8,7 @@ Rules:
 - Run pnpm check and pnpm build.
 - Verify GitHub Actions workflow if present.
 - Verify Cloudflare Pages project name and deployment target.
+- Use release for staging preview.
+- Use main for production.
 - Summarize the deployed URL and next DNS steps separately.
 ```

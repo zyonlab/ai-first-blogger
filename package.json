@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "migrate:ghost": "tsx scripts/convert-ghost-to-mdx.ts"
+    "mcp:server": "tsx mcp/server.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "latest",
@@ -22,7 +22,9 @@
   },
   "devDependencies": {
     "@astrojs/check": "latest",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "zod": "^4.4.3"
   }
 }

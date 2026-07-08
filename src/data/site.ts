@@ -2,7 +2,7 @@ export const site = {
   name: 'AI First Blogger',
   title: 'AI First Blogger · AI-native content system for technical creators',
   description: '一个 AI-first 静态博客系统，用结构化内容、固定提示词和自动部署帮助创作者规划、写作、优化和维护网站。',
-  url: import.meta.env.PUBLIC_SITE_URL ?? 'https://ai-first-blogger.pages.dev',
+  url: import.meta.env.PUBLIC_SITE_URL ?? 'https://your-site.example',
   locale: 'zh-CN',
   themeStorageKey: 'ai-first-blogger-theme',
   brand: {

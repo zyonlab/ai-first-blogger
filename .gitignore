@@ -3,5 +3,3 @@ dist
 .astro
 .env
 .DS_Store
-migration/ghost-export.json
-migration/images

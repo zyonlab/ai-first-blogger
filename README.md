@@ -67,6 +67,14 @@ prompts/seo-geo-audit.md
 prompts/deploy.md
 ```
 
+Agent tools that support MCP can expose the same context through:
+
+```bash
+pnpm mcp:server
+```
+
+See `docs/playbooks/mcp-and-skills.md`.
+
 ## Content
 
 Create posts in:
@@ -135,13 +143,15 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 
-Set the Pages project name in the workflow:
+Required GitHub Variables:
 
-```yaml
-CLOUDFLARE_PAGES_PROJECT_NAME: your-pages-project
+```txt
+CLOUDFLARE_PAGES_PROJECT_NAME
+PRODUCTION_SITE_URL
+STAGING_SITE_URL
 ```
 
-The workflow runs on push to `main`:
+The workflow runs on push to `release` for staging and `main` for production:
 
 ```txt
 pnpm install --frozen-lockfile
@@ -150,30 +160,15 @@ pnpm build
 wrangler pages deploy dist
 ```
 
-## Ghost Migration
-
-Place the Ghost export at:
+Recommended release flow:
 
 ```txt
-migration/ghost-export.json
+feature branch -> release -> main
 ```
 
-Optionally place exported images at:
-
-```txt
-migration/images/
-```
-
-Run:
-
-```bash
-LEGACY_CONTENT_DOMAIN=https://your-old-domain.com pnpm migrate:ghost
-```
-
-The script writes MDX posts to `src/content/posts/` and generates `migration/report.md`.
-
-Manual slug overrides live in `scripts/slug-map.ts`.
-Category and series mapping lives in `scripts/category-map.ts`.
+- `release` deploys a Cloudflare Pages preview branch with `STAGING_SITE_URL`.
+- `main` deploys the production branch with `PRODUCTION_SITE_URL`.
+- Use the same Cloudflare Pages project unless you need full environment isolation.
 
 ## Notes
 
