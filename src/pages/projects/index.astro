@@ -1,4 +1,5 @@
 ---
+import { site } from '@data/site';
 import ProjectCard from '@components/ProjectCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { getCollection } from 'astro:content';
@@ -10,7 +11,7 @@ const description = '展示工程能力、系统设计思路、技术选型和�
 const jsonLd = [
   collectionPageSchema(title, description, '/projects/'),
   itemListSchema(
-    'ZyonCode Projects',
+    `${site.name} Projects`,
     projects.map((project) => ({
       name: project.data.title,
       description: project.data.description,

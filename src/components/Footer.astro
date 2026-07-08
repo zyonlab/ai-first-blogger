@@ -4,7 +4,7 @@ import { site } from '@data/site';
 
 <footer class="site-footer">
   <div>
-    <strong>ZyonCode</strong>
+    <strong>{site.name}</strong>
     <p>{site.description}</p>
   </div>
   <nav aria-label="Footer navigation">
@@ -15,5 +15,5 @@ import { site } from '@data/site';
     <a href={`mailto:${site.author.email}`}>Email</a>
     <a href="/rss.xml">RSS</a>
   </nav>
-  <small>© {new Date().getFullYear()} ZyonCode. Built with Astro.</small>
+  <small>© {new Date().getFullYear()} {site.name}. Built with Astro.</small>
 </footer>

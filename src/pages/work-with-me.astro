@@ -1,23 +1,24 @@
 ---
+import { site } from '@data/site';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
 
-const title = 'Work With Me';
-const description = '面向企业、开发者工具、Web3 项目和内容合作方的技术咨询与赞助入口。';
+const title = site.services.title;
+const description = site.services.description;
 const jsonLd = [
   collectionPageSchema(title, description, '/work-with-me/'),
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: 'ZyonCode Technical Consulting',
+    name: site.services.serviceName,
     description,
     provider: {
       '@type': 'Person',
-      name: 'Zyon',
-      url: 'https://zyoncode.com',
+      name: site.author.name,
+      url: site.url,
     },
     areaServed: 'Global',
-    serviceType: ['Frontend Architecture Review', 'Web3 System Design', 'AI Engineering Workflow'],
+    serviceType: site.services.serviceTypes,
   },
   breadcrumbSchema([
     { name: 'Home', url: '/' },
@@ -29,10 +30,10 @@ const jsonLd = [
 <PageLayout title={title} description={description} canonical="/work-with-me/" jsonLd={jsonLd}>
   <section class="section grid two">
     {[
-      ['企业技术咨询', '前端架构评审、Web3 / 交易所系统方案、AI 工程化工作流。'],
-      ['开发者工具推广', '围绕真实工程场景做博客、视频、案例或教程合作。'],
-      ['Web3 / 交易所系统方案', '账户、撮合、风控、持仓、链上交互和数据架构分析。'],
-      ['视频 / 博客赞助合作', '长期内容主题、系列赞助、技术产品落地页和 YouTube 承接。'],
+      ['品牌和网站配置', '用固定问卷收集品牌、域名、邮箱、社交媒体、导航、CTA 和视觉偏好。'],
+      ['内容规划', '生成内容支柱、系列路线、关键词地图、发布节奏和首批选题。'],
+      ['SEO / GEO 优化', '检查标题、摘要、结构化数据、内链、FAQ、llms.txt 和 AI 摘要友好度。'],
+      ['自动部署和维护', '通过 GitHub Actions 部署到 Cloudflare Pages，并持续更新内容与站点结构。'],
     ].map(([title, description]) => (
       <article class="card">
         <h3>{title}</h3>
@@ -41,9 +42,9 @@ const jsonLd = [
     ))}
   </section>
   <section class="cta-panel">
-    <p>请通过邮箱联系：hello@zyoncode.com。后续可替换为表单、日历预约或 Newsletter 服务。</p>
+    <p>{site.services.contactText}</p>
     <div class="actions">
-      <a class="button primary" href="mailto:hello@zyoncode.com">发送邮件</a>
+      <a class="button primary" href={`mailto:${site.author.email}`}>发送邮件</a>
     </div>
   </section>
 </PageLayout>

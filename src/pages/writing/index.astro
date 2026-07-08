@@ -1,4 +1,5 @@
 ---
+import { site } from '@data/site';
 import ArticleCard from '@components/ArticleCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { getPublishedPosts } from '@lib/content';
@@ -11,7 +12,7 @@ const description = '前端架构、Vue/React 源码、Web3、DeFi、交易所�
 const jsonLd = [
   collectionPageSchema(title, description, '/writing/'),
   itemListSchema(
-    'ZyonCode Writing',
+    `${site.name} Writing`,
     posts.map((post) => ({
       name: post.data.title,
       description: post.data.description,

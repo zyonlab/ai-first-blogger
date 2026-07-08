@@ -37,7 +37,7 @@ const defaultJsonLd = [websiteSchema(), personSchema()];
 ---
 
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang={site.locale} data-theme="dark" data-theme-key={site.themeStorageKey}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -57,7 +57,7 @@ const defaultJsonLd = [websiteSchema(), personSchema()];
     />
     <JsonLd data={jsonLd ?? defaultJsonLd} />
     <script is:inline>
-      const theme = localStorage.getItem('zyoncode-theme');
+      const theme = localStorage.getItem(document.documentElement.dataset.themeKey ?? 'ai-first-blogger-theme');
       const resolvedTheme = theme === 'light' ? 'light' : 'dark';
       document.documentElement.dataset.theme = resolvedTheme;
       document.querySelector('[data-theme-color]')?.setAttribute('content', resolvedTheme === 'light' ? '#f7f8fb' : '#0b1020');

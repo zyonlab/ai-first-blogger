@@ -1,6 +1,8 @@
-# ZyonCode Astro
+# AI First Blogger
 
-ZyonCode is a static personal brand site and technical content library for frontend architecture, Web3 systems, crypto exchange systems, engineering productivity, and AI engineering.
+AI First Blogger is a reusable Astro + MDX static blog framework designed for AI-assisted planning, writing, SEO/GEO optimization, deployment, and ongoing maintenance.
+
+It is not a traditional CMS. The system is file-based, structured, and agent-friendly: AI can update site settings, generate content briefs, write MDX, audit SEO/GEO, validate builds, and deploy through GitHub Actions.
 
 ## Stack
 
@@ -9,6 +11,7 @@ ZyonCode is a static personal brand site and technical content library for front
 - MDX
 - Astro Content Collections
 - Static output
+- GitHub Actions
 - Cloudflare Pages
 
 ## Development
@@ -21,9 +24,47 @@ pnpm dev
 ## Build
 
 ```bash
+pnpm check
 pnpm build
 pnpm preview
-pnpm check
+```
+
+## Configure a New Site
+
+Start with:
+
+```txt
+prompts/site-intake.md
+```
+
+Then update:
+
+```txt
+src/data/site.ts
+content-plans/site-plan.yaml
+```
+
+`src/data/site.ts` controls the brand name, domain, author, email, social links, hero copy, CTAs, and service/contact copy.
+
+## AI-first Workflow
+
+Core instructions live in:
+
+```txt
+AGENTS.md
+docs/playbooks/ai-first-workflow.md
+docs/playbooks/template-customization.md
+.ai/skills/ai-first-blogger/SKILL.md
+```
+
+Reusable prompts live in:
+
+```txt
+prompts/site-intake.md
+prompts/content-plan.md
+prompts/article-brief.md
+prompts/seo-geo-audit.md
+prompts/deploy.md
 ```
 
 ## Content
@@ -41,15 +82,72 @@ title: Article title
 description: SEO description
 slug: article-slug
 pubDate: 2026-07-07
-category: frontend-architecture
+category: ai-engineering
 tags:
-  - Architecture
+  - AI
+  - Blogging
 ```
 
 Drafts are supported with:
 
 ```yaml
 draft: true
+```
+
+Other collections:
+
+```txt
+src/content/videos/*.mdx
+src/content/projects/*.mdx
+src/content/case-studies/*.mdx
+```
+
+## SEO / GEO
+
+Implemented:
+
+- `sitemap`
+- `/rss.xml`
+- `/robots.txt`
+- `/llms.txt`
+- canonical URLs
+- Open Graph
+- Twitter Card
+- Person JSON-LD
+- Article JSON-LD
+- VideoObject JSON-LD
+- CollectionPage and ItemList JSON-LD
+
+Use `prompts/seo-geo-audit.md` before launch and after major content changes.
+
+## Cloudflare Pages
+
+This repo includes a GitHub Actions workflow:
+
+```txt
+.github/workflows/cloudflare-pages.yml
+```
+
+Required GitHub Secrets:
+
+```txt
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+```
+
+Set the Pages project name in the workflow:
+
+```yaml
+CLOUDFLARE_PAGES_PROJECT_NAME: your-pages-project
+```
+
+The workflow runs on push to `main`:
+
+```txt
+pnpm install --frozen-lockfile
+pnpm check
+pnpm build
+wrangler pages deploy dist
 ```
 
 ## Ghost Migration
@@ -69,52 +167,17 @@ migration/images/
 Run:
 
 ```bash
-pnpm migrate:ghost
+LEGACY_CONTENT_DOMAIN=https://your-old-domain.com pnpm migrate:ghost
 ```
 
 The script writes MDX posts to `src/content/posts/` and generates `migration/report.md`.
 
 Manual slug overrides live in `scripts/slug-map.ts`.
-
 Category and series mapping lives in `scripts/category-map.ts`.
-
-## SEO / GEO
-
-Implemented:
-
-- `sitemap`
-- `/rss.xml`
-- `/robots.txt`
-- `/llms.txt`
-- canonical URLs
-- Open Graph
-- Twitter Card
-- Person JSON-LD
-- Article JSON-LD
-- VideoObject JSON-LD
-
-## Cloudflare Pages
-
-Use:
-
-```txt
-Framework preset: Astro
-Build command: pnpm build
-Build output directory: dist
-Node version: 20 or 22
-```
-
-Connect the GitHub repository to Cloudflare Pages, then add `zyoncode.com` as the custom domain.
-
-## Domain Plan
-
-- `zyoncode.com` → Cloudflare Pages
-- `www.zyoncode.com` → redirect to root domain
-- Optional `api.zyoncode.com` → existing server
-- Optional `assets.zyoncode.com` → future Cloudflare R2/CDN
 
 ## Notes
 
-- Ghost is treated as a one-time content export source, not the ongoing CMS.
-- The first version uses Git and MDX for content management.
-- If image volume grows, move `public/content/images/` to Cloudflare R2 or another CDN.
+- Keep secrets out of the repository.
+- Keep brand-specific values in `src/data/site.ts`.
+- Keep content strategy in `content-plans/site-plan.yaml`.
+- Do not edit generated `dist/`, `.astro/`, or `node_modules/`.

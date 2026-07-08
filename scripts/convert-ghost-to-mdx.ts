@@ -30,7 +30,9 @@ const imageInput = path.join(root, 'migration/images');
 const imageOutput = path.join(root, 'public/content/images');
 const postsOutput = path.join(root, 'src/content/posts');
 const reportPath = path.join(root, 'migration/report.md');
-const domainImagePattern = /^https?:\/\/zyoncode\.com\/content\/images\//i;
+const legacyContentDomain = process.env.LEGACY_CONTENT_DOMAIN ?? 'https://example.com';
+const legacyContentOrigin = legacyContentDomain.replace(/\/$/, '');
+const domainImagePattern = new RegExp(`^${legacyContentOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/content/images/`, 'i');
 const localImagePattern = /(?:src|href)=["']([^"']*\/content\/images\/[^"']+)["']/g;
 
 function cleanDescription(post: GhostPost) {
@@ -63,11 +65,9 @@ function normalizeImageUrl(value = '') {
   if (domainImagePattern.test(value)) {
     return value.replace(domainImagePattern, '/content/images/');
   }
-  if (value.startsWith('http://zyoncode.com/content/images/')) {
-    return value.replace('http://zyoncode.com/content/images/', '/content/images/');
-  }
-  if (value.startsWith('https://zyoncode.com/content/images/')) {
-    return value.replace('https://zyoncode.com/content/images/', '/content/images/');
+  const imagePrefix = `${legacyContentOrigin}/content/images/`;
+  if (value.startsWith(imagePrefix)) {
+    return value.replace(imagePrefix, '/content/images/');
   }
   return value;
 }
@@ -136,8 +136,7 @@ async function main() {
     const slug = uniqueSlug(slugify(baseSlug), usedSlugs);
     const taxonomy = mapTaxonomy(post);
     let html = post.html ?? '';
-    html = html.replaceAll('https://zyoncode.com/content/images/', '/content/images/');
-    html = html.replaceAll('http://zyoncode.com/content/images/', '/content/images/');
+    html = html.replaceAll(`${legacyContentOrigin}/content/images/`, '/content/images/');
 
     const localImages = [...html.matchAll(localImagePattern)].map((match) => normalizeImageUrl(match[1]));
     const missingImages = localImages.filter((image) => image.startsWith('/content/images/'));
@@ -157,7 +156,7 @@ async function main() {
       category: taxonomy.category,
       tags: taxonomy.tags,
       series: taxonomy.series,
-      author: 'Zyon',
+      author: 'Site Owner',
       legacySlug: post.slug,
     };
 

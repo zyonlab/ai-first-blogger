@@ -1,4 +1,5 @@
 ---
+import { site } from '@data/site';
 import TopicCard from '@components/TopicCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { topicList } from '@data/topics';
@@ -9,7 +10,7 @@ const description = '按长期技术主题组织文章、系列、视频和项�
 const jsonLd = [
   collectionPageSchema(title, description, '/topics/'),
   itemListSchema(
-    'ZyonCode Topics',
+    `${site.name} Topics`,
     topicList.map((topic) => ({
       name: topic.title,
       description: topic.description,

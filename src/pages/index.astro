@@ -1,4 +1,5 @@
 ---
+import { site } from '@data/site';
 import ArticleCard from '@components/ArticleCard.astro';
 import ProjectCard from '@components/ProjectCard.astro';
 import SeriesCard from '@components/SeriesCard.astro';
@@ -18,7 +19,7 @@ const jsonLd = [
   websiteSchema(),
   personSchema(),
   itemListSchema(
-    'ZyonCode Featured Content',
+    `${site.name} Featured Content`,
     posts.map((post) => ({
       name: post.data.title,
       description: post.data.description,
@@ -31,23 +32,19 @@ const jsonLd = [
 <BaseLayout jsonLd={jsonLd}>
   <section class="hero">
     <div>
-      <p class="eyebrow">Frontend Architecture · Web3 Systems · AI Engineering</p>
-      <h1>ZyonCode</h1>
-      <p>专注前端架构、Web3 系统、AI 工程化的软件工程师内容站，沉淀长期可复用的工程认知。</p>
+      <p class="eyebrow">{site.hero.eyebrow}</p>
+      <h1>{site.hero.title}</h1>
+      <p>{site.hero.description}</p>
       <div class="actions">
-        <a class="button primary" href="/writing/">阅读文章</a>
-        <a class="button" href="/series/">查看系列</a>
-        <a class="button" href="/videos/">观看视频</a>
-        <a class="button" href="/work-with-me/">咨询合作</a>
+        {site.hero.actions.map((action) => (
+          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={action.href}>{action.label}</a>
+        ))}
       </div>
     </div>
     <div class="hero-panel">
       <p class="eyebrow">Focus Map</p>
       <div class="signal-grid">
-        <span>Framework internals</span>
-        <span>Exchange systems</span>
-        <span>DeFi architecture</span>
-        <span>AI workflows</span>
+        {site.hero.signals.map((signal) => <span>{signal}</span>)}
       </div>
     </div>
   </section>

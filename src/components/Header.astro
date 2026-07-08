@@ -1,5 +1,6 @@
 ---
 import { navItems } from '@data/nav';
+import { site } from '@data/site';
 import ThemeToggle from './ThemeToggle.astro';
 
 const currentPath = Astro.url.pathname;
@@ -7,9 +8,9 @@ const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : cur
 ---
 
 <header class="site-header">
-  <a class="brand" href="/" aria-label="ZyonCode home">
-    <span class="brand-mark">Z</span>
-    <span>ZyonCode</span>
+  <a class="brand" href="/" aria-label={`${site.name} home`}>
+    <span class="brand-mark">{site.brand.initial}</span>
+    <span>{site.name}</span>
   </a>
   <nav class="desktop-nav" aria-label="Primary navigation">
     {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}

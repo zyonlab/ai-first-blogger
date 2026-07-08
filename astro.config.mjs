@@ -3,7 +3,7 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://zyoncode.com',
+  site: process.env.PUBLIC_SITE_URL ?? 'https://ai-first-blogger.pages.dev',
   output: 'static',
   integrations: [
     mdx(),

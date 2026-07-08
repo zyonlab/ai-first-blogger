@@ -1,4 +1,5 @@
 ---
+import { site } from '@data/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { seriesList } from '@data/series';
@@ -9,7 +10,7 @@ const description = '把高价值主题拆成可连续阅读的学习路径，�
 const jsonLd = [
   collectionPageSchema(title, description, '/series/'),
   itemListSchema(
-    'ZyonCode Series',
+    `${site.name} Series`,
     seriesList.map((item) => ({
       name: item.title,
       description: item.description,

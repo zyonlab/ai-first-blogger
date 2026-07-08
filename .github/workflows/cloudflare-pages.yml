@@ -16,6 +16,7 @@ concurrency:
 env:
   NODE_VERSION: 22
   CLOUDFLARE_PAGES_PROJECT_NAME: zyoncode-astro-test-20260707233412
+  PUBLIC_SITE_URL: https://zyoncode-astro-test-20260707233412.pages.dev
 
 jobs:
   deploy:

@@ -1,7 +1,7 @@
 <button class="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
 <script>
   const button = document.querySelector('.theme-toggle');
-  const storageKey = 'zyoncode-theme';
+  const storageKey = document.documentElement.dataset.themeKey ?? 'ai-first-blogger-theme';
   const root = document.documentElement;
   const applyTheme = (theme: string) => {
     root.dataset.theme = theme;

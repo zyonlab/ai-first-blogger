@@ -24,7 +24,7 @@ const posts = defineCollection({
     tags: z.array(z.string()).default([]),
     series: z.string().optional(),
     seriesOrder: z.number().optional(),
-    author: z.string().default('Zyon'),
+    author: z.string().default('Site Owner'),
     youtubeId: z.string().optional(),
     legacySlug: z.string().optional(),
     canonical: z.string().optional(),
