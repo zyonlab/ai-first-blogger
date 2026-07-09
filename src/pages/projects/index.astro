@@ -6,12 +6,12 @@ import { getCollection } from 'astro:content';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 const projects = await getCollection('projects');
-const title = 'Projects';
-const description = '展示工程能力、系统设计思路、技术选型和可复用成果。';
+const title = '项目';
+const description = '展示 GitHub 项目、工程能力、系统设计思路、技术选型和可复用成果。';
 const jsonLd = [
   collectionPageSchema(title, description, '/projects/'),
   itemListSchema(
-    `${site.name} Projects`,
+    `${site.name} 项目`,
     projects.map((project) => ({
       name: project.data.title,
       description: project.data.description,
@@ -19,7 +19,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: '首页', url: '/' },
     { name: title, url: '/projects/' },
   ]),
 ];

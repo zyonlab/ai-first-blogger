@@ -5,12 +5,12 @@ import PageLayout from '@layouts/PageLayout.astro';
 import { topicList } from '@data/topics';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
-const title = 'Topics';
+const title = '专题';
 const description = '按长期技术主题组织文章、系列、视频和项目，形成可持续扩展的内容资产。';
 const jsonLd = [
   collectionPageSchema(title, description, '/topics/'),
   itemListSchema(
-    `${site.name} Topics`,
+    `${site.name} 专题`,
     topicList.map((topic) => ({
       name: topic.title,
       description: topic.description,
@@ -18,7 +18,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: '首页', url: '/' },
     { name: title, url: '/topics/' },
   ]),
 ];

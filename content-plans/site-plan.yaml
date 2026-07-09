@@ -1,59 +1,247 @@
 site:
-  purpose: "Turn a static Astro blog into an AI-first content system."
+  brand_name: "子雍手记"
+  purpose: "Build a long-term personal knowledge base around AI applications, full-stack engineering, blockchain, crypto exchange systems, DeFi, LLM learning, open-source projects, and videos."
+  positioning: "个人技术手记：用系列文章、项目笔记和视频，把复杂工程主题拆成可理解、可复用、可持续更新的知识资产。"
   audience:
-    primary: "technical creators, indie hackers, developer advocates, consultants"
-    secondary: "teams that need a maintainable knowledge base or technical content hub"
-  positioning: "AI-configurable blog framework with structured content, SEO/GEO checks, prompts, and automated deployment."
+    primary:
+      - "想用 AI 提升开发与产品效率的全栈开发者"
+      - "关注 Web3、交易所、DeFi 系统设计的工程师"
+      - "正在系统学习大模型应用和 Agent 工程的技术读者"
+    secondary:
+      - "寻找项目实践样例的独立开发者"
+      - "需要技术文章、项目文档或系统分析的团队"
+  voice:
+    - "工程化"
+    - "实战"
+    - "克制"
+    - "有判断"
+    - "先讲结论，再讲取舍"
 
 brand_inputs:
-  required:
-    - brand_name
-    - domain
-    - author_or_team_name
-    - contact_email
-    - social_links
-    - target_audience
-    - content_domains
-    - monetization_or_conversion_goal
-  optional:
-    - logo
-    - brand_voice
-    - color_preference
-    - existing_content_export
-    - youtube_channel
+  known:
+    brand_name: "子雍手记"
+    author_or_team_name: "子雍"
+    content_domains:
+      - "AI 应用"
+      - "全栈开发"
+      - "区块链"
+      - "交易所系统"
+      - "DeFi"
+      - "大模型学习"
+      - "GitHub 开源项目"
+      - "视频内容"
+  missing:
+    - "正式域名"
+    - "联系邮箱"
+    - "GitHub 主页"
+    - "YouTube/Bilibili 频道"
+    - "X/LinkedIn 等社交链接"
+    - "是否承接咨询、课程、产品或社区转化"
+
+information_architecture:
+  writing: "长文、技术笔记、教程、分析和观点。"
+  series: "围绕一个学习目标组织的连续内容。"
+  topics: "按长期知识域聚合内容。"
+  videos: "视频配套页、讲解摘要、章节和相关链接。"
+  projects: "GitHub 项目、实验原型、工具、项目复盘。"
+  case_studies: "完整项目或系统分析的结果型内容。"
 
 content_pillars:
-  - id: foundations
-    name: "Foundations"
-    goal: "Explain core concepts and establish topical authority."
-    formats: ["pillar article", "glossary", "FAQ"]
-  - id: playbooks
-    name: "Playbooks"
-    goal: "Give repeatable workflows users can execute."
-    formats: ["how-to", "checklist", "template"]
-  - id: case-studies
-    name: "Case Studies"
-    goal: "Show applied credibility and decision quality."
-    formats: ["case study", "before-after", "architecture note"]
-  - id: opinions
-    name: "Point of View"
-    goal: "Differentiate the creator's perspective."
-    formats: ["essay", "trend analysis", "comparison"]
+  - id: ai-applications
+    name: "AI 应用实战"
+    goal: "把 AI 从概念转成能用的工具、Agent、自动化和产品原型。"
+    formats:
+      ["how-to", "project log", "architecture note", "workflow", "comparison"]
+    example_topics:
+      - "从一个重复工作流拆出 AI Agent"
+      - "RAG 应用什么时候值得做，什么时候只是复杂化"
+      - "AI 代码审查规则如何落地到团队流程"
+      - "把文章丢给 AI 深读的提示词与链接设计"
+  - id: llm-learning
+    name: "大模型学习手记"
+    goal: "用工程师可执行的方式学习 LLM、上下文、RAG、评测、微调和 Agent 能力边界。"
+    formats:
+      ["learning note", "explainer", "worked example", "FAQ", "benchmark note"]
+    example_topics:
+      - "大模型学习路线：先学应用还是先学原理"
+      - "上下文工程到底解决什么问题"
+      - "RAG、微调、Prompt 三者怎么选"
+      - "如何评估一个 Agent 是否真的有用"
+  - id: full-stack-engineering
+    name: "全栈工程与项目实践"
+    goal: "记录从前端、后端、数据库、API、鉴权到部署的完整工程取舍。"
+    formats: ["tutorial", "how-to", "system note", "project retrospective"]
+    example_topics:
+      - "一个全栈项目从 0 到部署的最小闭环"
+      - "前端模块边界如何影响后端 API 设计"
+      - "个人项目如何设计认证、日志和配置"
+      - "Cloudflare Pages / Workers 适合哪些个人项目"
+  - id: blockchain-exchange-defi
+    name: "区块链、交易所与 DeFi"
+    goal: "解释链上协议、交易所系统、撮合、风控、清结算、AMM、借贷和清算机制。"
+    formats:
+      [
+        "deep dive",
+        "system design",
+        "protocol analysis",
+        "risk note",
+        "diagram",
+      ]
+    example_topics:
+      - "交易所系统设计：账户、撮合、清结算如何拆分"
+      - "DeFi 清算风险从哪里来"
+      - "AMM 与订单簿的工程差异"
+      - "钱包、DEX、交易所分别解决什么问题"
+  - id: github-projects
+    name: "GitHub 项目与开源笔记"
+    goal: "把自己的项目做成可理解、可复用、可展示的内容资产。"
+    formats:
+      ["project page", "release note", "case study", "implementation diary"]
+    example_topics:
+      - "一个项目为什么做、怎么做、下一步做什么"
+      - "从 GitHub README 扩展成项目介绍页"
+      - "开源项目如何写技术复盘"
+      - "用博客承接 GitHub 项目的搜索和解释流量"
+  - id: videos
+    name: "视频与讲解内容"
+    goal: "把复杂主题拆成可观看、可跳转、可复用的讲解摘要。"
+    formats:
+      ["video notes", "transcript", "chapter summary", "companion article"]
+    example_topics:
+      - "AI 工程工作流视频配套笔记"
+      - "交易所系统设计视频章节"
+      - "DeFi 协议讲解转文章"
+      - "大模型学习路线视频脚本"
+
+series_roadmap:
+  - slug: ai-application-lab
+    title: "AI 应用实验室"
+    reader_outcome: "读者能从一个真实问题拆出 AI 应用方案，并理解 Prompt、RAG、Agent、工具调用和产品化取舍。"
+    planned_articles:
+      - "AI 应用不是套壳：从工作流拆解开始"
+      - "Prompt、RAG、微调、Agent：先选哪个"
+      - "如何给 AI 应用设计可评估的输出"
+      - "一个本地知识库助手的最小实现"
+      - "AI 应用从 Demo 到可用产品差在哪"
+  - slug: llm-learning-notes
+    title: "大模型学习手记"
+    reader_outcome: "读者能建立 LLM 应用学习地图，知道每个概念在工程里解决什么问题。"
+    planned_articles:
+      - "大模型学习路线：工程师版本"
+      - "上下文窗口、Token 和记忆到底是什么"
+      - "RAG 的关键不是向量库，而是问题分解"
+      - "如何评测一个大模型应用"
+      - "Agent 的能力边界和失败模式"
+  - slug: full-stack-project-notes
+    title: "全栈项目手记"
+    reader_outcome: "读者能跟随项目笔记理解完整系统从前端到后端再到部署的决策链路。"
+    planned_articles:
+      - "个人全栈项目的最小技术栈"
+      - "API、数据库和前端状态如何一起设计"
+      - "鉴权、权限和配置管理的最小闭环"
+      - "从本地开发到 Cloudflare 部署"
+      - "项目上线后如何观测和迭代"
+  - slug: crypto-exchange-system
+    title: "加密货币交易所系统设计"
+    reader_outcome: "读者能理解交易所系统的核心模块、数据流、风控点和工程边界。"
+    planned_articles:
+      - "交易所系统总览：账户、撮合、资产、清结算"
+      - "订单簿和撮合引擎的最小模型"
+      - "风控系统看什么：余额、持仓、杠杆和价格"
+      - "充值提现、链上确认和内部账本"
+      - "交易所系统为什么难在一致性"
+  - slug: defi-protocols
+    title: "DeFi 协议与 DEX 架构分析"
+    reader_outcome: "读者能理解 AMM、借贷、清算、Hooks 和 DeFi 风险的基本工程逻辑。"
+    planned_articles:
+      - "AMM 为什么能交易"
+      - "流动性、滑点和无常损失"
+      - "DeFi 借贷与清算的核心机制"
+      - "Uniswap v4 Hooks 可以改变什么"
+      - "DeFi 协议分析应该看哪些风险"
+
+github_project_strategy:
+  goal: "把 GitHub 上的个人项目变成项目页、系列文章和案例内容。"
+  page_pattern:
+    - "项目解决什么问题"
+    - "为什么做这个项目"
+    - "核心功能和技术栈"
+    - "架构图或关键代码"
+    - "当前状态、下一步计划"
+    - "GitHub 链接和相关文章"
+  content_reuse:
+    - "README -> 项目介绍页"
+    - "Issue/PR -> 开发日志"
+    - "Release -> 版本笔记"
+    - "架构决策 -> 技术文章"
+
+video_strategy:
+  goal: "视频不是孤立内容，每个视频都应连接到文章、系列或项目。"
+  page_pattern:
+    - "视频摘要"
+    - "适合谁看"
+    - "章节时间线"
+    - "关键概念"
+    - "相关代码或项目"
+    - "延伸阅读"
+  recommended_cadence:
+    - "每月 1-2 个视频"
+    - "优先录系列文章的配套讲解"
+    - "每个视频至少生成一个文章摘要页"
 
 seo_geo_rules:
   - "One clear search intent per page."
-  - "Use descriptive H1/H2/H3 hierarchy; no decorative headings."
-  - "Add direct definitions, steps, examples, and tradeoffs."
-  - "Use internal links between topics, series, projects, and case studies."
+  - "Use Chinese titles for Chinese readers; keep English technical entities when they are standard terms."
+  - "Every article should include a direct answer block, definitions, examples, and tradeoffs."
+  - "Use internal links between topics, series, projects, videos, and case studies."
   - "Expose canonical URL, Open Graph, RSS, sitemap, robots.txt, and llms.txt."
-  - "Prefer stable facts, author context, and concrete dates over vague claims."
+  - "For AI/LLM/Web3 facts that change quickly, use current primary sources and concrete dates."
+  - "Prefer first-hand project notes, constraints, and decision records over generic summaries."
+
+90_day_plan:
+  month_1:
+    theme: "品牌定位与基础内容"
+    goals:
+      - "完成站点品牌、导航、专题和系列结构。"
+      - "写 3 篇基础文章：AI 应用、全栈项目、交易所系统总览。"
+      - "整理 1 个 GitHub 项目页。"
+    deliverables:
+      - "1 篇 AI 应用基础文章"
+      - "1 篇全栈工程基础文章"
+      - "1 篇交易所系统总览"
+      - "1 个项目介绍页"
+  month_2:
+    theme: "系列化输出"
+    goals:
+      - "启动 AI 应用实验室和大模型学习手记两个系列。"
+      - "每个系列至少产出 2 篇文章 brief 和 1 篇正式文章。"
+      - "补充内链和专题页说明。"
+    deliverables:
+      - "2 篇 AI 应用文章"
+      - "2 篇大模型学习文章"
+      - "1 个视频配套页"
+  month_3:
+    theme: "Web3/DeFi 深度与项目资产化"
+    goals:
+      - "强化交易所与 DeFi 系列。"
+      - "把 GitHub 项目转成项目页和技术复盘。"
+      - "做一次 SEO/GEO 和内链审计。"
+    deliverables:
+      - "2 篇交易所系统文章"
+      - "2 篇 DeFi 协议分析"
+      - "2 个项目/案例页面"
+      - "1 次 SEO/GEO audit"
 
 maintenance_cadence:
   weekly:
-    - "Generate or refine 1-3 article briefs."
-    - "Check failed builds and broken links."
+    - "Generate or refine 1-2 article briefs using the content pipeline."
+    - "Publish or improve one article, project note, or video companion page."
+    - "Check build status and obvious broken links."
   monthly:
-    - "Refresh content plan and internal links."
-    - "Audit top landing pages for SEO/GEO clarity."
+    - "Review topic coverage and internal links."
+    - "Turn one GitHub project update into content."
+    - "Audit one series for learning path clarity."
   quarterly:
-    - "Revisit brand positioning, navigation, and content pillars."
+    - "Revisit positioning, navigation, and content pillars."
+    - "Archive, merge, or rewrite thin content."
+    - "Review SEO/GEO performance and update old facts."

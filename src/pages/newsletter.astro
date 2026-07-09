@@ -3,12 +3,12 @@ import { site } from '@data/site';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
 
-const title = 'Newsletter';
-const description = '订阅网站更新、内容规划、技术文章和 AI-first 博客系统迭代。';
+const title = '订阅';
+const description = '订阅子雍手记的 AI 应用、全栈工程、Web3/DeFi、大模型学习和项目更新。';
 const jsonLd = [
   collectionPageSchema(title, description, '/newsletter/'),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: '首页', url: '/' },
     { name: title, url: '/newsletter/' },
   ]),
 ];
@@ -16,7 +16,7 @@ const jsonLd = [
 
 <PageLayout title={title} description={description} canonical="/newsletter/" jsonLd={jsonLd}>
   <section class="cta-panel">
-    <p>第一版暂不接入真实 Newsletter 服务。后续可选择 Buttondown、ConvertKit、Beehiiv 或自建方案。</p>
+    <p>第一版暂不接入真实 Newsletter 服务。后续可选择 Buttondown、ConvertKit、Beehiiv、Bilibili/YouTube 社区或自建邮件列表。</p>
     <div class="actions">
       <a class="button primary" href={`mailto:${site.author.email}?subject=Subscribe ${site.name}`}>邮件订阅占位</a>
     </div>

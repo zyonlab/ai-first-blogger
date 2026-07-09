@@ -1,8 +1,8 @@
-import { defineCollection, z } from 'astro:content';
-import { glob } from 'astro/loaders';
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
 
 const posts = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -12,19 +12,22 @@ const posts = defineCollection({
     draft: z.boolean().default(false),
     heroImage: z.string().optional(),
     category: z.enum([
-      'frontend-architecture',
-      'vue-react-internals',
-      'web3-defi',
-      'exchange-systems',
-      'engineering-productivity',
-      'ai-engineering',
-      'career',
-      'notes',
+      "ai-applications",
+      "llm-learning",
+      "full-stack-engineering",
+      "frontend-architecture",
+      "vue-react-internals",
+      "web3-defi",
+      "exchange-systems",
+      "engineering-productivity",
+      "ai-engineering",
+      "career",
+      "notes",
     ]),
     tags: z.array(z.string()).default([]),
     series: z.string().optional(),
     seriesOrder: z.number().optional(),
-    author: z.string().default('Site Owner'),
+    author: z.string().default("子雍"),
     youtubeId: z.string().optional(),
     legacySlug: z.string().optional(),
     canonical: z.string().optional(),
@@ -32,7 +35,7 @@ const posts = defineCollection({
 });
 
 const videos = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/videos' }),
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/videos" }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -56,12 +59,12 @@ const videos = defineCollection({
 });
 
 const projects = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/projects" }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
     slug: z.string(),
-    status: z.enum(['active', 'archived', 'planned']).default('planned'),
+    status: z.enum(["active", "archived", "planned"]).default("planned"),
     role: z.string().optional(),
     techStack: z.array(z.string()).default([]),
     repoUrl: z.string().url().optional(),
@@ -72,7 +75,10 @@ const projects = defineCollection({
 });
 
 const caseStudies = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/case-studies' }),
+  loader: glob({
+    pattern: "**/*.{md,mdx}",
+    base: "./src/content/case-studies",
+  }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -90,5 +96,5 @@ export const collections = {
   posts,
   videos,
   projects,
-  'case-studies': caseStudies,
+  "case-studies": caseStudies,
 };

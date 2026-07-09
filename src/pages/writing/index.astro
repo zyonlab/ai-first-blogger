@@ -7,12 +7,12 @@ import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/sch
 
 const posts = await getPublishedPosts();
 const tags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
-const title = 'Writing';
-const description = '前端架构、Vue/React 源码、Web3、DeFi、交易所系统、工程化和 AI 工程化文章。';
+const title = '文章';
+const description = 'AI 应用、全栈工程、区块链、交易所系统、DeFi、大模型学习和开源项目手记。';
 const jsonLd = [
   collectionPageSchema(title, description, '/writing/'),
   itemListSchema(
-    `${site.name} Writing`,
+    `${site.name} 文章`,
     posts.map((post) => ({
       name: post.data.title,
       description: post.data.description,
@@ -20,7 +20,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: '首页', url: '/' },
     { name: title, url: '/writing/' },
   ]),
 ];

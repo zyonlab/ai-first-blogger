@@ -42,7 +42,7 @@ const jsonLd = [
       </div>
     </div>
     <div class="hero-panel">
-      <p class="eyebrow">Focus Map</p>
+      <p class="eyebrow">内容地图</p>
       <div class="signal-grid">
         {site.hero.signals.map((signal) => <span>{signal}</span>)}
       </div>
@@ -52,8 +52,8 @@ const jsonLd = [
   <section class="section">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Topics</p>
-        <h2>Featured Topics</h2>
+        <p class="eyebrow">专题</p>
+        <h2>长期内容方向</h2>
       </div>
       <p>围绕长期主题组织内容，而不是依赖松散标签。</p>
     </div>
@@ -65,8 +65,8 @@ const jsonLd = [
   <section class="section">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Learning Paths</p>
-        <h2>Featured Series</h2>
+        <p class="eyebrow">学习路径</p>
+        <h2>系列文章</h2>
       </div>
       <a class="button" href="/series/">全部系列</a>
     </div>
@@ -78,8 +78,8 @@ const jsonLd = [
   <section class="section">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Writing</p>
-        <h2>Latest Writing</h2>
+        <p class="eyebrow">文章</p>
+        <h2>最新手记</h2>
       </div>
       <a class="button" href="/writing/">全部文章</a>
     </div>
@@ -91,21 +91,21 @@ const jsonLd = [
   <section class="section">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Videos</p>
-        <h2>YouTube / Videos</h2>
+        <p class="eyebrow">视频</p>
+        <h2>视频与讲解</h2>
       </div>
       <p>视频页预留摘要、文字稿、章节和转化入口。</p>
     </div>
     <div class="grid">
-      {videos.length > 0 ? videos.map((video) => <VideoCard video={video} />) : <p>Coming soon.</p>}
+      {videos.length > 0 ? videos.map((video) => <VideoCard video={video} />) : <p>即将更新。</p>}
     </div>
   </section>
 
   <section class="section">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Projects</p>
-        <h2>Projects / Case Studies</h2>
+        <p class="eyebrow">项目</p>
+        <h2>GitHub 项目与案例</h2>
       </div>
       <a class="button" href="/projects/">全部项目</a>
     </div>

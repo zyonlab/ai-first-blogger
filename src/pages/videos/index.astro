@@ -6,12 +6,12 @@ import { getPublishedVideos } from '@lib/content';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 const videos = await getPublishedVideos();
-const title = 'Videos';
-const description = 'YouTube 视频承接页，沉淀摘要、章节、文字稿、相关文章和合作入口。';
+const title = '视频';
+const description = '视频承接页，沉淀摘要、章节、文字稿、相关文章和项目入口。';
 const jsonLd = [
   collectionPageSchema(title, description, '/videos/'),
   itemListSchema(
-    `${site.name} Videos`,
+    `${site.name} 视频`,
     videos.map((video) => ({
       name: video.data.title,
       description: video.data.description,
@@ -19,7 +19,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: '首页', url: '/' },
     { name: title, url: '/videos/' },
   ]),
 ];
