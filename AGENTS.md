@@ -23,6 +23,8 @@ Scope: entire repository.
 - Do not add real API tokens, emails, private domains, or credentials to the repo.
 - Use `src/data/site.ts` for site identity and brand configuration.
 - Use `content-plans/site-plan.yaml` for content strategy and editorial planning.
+- Do not show navigation links, homepage sections, cards, CTAs, or placeholder copy for content collections that have no published content.
+- Do not expose placeholder email, social links, domains, or external channels. Leave them empty and hide dependent UI until real values exist.
 
 ## Validation
 
@@ -37,6 +39,7 @@ Scope: entire repository.
 - Prefer MDX content that includes definitions, examples, tradeoffs, next steps, and internal links.
 - Do not write final articles from a bare topic; create topic research, a series plan, or an article brief first.
 - Use Backward Design for series planning, Diátaxis for content type, Cognitive Load Theory for readability, and Worked Examples for technical teaching.
+- Remove generic assistant tone. Avoid filler such as 即将更新, 敬请期待, 预留, 占位, 内容资产, 一站式, 赋能, 深度解析 unless explicitly requested.
 - Do not publish drafts unless explicitly requested.
 
 ## Deployment Rules

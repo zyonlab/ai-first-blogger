@@ -27,7 +27,7 @@ export function personSchema(withContext = true) {
     url: site.url,
     jobTitle: site.author.title,
     description: site.author.bio,
-    sameAs: Object.values(site.social),
+    sameAs: Object.values(site.social).filter(Boolean),
   };
 }
 

@@ -1,5 +1,14 @@
 ---
 import { site } from '@data/site';
+
+const footerLinks = [
+  { label: 'GitHub', href: site.social.github },
+  { label: 'YouTube', href: site.social.youtube },
+  { label: 'X', href: site.social.x },
+  { label: 'LinkedIn', href: site.social.linkedin },
+  { label: 'Email', href: site.author.email ? `mailto:${site.author.email}` : '' },
+  { label: 'RSS', href: '/rss.xml' },
+].filter((link) => link.href);
 ---
 
 <footer class="site-footer">
@@ -8,12 +17,7 @@ import { site } from '@data/site';
     <p>{site.description}</p>
   </div>
   <nav aria-label="Footer navigation">
-    <a href={site.social.github}>GitHub</a>
-    <a href={site.social.youtube}>YouTube</a>
-    <a href={site.social.x}>X</a>
-    <a href={site.social.linkedin}>LinkedIn</a>
-    <a href={`mailto:${site.author.email}`}>Email</a>
-    <a href="/rss.xml">RSS</a>
+    {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
   </nav>
   <small>© {new Date().getFullYear()} {site.name}. Built with Astro.</small>
 </footer>

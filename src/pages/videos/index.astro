@@ -26,7 +26,9 @@ const jsonLd = [
 ---
 
 <PageLayout title={title} description={description} canonical="/videos/" jsonLd={jsonLd}>
-  <section class="section grid">
-    {videos.map((video) => <VideoCard video={video} />)}
-  </section>
+  {videos.length > 0 && (
+    <section class="section grid">
+      {videos.map((video) => <VideoCard video={video} />)}
+    </section>
+  )}
 </PageLayout>

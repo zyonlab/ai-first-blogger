@@ -9,12 +9,26 @@ import BaseLayout from '@layouts/BaseLayout.astro';
 import { seriesList } from '@data/series';
 import { topicList } from '@data/topics';
 import { getPublishedPosts, getPublishedVideos } from '@lib/content';
+import { contentAvailability } from '@lib/contentAvailability';
 import { getCollection } from 'astro:content';
 import { itemListSchema, websiteSchema, personSchema } from '@lib/schema';
 
-const posts = (await getPublishedPosts()).slice(0, 6);
+const allPosts = await getPublishedPosts();
+const posts = allPosts.slice(0, 6);
 const videos = (await getPublishedVideos()).slice(0, 3);
 const projects = (await getCollection('projects')).slice(0, 3);
+const activeTopicSlugs = new Set<string>(allPosts.map((post) => post.data.category));
+const activeSeriesSlugs = new Set(allPosts.map((post) => post.data.series).filter(Boolean));
+const visibleTopics = topicList.filter((topic) => activeTopicSlugs.has(topic.slug));
+const visibleSeries = seriesList.filter((item) => activeSeriesSlugs.has(item.slug));
+const visibleHeroActions = site.hero.actions.filter((action) => {
+  if (action.href.startsWith('/writing')) return contentAvailability.posts;
+  if (action.href.startsWith('/series')) return contentAvailability.posts;
+  if (action.href.startsWith('/topics')) return contentAvailability.posts;
+  if (action.href.startsWith('/projects')) return contentAvailability.projects;
+  if (action.href.startsWith('/videos')) return contentAvailability.videos;
+  return true;
+});
 const jsonLd = [
   websiteSchema(),
   personSchema(),
@@ -35,11 +49,13 @@ const jsonLd = [
       <p class="eyebrow">{site.hero.eyebrow}</p>
       <h1>{site.hero.title}</h1>
       <p>{site.hero.description}</p>
-      <div class="actions">
-        {site.hero.actions.map((action) => (
-          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={action.href}>{action.label}</a>
-        ))}
-      </div>
+      {visibleHeroActions.length > 0 && (
+        <div class="actions">
+          {visibleHeroActions.map((action) => (
+            <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={action.href}>{action.label}</a>
+          ))}
+        </div>
+      )}
     </div>
     <div class="hero-panel">
       <p class="eyebrow">内容地图</p>
@@ -49,68 +65,77 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">专题</p>
-        <h2>长期内容方向</h2>
+  {visibleTopics.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">专题</p>
+          <h2>长期内容方向</h2>
+        </div>
+        <p>围绕长期主题组织内容，而不是依赖松散标签。</p>
       </div>
-      <p>围绕长期主题组织内容，而不是依赖松散标签。</p>
-    </div>
-    <div class="grid">
-      {topicList.map((topic) => <TopicCard topic={topic} />)}
-    </div>
-  </section>
+      <div class="grid">
+        {visibleTopics.map((topic) => <TopicCard topic={topic} />)}
+      </div>
+    </section>
+  )}
 
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">学习路径</p>
-        <h2>系列文章</h2>
+  {visibleSeries.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">学习路径</p>
+          <h2>系列文章</h2>
+        </div>
+        <a class="button" href="/series/">全部系列</a>
       </div>
-      <a class="button" href="/series/">全部系列</a>
-    </div>
-    <div class="grid">
-      {seriesList.map((item) => <SeriesCard item={item} />)}
-    </div>
-  </section>
+      <div class="grid">
+        {visibleSeries.map((item) => <SeriesCard item={item} />)}
+      </div>
+    </section>
+  )}
 
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">文章</p>
-        <h2>最新手记</h2>
+  {posts.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">文章</p>
+          <h2>最新手记</h2>
+        </div>
+        <a class="button" href="/writing/">全部文章</a>
       </div>
-      <a class="button" href="/writing/">全部文章</a>
-    </div>
-    <div class="grid two">
-      {posts.map((post) => <ArticleCard post={post} />)}
-    </div>
-  </section>
+      <div class="grid two">
+        {posts.map((post) => <ArticleCard post={post} />)}
+      </div>
+    </section>
+  )}
 
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">视频</p>
-        <h2>视频与讲解</h2>
+  {videos.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">视频</p>
+          <h2>视频与讲解</h2>
+        </div>
       </div>
-      <p>视频页预留摘要、文字稿、章节和转化入口。</p>
-    </div>
-    <div class="grid">
-      {videos.length > 0 ? videos.map((video) => <VideoCard video={video} />) : <p>即将更新。</p>}
-    </div>
-  </section>
+      <div class="grid">
+        {videos.map((video) => <VideoCard video={video} />)}
+      </div>
+    </section>
+  )}
 
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">项目</p>
-        <h2>GitHub 项目与案例</h2>
+  {projects.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">项目</p>
+          <h2>GitHub 项目与案例</h2>
+        </div>
+        <a class="button" href="/projects/">全部项目</a>
       </div>
-      <a class="button" href="/projects/">全部项目</a>
-    </div>
-    <div class="grid">
-      {projects.map((project) => <ProjectCard project={project} />)}
-    </div>
-  </section>
+      <div class="grid">
+        {projects.map((project) => <ProjectCard project={project} />)}
+      </div>
+    </section>
+  )}
 </BaseLayout>

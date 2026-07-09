@@ -3,15 +3,19 @@ import { site } from '@data/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { seriesList } from '@data/series';
+import { getPublishedPosts } from '@lib/content';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
+const posts = await getPublishedPosts();
+const activeSeriesSlugs = new Set(posts.map((post) => post.data.series).filter(Boolean));
+const visibleSeries = seriesList.filter((item) => activeSeriesSlugs.has(item.slug));
 const title = '系列';
 const description = '把 AI 应用、全栈工程、交易所系统、DeFi 和大模型学习拆成可连续阅读的学习路径。';
 const jsonLd = [
   collectionPageSchema(title, description, '/series/'),
   itemListSchema(
     `${site.name} 系列`,
-    seriesList.map((item) => ({
+    visibleSeries.map((item) => ({
       name: item.title,
       description: item.description,
       url: `/series/${item.slug}/`,
@@ -25,7 +29,9 @@ const jsonLd = [
 ---
 
 <PageLayout title={title} description={description} canonical="/series/" jsonLd={jsonLd}>
-  <section class="section grid">
-    {seriesList.map((item) => <SeriesCard item={item} />)}
-  </section>
+  {visibleSeries.length > 0 && (
+    <section class="section grid">
+      {visibleSeries.map((item) => <SeriesCard item={item} />)}
+    </section>
+  )}
 </PageLayout>

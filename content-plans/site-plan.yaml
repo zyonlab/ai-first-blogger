@@ -94,7 +94,7 @@ content_pillars:
       - "钱包、DEX、交易所分别解决什么问题"
   - id: github-projects
     name: "GitHub 项目与开源笔记"
-    goal: "把自己的项目做成可理解、可复用、可展示的内容资产。"
+    goal: "把自己的项目整理成读者能理解、能复现、能继续追踪的项目笔记。"
     formats:
       ["project page", "release note", "case study", "implementation diary"]
     example_topics:

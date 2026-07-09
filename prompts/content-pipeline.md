@@ -17,8 +17,9 @@ Choose exactly one stage unless I ask for the whole pipeline:
 4. draft
 5. teaching_review
 6. human_edit
-7. seo_geo_optimization
-8. publishing_review
+7. display_review
+8. seo_geo_optimization
+9. publishing_review
 
 Rules:
 - Do not draft the final article before the brief is approved.
@@ -28,6 +29,8 @@ Rules:
 - Use Worked Examples for technical teaching.
 - Use Pyramid Principle for summaries and answer blocks.
 - Remove generic AI tone during human_edit.
+- During display_review, hide nav items, homepage sections, cards, CTAs, and teaser text for content types with no published entries.
+- Do not use placeholder copy like 即将更新, 预留, 占位, 内容资产, 一站式, 赋能, or generic marketing filler unless I explicitly ask for a roadmap.
 - Run pnpm check after content/schema changes.
 - Run pnpm build before deployment or SEO/GEO claims.
 

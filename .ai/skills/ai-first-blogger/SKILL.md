@@ -13,7 +13,8 @@ description: Configure, plan, write, optimize, deploy, and maintain this AI-firs
 4. Keep brand and owner details in `src/data/site.ts`; do not hardcode them elsewhere.
 5. Keep content strategy in `content-plans/site-plan.yaml`.
 6. For content work, use `content-plans/content-pipeline.yaml` and `docs/playbooks/content-pipeline.md`.
-7. Validate with `pnpm check` and `pnpm build` when code, schema, or content changes.
+7. Before changing navigation, homepage sections, CTAs, or collection pages, check the content inventory and hide empty content types instead of showing placeholders.
+8. Validate with `pnpm check` and `pnpm build` when code, schema, or content changes.
 
 ## MCP
 
@@ -39,3 +40,7 @@ description: Configure, plan, write, optimize, deploy, and maintain this AI-firs
 - Do not commit tokens or secrets.
 - Do not edit generated `dist/`, `.astro/`, or `node_modules/`.
 - Prefer structured content and direct answers over vague marketing copy.
+- Do not show nav links, homepage modules, cards, or CTAs for content that does not exist.
+- Do not expose placeholder email, social links, domains, or external channels. Leave them empty and hide dependent UI until real values exist.
+- Avoid placeholder and assistant-like wording such as 即将更新, 敬请期待, 预留, 占位, 内容资产, 一站式, 赋能, 深度解析 unless explicitly requested.
+- Preserve a concrete author voice: specific constraints, tradeoffs, examples, and judgment over generic summaries.

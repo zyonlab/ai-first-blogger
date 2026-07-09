@@ -16,6 +16,7 @@ Output:
 - internal links to existing posts/topics/series
 - FAQ or self-check questions
 - GEO-friendly direct answer block
+- notes for whether this article should make any navigation, series, topic, or homepage section visible
 
 After approval, write the MDX file under src/content/posts/ and run pnpm check.
 ```

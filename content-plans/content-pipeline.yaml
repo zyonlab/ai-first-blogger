@@ -2,6 +2,8 @@ pipeline:
   purpose: "Help agents plan, research, write, edit, optimize, and maintain technical blog content without relying on vague one-shot prompts."
   default_output_language: "zh-CN"
   operating_rule: "Never write the final article before the research brief, series plan, or article brief is explicit."
+  display_rule: "Do not render navigation items, homepage sections, cards, CTAs, or placeholder copy for content types that have no published content."
+  voice_rule: "Write like a specific technical author, not a generic assistant. Keep concrete judgment, constraints, and lived tradeoffs; remove filler and placeholder language."
 
 methodologies:
   backward_design:
@@ -100,8 +102,17 @@ stages:
     outputs: ["edited_article", "voice_notes"]
     agent_should:
       - "Delete filler claims, symmetrical lists, and vague superlatives."
+      - "Remove placeholder phrases such as 即将更新, 敬请期待, 预留, 占位, 内容资产, 一站式, 赋能, 深度解析 unless the author explicitly wants them."
       - "Add constraints, personal judgment, edge cases, and practical tradeoffs."
       - "Keep the author's style consistent with src/data/site.ts and existing articles."
+  - id: display_review
+    goal: "Keep the public site honest when content is missing."
+    inputs: ["content_inventory", "changed_pages", "navigation"]
+    outputs: ["hidden_empty_sections", "visible_content_entries", "remaining_empty_states"]
+    agent_should:
+      - "Check src/content/** before showing homepage sections or nav links."
+      - "Hide empty content modules instead of showing coming-soon text."
+      - "Only keep static pages visible when they provide real information without content entries."
   - id: seo_geo_optimization
     goal: "Make the article discoverable by search engines and answer engines."
     inputs: ["edited_article", "site_context", "content_inventory"]
@@ -123,6 +134,7 @@ stages:
     inputs: ["changed_files"]
     outputs: ["validation_result", "deployment_target", "follow_up_tasks"]
     agent_should:
+      - "Run a display review when content is added, removed, or reorganized."
       - "Run pnpm check."
       - "Run pnpm build for content, SEO/GEO, layout, MCP, or deploy changes."
       - "Use release for staging and main for production."
@@ -135,6 +147,12 @@ quality_gates:
     - "At least one concrete example, code block, diagram, table, or decision checklist supports the main claim."
     - "The article includes tradeoffs or failure modes."
     - "Internal links connect to related topics, series, projects, or posts."
+    - "The article avoids generic assistant phrasing and uses concrete author judgment."
+  display:
+    - "Navigation only links to content collections that have published entries."
+    - "Homepage sections only appear when they contain real entries."
+    - "Email, social, domain, and external channel links only appear when real values are configured."
+    - "No public page uses coming-soon or placeholder copy unless the user explicitly asked for a roadmap."
   series:
     - "The series has an explicit reader outcome."
     - "Article order follows a difficulty curve."

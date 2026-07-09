@@ -5,8 +5,12 @@ import { series, seriesList } from '@data/series';
 import { getPublishedPosts } from '@lib/content';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
-export function getStaticPaths() {
-  return seriesList.map((item) => ({ params: { slug: item.slug } }));
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  const activeSeriesSlugs = new Set(posts.map((post) => post.data.series).filter(Boolean));
+  return seriesList
+    .filter((item) => activeSeriesSlugs.has(item.slug))
+    .map((item) => ({ params: { slug: item.slug } }));
 }
 
 const slug = Astro.params.slug as keyof typeof series;
@@ -34,13 +38,14 @@ const jsonLd = [
 ---
 
 <PageLayout title={item.title} description={item.description} eyebrow="Series" canonical={canonical} jsonLd={jsonLd}>
-  <section class="section">
-    <div class="section-head">
-      <h2>推荐阅读顺序</h2>
-      <p>按系列顺序组织；未完成内容后续可继续追加。</p>
-    </div>
-    <div class="grid two">
-      {posts.map((post) => <ArticleCard post={post} />)}
-    </div>
-  </section>
+  {posts.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <h2>推荐阅读顺序</h2>
+      </div>
+      <div class="grid two">
+        {posts.map((post) => <ArticleCard post={post} />)}
+      </div>
+    </section>
+  )}
 </PageLayout>

@@ -18,7 +18,7 @@ export const series = {
     topic: "full-stack-engineering",
   },
   "vue-internals": {
-    title: "Vue.js 内部机制深度解析",
+    title: "Vue.js 内部机制笔记",
     description: "从响应式、调度、nextTick 到渲染机制的系统学习路径。",
     topic: "vue-react-internals",
   },

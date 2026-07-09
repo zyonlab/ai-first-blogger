@@ -14,8 +14,9 @@ One-shot article generation produces generic structure, repeated claims, and wea
 4. **Draft**: useful MDX first version from the approved brief.
 5. **Teaching review**: reduce cognitive load, add worked examples, improve sequence.
 6. **Human edit**: remove AI tone, add judgment, constraints, tradeoffs, and edge cases.
-7. **SEO/GEO optimization**: metadata, entities, definitions, FAQ, internal links, schema readiness.
-8. **Publishing review**: validation, staging branch, deployment notes.
+7. **Display review**: hide empty collections, navigation links, homepage sections, and placeholder CTAs.
+8. **SEO/GEO optimization**: metadata, entities, definitions, FAQ, internal links, schema readiness.
+9. **Publishing review**: validation, staging branch, deployment notes.
 
 ## Methods
 
@@ -34,6 +35,20 @@ One-shot article generation produces generic structure, repeated claims, and wea
 4. Select one pipeline stage unless the user explicitly asks for the full pipeline.
 5. Return assumptions and missing inputs before writing files.
 6. Validate with `pnpm check`; run `pnpm build` for SEO/GEO, layout, MCP, or deployment changes.
+
+## Display Rules
+
+- Do not show navigation items for empty content collections.
+- Do not show homepage sections, cards, buttons, or teaser copy when the target content does not exist.
+- Do not use “即将更新”, “敬请期待”, “预留”, “占位”, “内容资产”, “一站式”, “赋能”, or similar filler unless the user explicitly asks for a roadmap.
+- Static pages such as About or Work With Me may remain visible when they contain real information.
+
+## Voice Rules
+
+- Keep the author’s actual subject matter, constraints, and judgment.
+- Prefer direct sentences over symmetrical marketing lists.
+- Use concrete nouns and verbs; avoid generic assistant phrasing.
+- If a claim could fit any technical blog, rewrite it with context, tradeoff, or example.
 
 ## Output Contracts
 
@@ -85,4 +100,16 @@ added_judgment:
 added_constraints:
 added_tradeoffs:
 remaining_risks:
+```
+
+### Display Review
+
+```yaml
+content_inventory:
+visible_navigation:
+hidden_navigation:
+visible_home_sections:
+hidden_home_sections:
+placeholder_copy_removed:
+remaining_empty_states:
 ```

@@ -33,7 +33,7 @@ const jsonLd = [
       ['AI 应用原型', '把重复工作流、知识库、Agent 或自动化想法拆成可验证的最小产品。'],
       ['全栈项目实践', '围绕前端、后端、数据库、API、部署和可观测性梳理工程方案。'],
       ['Web3 / DeFi 系统分析', '拆解交易所、钱包、DEX、借贷、清算和链上交互的系统边界。'],
-      ['技术内容与项目文档', '把 GitHub 项目、系统设计和学习过程整理成文章、项目页或视频脚本。'],
+      ['技术内容与项目文档', '把项目背景、系统设计和关键决策整理成能被读懂的文档。'],
     ].map(([title, description]) => (
       <article class="card">
         <h3>{title}</h3>
@@ -41,10 +41,12 @@ const jsonLd = [
       </article>
     ))}
   </section>
-  <section class="cta-panel">
-    <p>{site.services.contactText}</p>
-    <div class="actions">
-      <a class="button primary" href={`mailto:${site.author.email}`}>发送邮件</a>
-    </div>
-  </section>
+  {site.author.email && (
+    <section class="cta-panel">
+      <p>{site.services.contactText}</p>
+      <div class="actions">
+        <a class="button primary" href={`mailto:${site.author.email}`}>发送邮件</a>
+      </div>
+    </section>
+  )}
 </PageLayout>

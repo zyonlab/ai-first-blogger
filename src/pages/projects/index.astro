@@ -26,7 +26,9 @@ const jsonLd = [
 ---
 
 <PageLayout title={title} description={description} canonical="/projects/" jsonLd={jsonLd}>
-  <section class="section grid">
-    {projects.map((project) => <ProjectCard project={project} />)}
-  </section>
+  {projects.length > 0 && (
+    <section class="section grid">
+      {projects.map((project) => <ProjectCard project={project} />)}
+    </section>
+  )}
 </PageLayout>

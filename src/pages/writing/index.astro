@@ -27,12 +27,16 @@ const jsonLd = [
 ---
 
 <PageLayout title={title} description={description} canonical="/writing/" jsonLd={jsonLd}>
-  <section class="section">
-    <div class="tags">
-      {tags.map((tag) => <span>{tag}</span>)}
-    </div>
-  </section>
-  <section class="section grid two">
-    {posts.map((post) => <ArticleCard post={post} />)}
-  </section>
+  {tags.length > 0 && (
+    <section class="section">
+      <div class="tags">
+        {tags.map((tag) => <span>{tag}</span>)}
+      </div>
+    </section>
+  )}
+  {posts.length > 0 && (
+    <section class="section grid two">
+      {posts.map((post) => <ArticleCard post={post} />)}
+    </section>
+  )}
 </PageLayout>

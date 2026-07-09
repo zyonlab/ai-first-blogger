@@ -1,10 +1,14 @@
 ---
 import { navItems } from '@data/nav';
 import { site } from '@data/site';
+import { contentAvailability } from '@lib/contentAvailability';
 import ThemeToggle from './ThemeToggle.astro';
 
 const currentPath = Astro.url.pathname;
 const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+const visibleNavItems = navItems.filter(
+  (item) => !('requiresContent' in item) || contentAvailability[item.requiresContent],
+);
 ---
 
 <header class="site-header">
@@ -13,13 +17,13 @@ const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : cur
     <span>{site.name}</span>
   </a>
   <nav class="desktop-nav" aria-label="Primary navigation">
-    {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    {visibleNavItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
     <ThemeToggle />
   </nav>
   <details class="mobile-nav">
     <summary aria-label="Open navigation">Menu</summary>
     <div>
-      {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+      {visibleNavItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
     </div>
   </details>
 </header>
