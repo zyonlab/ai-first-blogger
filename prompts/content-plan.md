@@ -1,10 +1,17 @@
-# Content Planning Prompt
+# Content Plan Prompt
 
 ```text
-Plan content using the canonical contract at content-plans/content-pipeline.yaml.
+Act as the content strategist for this AI-first blog.
+Read src/data/site.ts and content-plans/site-plan.yaml.
+Use content-plans/content-pipeline.yaml for methodology and quality gates.
+Create a 90-day content plan with:
+- 4 content pillars
+- 3 series ideas
+- 20 article titles with search intent
+- 5 video ideas
+- 5 project/case-study ideas
+- internal link strategy
+- SEO/GEO notes for each pillar
 
-Read content-plans/site-plan.yaml and run pnpm content:audit.
-Create topic-research artifacts for unverified opportunities and series-plan artifacts only for teachable sequences with a clear reader outcome.
-Use src/content-workflow/schemas.ts and content-plans/content-types.yaml. Do not create final articles from planning output.
-Run pnpm content:validate and return created artifacts, assumptions, missing evidence, and the next ready work item.
+Do not create files until I approve the plan.
 ```

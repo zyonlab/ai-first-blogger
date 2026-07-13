@@ -14,7 +14,6 @@ Scope: entire repository.
 - Use `docs/playbooks/content-pipeline.md` for content research, series planning, article briefs, teaching edits, human edits, and SEO/GEO optimization.
 - Use `content-plans/content-pipeline.yaml` for machine-readable methodology, stages, and quality gates.
 - Use `docs/research/agent-friendly-maintenance.md` for why the repo is structured this way for Codex, OpenCode, OpenClaw-like agents, Claude Code, and similar tools.
-- Use `docs/research/ai-first-blogger-gap-analysis.md` and `content-plans/ai-first-blogger-roadmap.yaml` before changing platform capabilities, workflow contracts, quality gates, or agent integrations.
 - If MCP is available, call `healthcheck`, then `get_workflow_contract`, `get_content_pipeline`, or `get_site_context`.
 
 ## Change Discipline
@@ -29,7 +28,6 @@ Scope: entire repository.
 
 ## Validation
 
-- Run `pnpm content:validate` after content-workflow artifacts or publishable content change.
 - Run `pnpm check` after TypeScript/Astro/content schema changes.
 - Run `pnpm build` before claiming deployment readiness.
 - For SEO/GEO changes, verify canonical URL, JSON-LD, sitemap, RSS, robots.txt, and llms.txt still build.

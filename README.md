@@ -27,58 +27,24 @@ pnpm dev
 pnpm check
 pnpm build
 pnpm preview
-pnpm test:phase-zero
-pnpm test:phase-one
-pnpm test:phase-two
-pnpm test:phase-three
-pnpm test:phase-four
-pnpm test:phase-five
-pnpm test:site-init
-pnpm roadmap:validate
 ```
-
-## Structured Content Workflow
-
-```bash
-pnpm content:new -- topic-research my-topic --title "My Topic" --owner "Author"
-pnpm content:validate
-pnpm content:audit
-pnpm content:transition -- my-article researched --actor "Author"
-pnpm content:editorial-audit -- src/content/posts/my-article.mdx
-pnpm content:freshness
-pnpm content:scheduled -- --now 2026-08-01T01:30:00Z --window-minutes 70
-pnpm prompt:regression
-pnpm prompt:record-host -- <host> <raw-output-file>
-```
-
-The canonical contract is `content-plans/content-pipeline.yaml`. Structured work lives under `content-work/**` and is validated before publishable content builds.
-
-`content-plans/author-style.yaml` is optional and disabled by default. Enable it only after the user approves the writing preferences and at least two reference articles. `content-plans/source-policy.yaml` is mandatory for verified fact ledgers. `content-plans/editorial-scorecard.yaml` keeps machine checks separate from human publication decisions.
-
-Editorial audit findings are review prompts, not automatic publishing decisions. Prompt regression validates local golden briefs and reports each real host attempt. Codex currently passes; Claude Code and OpenClaw remain pending because this machine's provider credentials were rejected, and their failure records are retained under `prompts/regression/host-results/`.
 
 ## Configure a New Site
 
-Prepare a complete, non-secret JSON intake file using the shape demonstrated by
-`scripts/fixtures/site-intake.json`. Then preview both generated configuration files:
+Start with:
 
-```bash
-pnpm site:init -- --input ./site-intake.json --dry-run
+```txt
+prompts/site-intake.md
 ```
 
-The preview reports create/overwrite status, current and generated hashes, and the full generated
-content. It does not change the repository. After review, explicitly confirm replacement of existing
-configuration:
+Then update:
 
-```bash
-pnpm site:init -- --input ./site-intake.json --confirm-overwrite
+```txt
+src/data/site.ts
+content-plans/site-plan.yaml
 ```
 
-The command validates all intake fields before writing `src/data/site.ts` and
-`content-plans/site-plan.yaml`. Existing files are never overwritten without
-`--confirm-overwrite`; an identical rerun is a safe no-op. The intake accepts public identity,
-contact, social, editorial, and planning data only—keep API tokens, deployment credentials, and
-other secrets in environment variables or GitHub Secrets.
+`src/data/site.ts` controls the brand name, domain, author, email, social links, hero copy, CTAs, and service/contact copy.
 
 ## AI-first Workflow
 
@@ -89,10 +55,6 @@ AGENTS.md
 docs/playbooks/ai-first-workflow.md
 docs/playbooks/template-customization.md
 docs/playbooks/content-pipeline.md
-docs/playbooks/scheduled-publishing.md
-docs/playbooks/search-console-operations.md
-docs/playbooks/rich-result-release-validation.md
-docs/playbooks/ghost-wordpress-migration.md
 docs/research/agent-friendly-maintenance.md
 .ai/skills/ai-first-blogger/SKILL.md
 ```
@@ -106,13 +68,6 @@ prompts/content-pipeline.md
 prompts/article-brief.md
 prompts/seo-geo-audit.md
 prompts/deploy.md
-```
-
-Project maturity, gaps, and the executable implementation backlog live in:
-
-```txt
-docs/research/ai-first-blogger-gap-analysis.md
-content-plans/ai-first-blogger-roadmap.yaml
 ```
 
 Agent tools that support MCP can expose the same context through:

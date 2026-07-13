@@ -1,6 +1,0 @@
-schemaVersion: 1
-
-# Keep this list empty until a real URL needs to move. Content frontmatter with
-# legacySlug is merged into the same generated Cloudflare Pages file.
-redirects: []
-

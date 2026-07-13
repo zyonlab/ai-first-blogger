@@ -1,64 +1,11 @@
-import { z } from "zod";
-
-const configuredSiteUrl = import.meta.env.PUBLIC_SITE_URL?.trim();
-const optionalUrl = z.union([z.literal(""), z.url()]);
-
-const siteConfigSchema = z.object({
-  name: z.string().min(1),
-  alternateName: z.string().min(1).optional(),
-  title: z.string().min(1),
-  description: z.string().min(1),
-  url: z.url(),
-  locale: z.string().min(2),
-  themeStorageKey: z.string().min(1),
-  defaultImage: z.string().startsWith("/"),
-  brand: z.object({
-    initial: z.string().min(1),
-    tagline: z.string().min(1),
-    keywords: z.array(z.string().min(1)).min(1),
-  }),
-  author: z.object({
-    name: z.string().min(1),
-    title: z.string().min(1),
-    bio: z.string().min(1),
-    email: z.union([z.literal(""), z.email()]),
-  }),
-  social: z.object({
-    github: optionalUrl,
-    youtube: optionalUrl,
-    x: optionalUrl,
-    linkedin: optionalUrl,
-  }),
-  hero: z.object({
-    eyebrow: z.string().min(1),
-    title: z.string().min(1),
-    description: z.string().min(1),
-    actions: z.array(z.object({
-      label: z.string().min(1),
-      href: z.string().startsWith("/"),
-      variant: z.enum(["primary"]).optional(),
-    })),
-    signals: z.array(z.string().min(1)),
-  }),
-  services: z.object({
-    title: z.string().min(1),
-    description: z.string().min(1),
-    serviceName: z.string().min(1),
-    serviceTypes: z.array(z.string().min(1)),
-    contactText: z.string().min(1),
-  }),
-});
-
-const siteConfig = {
+export const site = {
   name: "子雍手记",
-  alternateName: "子雍",
   title: "子雍手记 · AI 应用、全栈工程与 Web3/DeFi 系统笔记",
   description:
     "记录 AI 应用、全栈开发、交易所系统、DeFi 协议、大模型学习和开源项目实践。",
-  url: configuredSiteUrl || "http://localhost:4321",
+  url: import.meta.env.PUBLIC_SITE_URL ?? "https://your-site.example",
   locale: "zh-CN",
   themeStorageKey: "zi-yong-notes-theme",
-  defaultImage: "/og-default.svg",
   brand: {
     initial: "子",
     tagline: "AI · Full-stack · Web3 · DeFi · LLM Notes",
@@ -112,7 +59,5 @@ const siteConfig = {
       "如果你正在做 AI 应用、交易系统、DeFi、全栈项目或技术内容，可以先整理具体问题和目标。",
   },
 };
-
-export const site = siteConfigSchema.parse(siteConfig);
 
 export type SiteConfig = typeof site;

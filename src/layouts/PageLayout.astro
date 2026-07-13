@@ -7,13 +7,12 @@ type Props = {
   eyebrow?: string;
   canonical?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
-  noindex?: boolean;
 };
 
-const { title, description, eyebrow, canonical, jsonLd, noindex = false } = Astro.props;
+const { title, description, eyebrow, canonical, jsonLd } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd} noindex={noindex}>
+<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
   <section class="page-hero narrow">
     {eyebrow && <p class="eyebrow">{eyebrow}</p>}
     <h1>{title}</h1>

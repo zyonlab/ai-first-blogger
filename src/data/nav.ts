@@ -4,7 +4,6 @@ export const navItems = [
   { href: "/topics/", label: "专题", requiresContent: "posts" },
   { href: "/videos/", label: "视频", requiresContent: "videos" },
   { href: "/projects/", label: "项目", requiresContent: "projects" },
-  { href: "/search/", label: "搜索", requiresContent: "discovery" },
   { href: "/about/", label: "关于" },
   { href: "/work-with-me/", label: "合作" },
 ] as const;

@@ -9,44 +9,41 @@ importers:
   .:
     dependencies:
       '@astrojs/mdx':
-        specifier: 7.0.2
+        specifier: latest
         version: 7.0.2(@astrojs/markdown-satteri@0.3.3)(astro@7.0.6(@astrojs/markdown-remark@7.2.1)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@24.13.2)(tsx@4.23.0)(yaml@2.9.0))
       '@astrojs/rss':
-        specifier: 4.0.19
+        specifier: latest
         version: 4.0.19
       '@astrojs/sitemap':
-        specifier: 3.7.3
+        specifier: latest
         version: 3.7.3
       astro:
-        specifier: 7.0.6
+        specifier: latest
         version: 7.0.6(@astrojs/markdown-remark@7.2.1)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@24.13.2)(tsx@4.23.0)(yaml@2.9.0)
       gray-matter:
-        specifier: 4.0.3
+        specifier: latest
         version: 4.0.3
       mermaid:
-        specifier: 11.16.0
+        specifier: ^11.16.0
         version: 11.16.0
       turndown:
-        specifier: 7.2.4
+        specifier: latest
         version: 7.2.4
-      yaml:
-        specifier: 2.9.0
-        version: 2.9.0
     devDependencies:
       '@astrojs/check':
-        specifier: 0.9.9
+        specifier: latest
         version: 0.9.9(prettier@3.9.4)(typescript@6.0.3)
       '@modelcontextprotocol/sdk':
-        specifier: 1.29.0
+        specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
       tsx:
-        specifier: 4.23.0
+        specifier: latest
         version: 4.23.0
       typescript:
-        specifier: 6.0.3
+        specifier: latest
         version: 6.0.3
       zod:
-        specifier: 4.4.3
+        specifier: ^4.4.3
         version: 4.4.3
 
 packages:

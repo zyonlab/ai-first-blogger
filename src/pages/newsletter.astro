@@ -1,0 +1,26 @@
+---
+import { site } from '@data/site';
+import PageLayout from '@layouts/PageLayout.astro';
+import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
+
+const title = '订阅';
+const description = '订阅子雍手记的技术笔记更新。';
+const jsonLd = [
+  collectionPageSchema(title, description, '/newsletter/'),
+  breadcrumbSchema([
+    { name: '首页', url: '/' },
+    { name: title, url: '/newsletter/' },
+  ]),
+];
+---
+
+<PageLayout title={title} description={description} canonical="/newsletter/" jsonLd={jsonLd}>
+  <section class="cta-panel">
+    <p>邮件列表还没正式开放。等订阅入口确定后，这里只保留可用链接。</p>
+    {site.author.email && (
+      <div class="actions">
+        <a class="button primary" href={`mailto:${site.author.email}?subject=${site.name}`}>发邮件</a>
+      </div>
+    )}
+  </section>
+</PageLayout>

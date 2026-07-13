@@ -28,7 +28,7 @@ const jsonLd = [
 ];
 ---
 
-<PageLayout title={title} description={description} canonical="/series/" jsonLd={visibleSeries.length > 0 ? jsonLd : undefined} noindex={visibleSeries.length === 0}>
+<PageLayout title={title} description={description} canonical="/series/" jsonLd={jsonLd}>
   {visibleSeries.length > 0 && (
     <section class="section grid">
       {visibleSeries.map((item) => <SeriesCard item={item} />)}

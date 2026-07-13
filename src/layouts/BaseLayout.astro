@@ -4,6 +4,7 @@ import Header from '@components/Header.astro';
 import JsonLd from '@components/JsonLd.astro';
 import SEO from '@components/SEO.astro';
 import { site } from '@data/site';
+import { personSchema, websiteSchema } from '@lib/schema';
 import '../styles/global.css';
 
 type Props = {
@@ -31,17 +32,17 @@ const {
   modifiedTime,
   tags,
 } = Astro.props;
-const deploymentNoindex = process.env.PUBLIC_DEPLOY_ENV === 'staging';
 
+const defaultJsonLd = [websiteSchema(), personSchema()];
 ---
 
 <!doctype html>
-<html lang={site.locale} data-theme="light" data-theme-key={site.themeStorageKey}>
+<html lang={site.locale} data-theme="dark" data-theme-key={site.themeStorageKey}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#faf9f6" data-theme-color />
+    <meta name="theme-color" content="#0b1020" data-theme-color />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <SEO
       title={title}
@@ -49,17 +50,17 @@ const deploymentNoindex = process.env.PUBLIC_DEPLOY_ENV === 'staging';
       canonical={canonical}
       image={image}
       type={type}
-      noindex={noindex || deploymentNoindex}
+      noindex={noindex}
       publishedTime={publishedTime}
       modifiedTime={modifiedTime}
       tags={tags}
     />
-    {jsonLd && <JsonLd data={jsonLd} />}
+    <JsonLd data={jsonLd ?? defaultJsonLd} />
     <script is:inline>
       const theme = localStorage.getItem(document.documentElement.dataset.themeKey ?? 'zi-yong-notes-theme');
-      const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
+      const resolvedTheme = theme === 'light' ? 'light' : 'dark';
       document.documentElement.dataset.theme = resolvedTheme;
-      document.querySelector('[data-theme-color]')?.setAttribute('content', resolvedTheme === 'light' ? '#faf9f6' : '#181613');
+      document.querySelector('[data-theme-color]')?.setAttribute('content', resolvedTheme === 'light' ? '#f7f8fb' : '#0b1020');
     </script>
   </head>
   <body>

@@ -2,23 +2,26 @@
 import ArticleHeader from '@components/ArticleHeader.astro';
 import NewsletterCTA from '@components/NewsletterCTA.astro';
 import Toc from '@components/Toc.astro';
+import { site } from '@data/site';
 import { absoluteUrl } from '@lib/seo';
-import { articleSchema } from '@lib/schema';
 import BaseLayout from './BaseLayout.astro';
 
 const { frontmatter, headings } = Astro.props;
 const canonical = frontmatter.canonical ?? `/writing/${frontmatter.slug}/`;
-const jsonLd = articleSchema({
-  title: frontmatter.title,
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: frontmatter.title,
   description: frontmatter.description,
-  canonical,
-  publishedDate: frontmatter.pubDate,
-  modifiedDate: frontmatter.updatedDate,
-  authorName: frontmatter.author,
-  image: frontmatter.heroImage,
-  tags: frontmatter.tags,
-  section: frontmatter.category,
-});
+  datePublished: frontmatter.pubDate,
+  dateModified: frontmatter.updatedDate ?? frontmatter.pubDate,
+  author: {
+    '@type': 'Person',
+    name: frontmatter.author ?? site.author.name,
+    url: site.url,
+  },
+  mainEntityOfPage: absoluteUrl(canonical),
+};
 ---
 
 <BaseLayout

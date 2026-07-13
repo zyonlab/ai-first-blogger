@@ -1,17 +1,22 @@
 # Article Brief Prompt
 
 ```text
-Create or update one article-brief artifact.
+Create an MDX article brief for this Astro content system.
+Input: topic, target reader, search intent, conversion goal.
+Use content-plans/content-pipeline.yaml for methodology and docs/playbooks/content-pipeline.md for output contracts.
+Output:
+- title
+- description
+- slug
+- category
+- tags
+- outline with H2/H3
+- key definitions
+- examples/code/diagrams needed
+- internal links to existing posts/topics/series
+- FAQ or self-check questions
+- GEO-friendly direct answer block
+- notes for whether this article should make any navigation, series, topic, or homepage section visible
 
-Canonical contract: content-plans/content-pipeline.yaml
-Executable schema: articleBriefSchema in src/content-workflow/schemas.ts
-Content-type requirements: content-plans/content-types.yaml
-Optional user-approved writing style: content-plans/author-style.yaml
-Required source policy: content-plans/source-policy.yaml
-Artifact directory: content-work/briefs/
-
-Require an existing topic-research artifact. Use a series-plan only when the article belongs to a real series.
-Do not draft the MDX article until the brief is approved through the content workflow.
-Apply writing-style preferences only when enabled is true. Do not infer author experience or fabricate examples.
-Run pnpm content:validate and return unresolved inputs plus the next allowed lifecycle transition.
+After approval, write the MDX file under src/content/posts/ and run pnpm check.
 ```

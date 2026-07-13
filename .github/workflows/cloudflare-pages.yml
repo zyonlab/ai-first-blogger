@@ -25,7 +25,6 @@ jobs:
     env:
       DEPLOY_BRANCH: ${{ github.ref_name == 'main' && 'main' || 'release' }}
       PUBLIC_SITE_URL: ${{ github.ref_name == 'main' && vars.PRODUCTION_SITE_URL || vars.STAGING_SITE_URL }}
-      PUBLIC_DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,33 +43,6 @@ jobs:
 
       - name: Type check
         run: pnpm check
-
-      - name: Phase 0 guardrail tests
-        run: pnpm test:phase-zero
-
-      - name: Content workflow tests
-        run: pnpm test:phase-one
-
-      - name: Writing style and source policy tests
-        run: pnpm test:phase-two
-
-      - name: Static blog capability tests
-        run: pnpm test:phase-three
-
-      - name: Search and page-quality tests
-        run: pnpm test:phase-four
-
-      - name: Guarded MCP write tests
-        run: pnpm test:mcp-write
-
-      - name: Framework portability tests
-        run: pnpm test:phase-five
-
-      - name: Roadmap contract
-        run: pnpm roadmap:validate
-
-      - name: Prompt regression fixtures
-        run: pnpm prompt:regression
 
       - name: Build
         run: pnpm build

@@ -1,6 +1,5 @@
-import { defineCollection } from "astro:content";
+import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
-import { z } from "astro/zod";
 
 const posts = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" }),
@@ -10,7 +9,6 @@ const posts = defineCollection({
     slug: z.string(),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
-    reviewAfter: z.coerce.date().optional(),
     draft: z.boolean().default(false),
     heroImage: z.string().optional(),
     category: z.enum([
@@ -33,7 +31,6 @@ const posts = defineCollection({
     youtubeId: z.string().optional(),
     legacySlug: z.string().optional(),
     canonical: z.string().optional(),
-    workflowId: z.string().optional(),
   }),
 });
 
@@ -44,7 +41,6 @@ const videos = defineCollection({
     description: z.string(),
     slug: z.string(),
     pubDate: z.coerce.date(),
-    reviewAfter: z.coerce.date().optional(),
     draft: z.boolean().default(false),
     youtubeId: z.string(),
     duration: z.string().optional(),
@@ -59,7 +55,6 @@ const videos = defineCollection({
         }),
       )
       .default([]),
-    workflowId: z.string().optional(),
   }),
 });
 
@@ -72,8 +67,8 @@ const projects = defineCollection({
     status: z.enum(["active", "archived", "planned"]).default("planned"),
     role: z.string().optional(),
     techStack: z.array(z.string()).default([]),
-    repoUrl: z.url().optional(),
-    demoUrl: z.url().optional(),
+    repoUrl: z.string().url().optional(),
+    demoUrl: z.string().url().optional(),
     cover: z.string().optional(),
     highlights: z.array(z.string()).default([]),
   }),
@@ -90,12 +85,10 @@ const caseStudies = defineCollection({
     slug: z.string(),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
-    reviewAfter: z.coerce.date().optional(),
     draft: z.boolean().default(false),
     category: z.string(),
     tags: z.array(z.string()).default([]),
     relatedProject: z.string().optional(),
-    workflowId: z.string().optional(),
   }),
 });
 

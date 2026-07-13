@@ -1,10 +1,9 @@
 ---
 import NewsletterCTA from '@components/NewsletterCTA.astro';
-import RelatedContent from '@components/RelatedContent.astro';
 import BaseLayout from '@layouts/BaseLayout.astro';
 import { getPublishedCaseStudies } from '@lib/content';
 import { render } from 'astro:content';
-import { articleSchema, breadcrumbSchema } from '@lib/schema';
+import { breadcrumbSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
   const caseStudies = await getPublishedCaseStudies();
@@ -15,15 +14,16 @@ const { item } = Astro.props;
 const { Content } = await render(item);
 const canonical = `/case-studies/${item.data.slug}/`;
 const jsonLd = [
-  articleSchema({
-    title: item.data.title,
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: item.data.title,
     description: item.data.description,
-    canonical,
-    publishedDate: item.data.pubDate,
-    modifiedDate: item.data.updatedDate,
-    tags: item.data.tags,
-    section: item.data.category,
-  }),
+    datePublished: item.data.pubDate.toISOString(),
+    dateModified: (item.data.updatedDate ?? item.data.pubDate).toISOString(),
+    articleSection: item.data.category,
+    keywords: item.data.tags,
+  },
   breadcrumbSchema([
     { name: 'Home', url: '/' },
     { name: 'Case Studies', url: '/case-studies/' },
@@ -56,5 +56,4 @@ const jsonLd = [
     </div>
     <NewsletterCTA />
   </article>
-  <RelatedContent kind="case-study" slug={item.data.slug} />
 </BaseLayout>
