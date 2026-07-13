@@ -1,12 +1,11 @@
 ---
-const text =
-  '我会不定期更新 AI 应用、全栈工程、交易系统、DeFi 和大模型学习笔记。';
+import { site } from '@data/site';
 ---
 
 <section class="cta-panel">
-  <p>{text}</p>
+  <p>如果你在做相近的项目，可以带着具体问题和背景来聊。</p>
   <div class="actions">
     <a class="button primary" href="/work-with-me/">咨询合作</a>
-    <a class="button" href="/newsletter/">订阅更新</a>
+    {site.author.email && <a class="button" href={`mailto:${site.author.email}?subject=${site.name}`}>发邮件</a>}
   </div>
 </section>

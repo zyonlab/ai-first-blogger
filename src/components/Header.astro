@@ -21,9 +21,10 @@ const visibleNavItems = navItems.filter(
     <ThemeToggle />
   </nav>
   <details class="mobile-nav">
-    <summary aria-label="Open navigation">Menu</summary>
+    <summary aria-label="打开导航">菜单</summary>
     <div>
       {visibleNavItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+      <ThemeToggle />
     </div>
   </details>
 </header>

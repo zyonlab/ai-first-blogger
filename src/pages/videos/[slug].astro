@@ -1,6 +1,7 @@
 ---
 import NewsletterCTA from '@components/NewsletterCTA.astro';
 import YouTubeEmbed from '@components/YouTubeEmbed.astro';
+import RelatedContent from '@components/RelatedContent.astro';
 import BaseLayout from '@layouts/BaseLayout.astro';
 import { site } from '@data/site';
 import { getPublishedVideos } from '@lib/content';
@@ -18,17 +19,20 @@ const { video } = Astro.props;
 const { Content } = await render(video);
 const canonical = `/videos/${video.data.slug}/`;
 const chapterCount = video.data.chapters.length;
+const thumbnailUrl = `https://i.ytimg.com/vi/${video.data.youtubeId}/maxresdefault.jpg`;
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'VideoObject',
     name: video.data.title,
     description: video.data.description,
+    thumbnailUrl: [thumbnailUrl],
     uploadDate: video.data.pubDate.toISOString(),
     embedUrl: `https://www.youtube-nocookie.com/embed/${video.data.youtubeId}`,
     url: absoluteUrl(canonical),
-    author: { '@type': 'Person', name: site.author.name, url: site.url },
-    inLanguage: 'zh-CN',
+    author: { '@type': 'Person', name: site.author.name, url: absoluteUrl('/about/') },
+    mainEntityOfPage: absoluteUrl(canonical),
+    inLanguage: site.locale,
     keywords: video.data.topics,
   },
   breadcrumbSchema([
@@ -63,14 +67,18 @@ const jsonLd = [
             <dt>Published</dt>
             <dd>{formatDate(video.data.pubDate)}</dd>
           </div>
-          <div>
-            <dt>Chapters</dt>
-            <dd>{chapterCount || 'TBD'}</dd>
-          </div>
-          <div>
-            <dt>Transcript</dt>
-            <dd>{video.data.transcript ? 'Available' : 'Planned'}</dd>
-          </div>
+          {chapterCount > 0 && (
+            <div>
+              <dt>Chapters</dt>
+              <dd>{chapterCount}</dd>
+            </div>
+          )}
+          {video.data.transcript && (
+            <div>
+              <dt>Transcript</dt>
+              <dd>Available</dd>
+            </div>
+          )}
         </dl>
       </aside>
     </header>
@@ -101,4 +109,5 @@ const jsonLd = [
 
     <NewsletterCTA />
   </article>
+  <RelatedContent kind="video" slug={video.data.slug} />
 </BaseLayout>

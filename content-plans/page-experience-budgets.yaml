@@ -1,0 +1,58 @@
+schemaVersion: 1
+measurement:
+  formFactor: mobile
+  runs: 3
+  aggregation: median
+  note: "Synthetic Lighthouse budgets are regression guardrails; field Core Web Vitals remain the source for real-user experience."
+
+representativeTemplates:
+  - id: home
+    source: src/pages/index.astro
+    path: /
+  - id: article
+    source: src/pages/writing/[slug].astro
+    path: /writing/**
+  - id: video
+    source: src/pages/videos/[slug].astro
+    path: /videos/**
+  - id: profile
+    source: src/pages/about.astro
+    path: /about/
+
+lighthouseBudgets:
+  - path: /**
+    timings:
+      - metric: first-contentful-paint
+        budget: 1800
+      - metric: largest-contentful-paint
+        budget: 2500
+      - metric: cumulative-layout-shift
+        budget: 0.1
+      - metric: total-blocking-time
+        budget: 200
+    resourceSizes:
+      - resourceType: total
+        budget: 500
+      - resourceType: script
+        budget: 250
+      - resourceType: stylesheet
+        budget: 100
+      - resourceType: image
+        budget: 300
+      - resourceType: third-party
+        budget: 200
+    resourceCounts:
+      - resourceType: script
+        budget: 12
+      - resourceType: stylesheet
+        budget: 6
+      - resourceType: third-party
+        budget: 8
+
+deterministicChecks:
+  reducedMotion: required
+  focusVisible: required
+  headingAnchors: required
+  imageDimensions: required-for-local-raster-and-rendered-images
+  embeddedMediaAspectRatio: required
+

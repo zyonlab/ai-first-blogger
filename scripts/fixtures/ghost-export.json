@@ -1,0 +1,55 @@
+{
+  "db": [
+    {
+      "meta": { "exported_on": 1783737600000, "version": "6.0.0" },
+      "data": {
+        "settings": [{ "key": "url", "value": "https://example.com" }],
+        "posts": [
+          {
+            "id": "post-1",
+            "title": "Migrating a Ghost Article",
+            "slug": "ghost-migration",
+            "html": "<h2>Why migrate?</h2><p>Keep content reviewable in Git.</p><img src=\"https://example.com/content/images/diagram.png\" alt=\"Migration flow diagram\">",
+            "feature_image": "/content/images/cover.jpg",
+            "type": "post",
+            "status": "published",
+            "visibility": "public",
+            "created_at": "2026-06-01 08:00:00",
+            "updated_at": "2026-06-02 09:00:00",
+            "published_at": "2026-06-01 08:30:00",
+            "custom_excerpt": "A practical Ghost migration example."
+          },
+          {
+            "id": "page-1",
+            "title": "Members Guide",
+            "slug": "members-guide",
+            "lexical": "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"heading\",\"tag\":\"h2\",\"children\":[{\"type\":\"text\",\"text\":\"Private guide\",\"format\":0}]},{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"Review access before publishing.\",\"format\":0}]}]}}",
+            "type": "page",
+            "status": "published",
+            "visibility": "members",
+            "published_at": "2026-06-03 10:00:00"
+          }
+        ],
+        "posts_meta": [
+          { "post_id": "post-1", "feature_image_alt": "Repository migration cover" }
+        ],
+        "tags": [
+          { "id": "tag-1", "name": "Migration", "slug": "migration" },
+          { "id": "tag-2", "name": "Ghost", "slug": "ghost" }
+        ],
+        "users": [
+          { "id": "author-1", "name": "Example Author", "slug": "example-author" },
+          { "id": "author-2", "name": "Second Author", "slug": "second-author" }
+        ],
+        "posts_tags": [
+          { "post_id": "post-1", "tag_id": "tag-1", "sort_order": 0 },
+          { "post_id": "post-1", "tag_id": "tag-2", "sort_order": 1 }
+        ],
+        "posts_authors": [
+          { "post_id": "post-1", "author_id": "author-1", "sort_order": 0 },
+          { "post_id": "post-1", "author_id": "author-2", "sort_order": 1 }
+        ]
+      }
+    }
+  ]
+}

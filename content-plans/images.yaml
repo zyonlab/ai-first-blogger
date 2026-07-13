@@ -1,0 +1,13 @@
+schemaVersion: 1
+
+# Image metadata is reviewed in Git together with the content that uses it.
+# Raster article images need at least two registered variants. SVG files are
+# resolution-independent and therefore do not need variants.
+images:
+  - src: /og-default.svg
+    width: 1200
+    height: 630
+    alt: "Default social sharing card for the site"
+    usage:
+      - site-og
+

@@ -12,12 +12,14 @@ const footerLinks = [
 ---
 
 <footer class="site-footer">
-  <div>
+  <div class="footer-brand">
     <strong>{site.name}</strong>
     <p>{site.description}</p>
   </div>
-  <nav aria-label="Footer navigation">
-    {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
-  </nav>
-  <small>© {new Date().getFullYear()} {site.name}. Built with Astro.</small>
+  {footerLinks.length > 0 && (
+    <nav aria-label="Footer navigation">
+      {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+  )}
+  <small>© {new Date().getFullYear()} {site.name}</small>
 </footer>

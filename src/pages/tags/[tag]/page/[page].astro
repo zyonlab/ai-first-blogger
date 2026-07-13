@@ -1,0 +1,24 @@
+---
+import DiscoveryListing from '@components/DiscoveryListing.astro';
+import { getDiscoveryItems, groupTagPages } from '@lib/discovery';
+
+export async function getStaticPaths() {
+  const groups = groupTagPages(await getDiscoveryItems());
+  return groups.flatMap((group) => group.pages.slice(1).map((pageData) => ({
+    params: { tag: group.slug, page: String(pageData.page) },
+    props: { group, pageData },
+  })));
+}
+
+const { group, pageData } = Astro.props;
+const baseUrl = `/tags/${group.slug}/`;
+---
+
+<DiscoveryListing
+  title={group.name}
+  description={`收录带有“${group.name}”标签的文章、视频、案例与项目。`}
+  eyebrow="Tag"
+  canonical={`${baseUrl}page/${pageData.page}/`}
+  baseUrl={baseUrl}
+  pageData={pageData}
+/>

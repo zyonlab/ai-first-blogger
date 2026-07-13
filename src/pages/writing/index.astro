@@ -26,7 +26,7 @@ const jsonLd = [
 ];
 ---
 
-<PageLayout title={title} description={description} canonical="/writing/" jsonLd={jsonLd}>
+<PageLayout title={title} description={description} canonical="/writing/" jsonLd={posts.length > 0 ? jsonLd : undefined} noindex={posts.length === 0}>
   {tags.length > 0 && (
     <section class="section">
       <div class="tags">

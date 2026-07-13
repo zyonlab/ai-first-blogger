@@ -7,11 +7,24 @@ type ListItem = {
   description?: string;
 };
 
+type ArticleSchemaInput = {
+  title: string;
+  description: string;
+  canonical: string;
+  publishedDate: Date | string;
+  modifiedDate?: Date | string;
+  authorName?: string;
+  image?: string;
+  tags?: string[];
+  section?: string;
+};
+
 export function websiteSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: site.name,
+    alternateName: site.alternateName,
     url: site.url,
     description: site.description,
     inLanguage: 'zh-CN',
@@ -24,10 +37,52 @@ export function personSchema(withContext = true) {
     ...(withContext ? { '@context': 'https://schema.org' } : {}),
     '@type': 'Person',
     name: site.author.name,
-    url: site.url,
+    url: absoluteUrl('/about/'),
     jobTitle: site.author.title,
     description: site.author.bio,
     sameAs: Object.values(site.social).filter(Boolean),
+  };
+}
+
+export function profilePageSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    url: absoluteUrl('/about/'),
+    mainEntity: personSchema(false),
+  };
+}
+
+export function articleSchema({
+  title,
+  description,
+  canonical,
+  publishedDate,
+  modifiedDate = publishedDate,
+  authorName = site.author.name,
+  image = site.defaultImage,
+  tags = [],
+  section,
+}: ArticleSchemaInput) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    image: [absoluteUrl(image)],
+    datePublished: new Date(publishedDate).toISOString(),
+    dateModified: new Date(modifiedDate).toISOString(),
+    author: {
+      '@type': 'Person',
+      name: authorName,
+      url: absoluteUrl('/about/'),
+    },
+    publisher: personSchema(false),
+    mainEntityOfPage: absoluteUrl(canonical),
+    url: absoluteUrl(canonical),
+    inLanguage: site.locale,
+    ...(tags.length > 0 ? { keywords: tags } : {}),
+    ...(section ? { articleSection: section } : {}),
   };
 }
 
@@ -66,7 +121,7 @@ export function collectionPageSchema(name: string, description: string, url: str
     name,
     description,
     url: absoluteUrl(url),
-    inLanguage: 'zh-CN',
+    inLanguage: site.locale,
     isPartOf: {
       '@type': 'WebSite',
       name: site.name,

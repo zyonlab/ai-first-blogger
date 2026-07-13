@@ -1,12 +1,12 @@
 ---
 import { site } from '@data/site';
 import PageLayout from '@layouts/PageLayout.astro';
-import { breadcrumbSchema, personSchema } from '@lib/schema';
+import { breadcrumbSchema, profilePageSchema } from '@lib/schema';
 
 const title = '关于';
 const description = site.author.bio;
 const jsonLd = [
-  personSchema(),
+  profilePageSchema(),
   breadcrumbSchema([
     { name: '首页', url: '/' },
     { name: title, url: '/about/' },

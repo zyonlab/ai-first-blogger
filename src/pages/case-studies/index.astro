@@ -24,17 +24,19 @@ const jsonLd = [
 ];
 ---
 
-<PageLayout title={title} description={description} canonical="/case-studies/" jsonLd={jsonLd}>
-  <section class="section grid two">
-    {caseStudies.map((item) => (
-      <article class="card">
-        <p class="eyebrow">{item.data.category}</p>
-        <h3><a href={`/case-studies/${item.data.slug}/`}>{item.data.title}</a></h3>
-        <p>{item.data.description}</p>
-        <div class="tags">
-          {item.data.tags.map((tag) => <span>{tag}</span>)}
-        </div>
-      </article>
-    ))}
-  </section>
+<PageLayout title={title} description={description} canonical="/case-studies/" jsonLd={caseStudies.length > 0 ? jsonLd : undefined} noindex={caseStudies.length === 0}>
+  {caseStudies.length > 0 && (
+    <section class="section grid two">
+      {caseStudies.map((item) => (
+        <article class="card">
+          <p class="eyebrow">{item.data.category}</p>
+          <h3><a href={`/case-studies/${item.data.slug}/`}>{item.data.title}</a></h3>
+          <p>{item.data.description}</p>
+          <div class="tags">
+            {item.data.tags.map((tag) => <span>{tag}</span>)}
+          </div>
+        </article>
+      ))}
+    </section>
+  )}
 </PageLayout>

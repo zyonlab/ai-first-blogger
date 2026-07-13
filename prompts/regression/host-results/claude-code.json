@@ -1,0 +1,10 @@
+{
+  "host": "claude-code",
+  "status": "failed",
+  "capturedAt": "2026-07-11T06:15:53.069Z",
+  "prompt": "prompts/regression/cross-host-brief-prompt.md",
+  "failure": {
+    "stage": "authentication",
+    "message": "Claude Code reached the provider but the local credential was rejected with HTTP 403."
+  }
+}

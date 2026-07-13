@@ -1,0 +1,48 @@
+---
+import { getContentNeighbors, getDiscoveryItems, rankRelatedContent, type DiscoveryKind } from '@lib/discovery';
+import DiscoveryCard from './DiscoveryCard.astro';
+
+type Props = { kind: DiscoveryKind; slug: string; limit?: number };
+const { kind, slug, limit = 4 } = Astro.props as Props;
+const items = await getDiscoveryItems();
+const current = items.find((item) => item.kind === kind && item.slug === slug);
+const related = current ? rankRelatedContent(items, current, limit) : [];
+const neighbors = current
+  ? getContentNeighbors(items, current)
+  : { previous: undefined, next: undefined };
+---
+
+{current && (related.length > 0 || neighbors.previous || neighbors.next) && (
+  <aside class="related-content" aria-label="相关内容导航">
+    {(neighbors.previous || neighbors.next) && (
+      <nav class="context-nav" aria-label="上下篇">
+        {neighbors.previous ? <a rel="prev" href={neighbors.previous.url}><small>上一篇</small><strong>{neighbors.previous.title}</strong></a> : <span></span>}
+        {neighbors.next ? <a rel="next" href={neighbors.next.url}><small>下一篇</small><strong>{neighbors.next.title}</strong></a> : <span></span>}
+      </nav>
+    )}
+    {related.length > 0 && (
+      <section>
+        <div class="related-heading">
+          <p class="eyebrow">继续阅读</p>
+          <h2 id="related-content-title">与本文相关</h2>
+        </div>
+        <div class="related-grid">
+          {related.map((item) => <DiscoveryCard item={item} compact />)}
+        </div>
+      </section>
+    )}
+  </aside>
+)}
+
+<style>
+  .related-content { max-width: 980px; margin: 72px auto 0; }
+  .context-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 48px; }
+  .context-nav a { display: grid; gap: 4px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .context-nav a:last-child { text-align: right; }
+  .context-nav small { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
+  .context-nav strong { font-size: .94rem; line-height: 1.45; }
+  .related-heading { margin-bottom: 18px; }
+  .related-heading h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); }
+  .related-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 680px) { .context-nav, .related-grid { grid-template-columns: 1fr; } .context-nav a:last-child { text-align: left; } }
+</style>

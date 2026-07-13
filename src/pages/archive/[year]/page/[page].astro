@@ -1,0 +1,24 @@
+---
+import DiscoveryListing from '@components/DiscoveryListing.astro';
+import { getDiscoveryItems, groupArchivePages } from '@lib/discovery';
+
+export async function getStaticPaths() {
+  const groups = groupArchivePages(await getDiscoveryItems());
+  return groups.flatMap((group) => group.pages.slice(1).map((pageData) => ({
+    params: { year: group.slug, page: String(pageData.page) },
+    props: { group, pageData },
+  })));
+}
+
+const { group, pageData } = Astro.props;
+const baseUrl = `/archive/${group.slug}/`;
+---
+
+<DiscoveryListing
+  title={`${group.name} 年归档`}
+  description={`按发布时间整理的 ${group.name} 年文章、视频与案例。`}
+  eyebrow="Archive"
+  canonical={`${baseUrl}page/${pageData.page}/`}
+  baseUrl={baseUrl}
+  pageData={pageData}
+/>

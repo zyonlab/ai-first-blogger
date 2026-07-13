@@ -1,0 +1,14 @@
+version: "1.0.0"
+enabled: false
+owner: ""
+updatedAt: null
+
+approvedExamples: []
+structurePreferences: []
+sentencePreferences: []
+preferredTerms: []
+avoidPatterns: []
+evidenceStyle: []
+
+activationRule: "Enable only after the user approves this profile and at least two reference articles."
+fallbackRule: "When disabled, apply only the baseline content and evidence rules. Do not infer a personal style."

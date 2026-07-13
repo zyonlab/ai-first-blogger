@@ -1,0 +1,43 @@
+version: "1.0.0"
+default_state: disabled
+contract:
+  - "Git and MDX remain the canonical content source unless a migration explicitly changes that decision."
+  - "A disabled adapter renders no navigation, CTA, form, script, iframe, tracking request, or placeholder copy."
+  - "A disabled adapter requires no environment variable, secret, package, build step, or runtime request."
+  - "Enabling an adapter requires explicit configuration, privacy review, failure behavior, and removal instructions."
+  - "Adapter failure must not prevent readers from accessing the static article body."
+
+adapters:
+  newsletter:
+    state: disabled
+    interface: [subscribe_url, provider_name, privacy_url]
+    optional_secrets: [provider_api_token]
+    surfaces: [article_cta, footer_form]
+  comments:
+    state: disabled
+    interface: [provider_name, repository_or_site_id, moderation_url]
+    optional_secrets: []
+    surfaces: [article_comments]
+  analytics:
+    state: disabled
+    interface: [provider_name, script_url, site_id, privacy_url]
+    optional_secrets: [analytics_api_token]
+    surfaces: [consented_measurement_script]
+  memberships:
+    state: disabled
+    interface: [provider_name, account_url, sign_in_url]
+    optional_secrets: [membership_api_token, membership_webhook_secret]
+    surfaces: [account_navigation, gated_content_notice]
+  cms:
+    state: disabled
+    interface: [provider_name, content_source, preview_strategy]
+    optional_secrets: [cms_read_token, cms_preview_token]
+    surfaces: [none]
+
+activation_gate:
+  required:
+    - "A real user or business requirement exists."
+    - "The provider and data flow are documented."
+    - "Required configuration is validated at build time only when enabled."
+    - "UI is conditionally rendered from validated configuration."
+    - "A release preview demonstrates enabled, disabled, and provider-failure behavior."

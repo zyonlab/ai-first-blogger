@@ -3,14 +3,14 @@ import ArticleHeader from '@components/ArticleHeader.astro';
 import MermaidRenderer from '@components/MermaidRenderer.astro';
 import NewsletterCTA from '@components/NewsletterCTA.astro';
 import ReadingProgress from '@components/ReadingProgress.astro';
+import RelatedContent from '@components/RelatedContent.astro';
 import Toc from '@components/Toc.astro';
 import BaseLayout from '@layouts/BaseLayout.astro';
 import { render } from 'astro:content';
-import { site } from '@data/site';
 import { absoluteUrl } from '@lib/seo';
 import { getPublishedPosts } from '@lib/content';
 import { readingTime } from '@lib/reading-time';
-import { breadcrumbSchema } from '@lib/schema';
+import { articleSchema, breadcrumbSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
@@ -22,20 +22,17 @@ const { Content, headings } = await render(post);
 const canonical = post.data.canonical ?? `/writing/${post.data.slug}/`;
 const readingMinutes = readingTime(post.body ?? '');
 const jsonLd = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.data.title,
+  articleSchema({
+    title: post.data.title,
     description: post.data.description,
-    datePublished: post.data.pubDate.toISOString(),
-    dateModified: (post.data.updatedDate ?? post.data.pubDate).toISOString(),
-    author: { '@type': 'Person', name: post.data.author, url: site.url },
-    publisher: { '@type': 'Person', name: site.author.name, url: site.url },
-    mainEntityOfPage: absoluteUrl(canonical),
-    inLanguage: 'zh-CN',
-    keywords: post.data.tags,
-    articleSection: post.data.category,
-  },
+    canonical,
+    publishedDate: post.data.pubDate,
+    modifiedDate: post.data.updatedDate,
+    authorName: post.data.author,
+    image: post.data.heroImage,
+    tags: post.data.tags,
+    section: post.data.category,
+  }),
   breadcrumbSchema([
     { name: 'Home', url: '/' },
     { name: 'Writing', url: '/writing/' },
@@ -76,5 +73,6 @@ const jsonLd = [
     </div>
     <NewsletterCTA />
   </article>
+  <RelatedContent kind="post" slug={post.data.slug} />
   <MermaidRenderer />
 </BaseLayout>

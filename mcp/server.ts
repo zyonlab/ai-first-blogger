@@ -3,7 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import matter from "gray-matter";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { parse } from "yaml";
 import { z } from "zod";
+import { registerGuardedWriteTools } from "./write-tools.js";
 
 const root = process.env.AI_FIRST_BLOGGER_ROOT ?? process.cwd();
 
@@ -42,6 +44,11 @@ async function readOptionalProjectFile(relativePath: string) {
   } catch {
     return "";
   }
+}
+
+async function getPipelineContract() {
+  const text = await readProjectFile("content-plans/content-pipeline.yaml");
+  return { text, data: parse(text) };
 }
 
 async function walkContentFiles(directory: string): Promise<string[]> {
@@ -109,6 +116,8 @@ const server = new McpServer({
   version: "0.1.0",
 });
 
+registerGuardedWriteTools(server, root);
+
 server.registerResource(
   "agent-rules",
   "ai-first-blogger://agent-rules",
@@ -123,6 +132,82 @@ server.registerResource(
         uri: uri.href,
         mimeType: "text/markdown",
         text: await readOptionalProjectFile("AGENTS.md"),
+      },
+    ],
+  }),
+);
+
+server.registerResource(
+  "content-types",
+  "ai-first-blogger://content-types",
+  {
+    title: "AI First Blogger content type contract",
+    description: "Machine-readable teaching and evidence requirements by content type.",
+    mimeType: "text/yaml",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/yaml",
+        text: await readOptionalProjectFile("content-plans/content-types.yaml"),
+      },
+    ],
+  }),
+);
+
+server.registerResource(
+  "author-writing-style",
+  "ai-first-blogger://author-writing-style",
+  {
+    title: "AI First Blogger optional author writing style",
+    description: "User-controlled writing preferences and approved examples. Apply only when enabled.",
+    mimeType: "text/yaml",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/yaml",
+        text: await readOptionalProjectFile("content-plans/author-style.yaml"),
+      },
+    ],
+  }),
+);
+
+server.registerResource(
+  "source-policy",
+  "ai-first-blogger://source-policy",
+  {
+    title: "AI First Blogger source policy",
+    description: "Evidence, verification, freshness, and author-experience rules for fact ledgers.",
+    mimeType: "text/yaml",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/yaml",
+        text: await readOptionalProjectFile("content-plans/source-policy.yaml"),
+      },
+    ],
+  }),
+);
+
+server.registerResource(
+  "editorial-scorecard",
+  "ai-first-blogger://editorial-scorecard",
+  {
+    title: "AI First Blogger editorial scorecard",
+    description: "Machine evidence, human decisions, unresolved risks, and publication approval rules.",
+    mimeType: "text/yaml",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/yaml",
+        text: await readOptionalProjectFile("content-plans/editorial-scorecard.yaml"),
       },
     ],
   }),
@@ -180,6 +265,7 @@ server.registerTool(
     },
   },
   async ({ includeContentInventory }) => {
+    const pipelineContract = await getPipelineContract();
     const context = {
       root,
       files: {
@@ -187,6 +273,11 @@ server.registerTool(
         siteConfig: "src/data/site.ts",
         contentPlan: "content-plans/site-plan.yaml",
         contentPipeline: "content-plans/content-pipeline.yaml",
+        contentTypes: "content-plans/content-types.yaml",
+        authorStyle: "content-plans/author-style.yaml",
+        sourcePolicy: "content-plans/source-policy.yaml",
+        editorialScorecard: "content-plans/editorial-scorecard.yaml",
+        contentWork: "content-work",
         prompts: promptFiles,
       },
       agentRules: await readOptionalProjectFile("AGENTS.md"),
@@ -194,9 +285,12 @@ server.registerTool(
       contentPlan: await readOptionalProjectFile(
         "content-plans/site-plan.yaml",
       ),
-      contentPipeline: await readOptionalProjectFile(
-        "content-plans/content-pipeline.yaml",
-      ),
+      contractVersion: pipelineContract.data.pipeline.contract_version,
+      contentPipeline: pipelineContract.text,
+      contentTypes: await readOptionalProjectFile("content-plans/content-types.yaml"),
+      authorStyle: await readOptionalProjectFile("content-plans/author-style.yaml"),
+      sourcePolicy: await readOptionalProjectFile("content-plans/source-policy.yaml"),
+      editorialScorecard: await readOptionalProjectFile("content-plans/editorial-scorecard.yaml"),
       contentInventory: includeContentInventory
         ? await getContentInventory()
         : undefined,
@@ -253,6 +347,7 @@ server.registerTool(
     },
   },
   async ({ workflow, includeContentInventory }) => {
+    const pipelineContract = await getPipelineContract();
     const promptName = workflowPromptMap[workflow];
     const checks = {
       setup: [
@@ -305,6 +400,7 @@ server.registerTool(
       JSON.stringify(
         {
           workflow,
+          contractVersion: pipelineContract.data.pipeline.contract_version,
           promptName,
           promptFile: promptFiles[promptName],
           promptText: await readProjectFile(promptFiles[promptName]),
@@ -312,6 +408,7 @@ server.registerTool(
             "AGENTS.md",
             "src/data/site.ts",
             "content-plans/site-plan.yaml",
+            "content-plans/content-pipeline.yaml",
           ],
           checks: checks[workflow],
           contentInventory: includeContentInventory
@@ -336,27 +433,39 @@ server.registerTool(
     },
   },
   async ({ includeContentInventory }) =>
-    textResponse(
-      JSON.stringify(
-        {
+    {
+      const pipelineContract = await getPipelineContract();
+      return textResponse(
+        JSON.stringify(
+          {
+          contractVersion: pipelineContract.data.pipeline.contract_version,
           files: {
             pipeline: "content-plans/content-pipeline.yaml",
+            contentTypes: "content-plans/content-types.yaml",
+            authorStyle: "content-plans/author-style.yaml",
+            sourcePolicy: "content-plans/source-policy.yaml",
+            editorialScorecard: "content-plans/editorial-scorecard.yaml",
+            schemas: "src/content-workflow/schemas.ts",
+            artifacts: "content-work",
             playbook: "docs/playbooks/content-pipeline.md",
             prompt: "prompts/content-pipeline.md",
           },
-          pipeline: await readProjectFile(
-            "content-plans/content-pipeline.yaml",
-          ),
+          pipeline: pipelineContract.text,
+          contentTypes: await readProjectFile("content-plans/content-types.yaml"),
+          authorStyle: await readProjectFile("content-plans/author-style.yaml"),
+          sourcePolicy: await readProjectFile("content-plans/source-policy.yaml"),
+          editorialScorecard: await readProjectFile("content-plans/editorial-scorecard.yaml"),
           playbook: await readProjectFile("docs/playbooks/content-pipeline.md"),
           prompt: await readProjectFile("prompts/content-pipeline.md"),
           contentInventory: includeContentInventory
             ? await getContentInventory()
             : undefined,
-        },
-        null,
-        2,
-      ),
-    ),
+          },
+          null,
+          2,
+        ),
+      );
+    },
 );
 
 server.registerTool(
@@ -382,6 +491,11 @@ server.registerTool(
       "AGENTS.md",
       "src/data/site.ts",
       "content-plans/site-plan.yaml",
+      "content-plans/content-pipeline.yaml",
+      "content-plans/content-types.yaml",
+      "content-plans/author-style.yaml",
+      "content-plans/source-policy.yaml",
+      "content-plans/editorial-scorecard.yaml",
     ];
     const results = await Promise.all(
       requiredFiles.map(async (file) => {

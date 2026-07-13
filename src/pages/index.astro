@@ -32,20 +32,22 @@ const visibleHeroActions = site.hero.actions.filter((action) => {
 const jsonLd = [
   websiteSchema(),
   personSchema(),
-  itemListSchema(
-    `${site.name} Featured Content`,
-    posts.map((post) => ({
-      name: post.data.title,
-      description: post.data.description,
-      url: `/writing/${post.data.slug}/`,
-    })),
-  ),
+  ...(posts.length > 0
+    ? [itemListSchema(
+        `${site.name} Featured Content`,
+        posts.map((post) => ({
+          name: post.data.title,
+          description: post.data.description,
+          url: `/writing/${post.data.slug}/`,
+        })),
+      )]
+    : []),
 ];
 ---
 
 <BaseLayout jsonLd={jsonLd}>
   <section class="hero">
-    <div>
+    <div class="hero-copy">
       <p class="eyebrow">{site.hero.eyebrow}</p>
       <h1>{site.hero.title}</h1>
       <p>{site.hero.description}</p>
@@ -57,11 +59,8 @@ const jsonLd = [
         </div>
       )}
     </div>
-    <div class="hero-panel">
-      <p class="eyebrow">内容地图</p>
-      <div class="signal-grid">
-        {site.hero.signals.map((signal) => <span>{signal}</span>)}
-      </div>
+    <div class="signal-grid" aria-label="内容方向">
+      {site.hero.signals.map((signal) => <span>{signal}</span>)}
     </div>
   </section>
 

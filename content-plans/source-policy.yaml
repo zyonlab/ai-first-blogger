@@ -1,0 +1,23 @@
+version: "1.0.0"
+
+claimTypes: [stable, time-sensitive, personal-experience]
+claimImpacts: [low, medium, high]
+sourceTypes: [primary, secondary, author-evidence]
+verificationStatuses: [unverified, verified]
+
+rules:
+  timeSensitive: "Requires a primary source, access date, review date, and verified status."
+  personalExperience: "Requires evidence explicitly provided by the author. Agents must not invent it."
+  highImpact: "Requires at least one primary source unless the claim is marked personal-experience with author evidence."
+  approvedLedger: "Every claim must be verified before the ledger can be approved."
+  freshness: "Review dates must use concrete ISO timestamps; changing facts enter the stale queue after reviewAfter."
+
+sourceHierarchy:
+  - "Official documentation, standards, specifications, repositories, datasets, or first-party announcements."
+  - "Peer-reviewed papers or direct technical publications from responsible organizations."
+  - "Credible secondary analysis used for context, not as a substitute for available primary evidence."
+
+disclosure:
+  - "Separate sourced facts, author experience, inference, and opinion."
+  - "Record uncertainty instead of completing missing evidence with plausible text."
+  - "Do not treat AI-generated summaries as sources."

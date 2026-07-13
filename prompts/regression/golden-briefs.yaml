@@ -1,0 +1,44 @@
+version: "1.0.0"
+cases:
+  - id: tutorial-brief
+    title: "从零搭建一个可验证的内容工作流"
+    contentType: tutorial
+    searchIntent: "学习完整搭建过程"
+    h2: "完成第一个可验证流程"
+    example: "完整配置、命令和失败恢复"
+  - id: how-to-brief
+    title: "如何检查 Astro 站点内部链接"
+    contentType: how-to
+    searchIntent: "完成断链检查"
+    h2: "运行并验证链接检查"
+    example: "一个断链输入和修复后的输出"
+  - id: explanation-brief
+    title: "为什么内容 Pipeline 需要生命周期"
+    contentType: explanation
+    searchIntent: "理解生命周期的作用"
+    h2: "生命周期解决的真实问题"
+    example: "跳过 Brief 与受控发布的对比"
+  - id: reference-brief
+    title: "AI First Blogger 内容字段参考"
+    contentType: reference
+    searchIntent: "查询字段和约束"
+    h2: "文章 Brief 字段"
+    example: "一个合法字段组合"
+  - id: opinion-brief
+    title: "个人技术博客不必先接入 CMS"
+    contentType: opinion
+    searchIntent: "评估是否需要 CMS"
+    h2: "我的判断和适用边界"
+    example: "单作者与多作者场景对比"
+  - id: case-study-brief
+    title: "一次错误 canonical 配置的修复记录"
+    contentType: case-study
+    searchIntent: "了解真实排查过程"
+    h2: "问题、约束和定位过程"
+    example: "修复前后的构建产物"
+  - id: video-companion-brief
+    title: "AI 内容工作流视频配套笔记"
+    contentType: video-companion
+    searchIntent: "快速预览和定位视频内容"
+    h2: "视频回答了什么"
+    example: "带准确时间戳的章节"

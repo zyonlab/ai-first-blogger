@@ -1,9 +1,71 @@
 pipeline:
+  contract_version: "1.0.0"
   purpose: "Help agents plan, research, write, edit, optimize, and maintain technical blog content without relying on vague one-shot prompts."
   default_output_language: "zh-CN"
   operating_rule: "Never write the final article before the research brief, series plan, or article brief is explicit."
   display_rule: "Do not render navigation items, homepage sections, cards, CTAs, or placeholder copy for content types that have no published content."
   voice_rule: "Write like a specific technical author, not a generic assistant. Keep concrete judgment, constraints, and lived tradeoffs; remove filler and placeholder language."
+
+artifact_contracts:
+  schema_version: "1.0.0"
+  schema_source: "src/content-workflow/schemas.ts"
+  root: "content-work"
+  types:
+    topic-research: "content-work/research"
+    series-plan: "content-work/series"
+    article-brief: "content-work/briefs"
+    fact-ledger: "content-work/facts"
+    review-report: "content-work/reviews"
+    editorial-scorecard: "content-work/scorecards"
+    content-workflow: "content-work/workflows"
+  content_type_contract: "content-plans/content-types.yaml"
+
+author_writing_style:
+  source: "content-plans/author-style.yaml"
+  optional: true
+  activation_rule: "Apply only when enabled is true and the user has approved the profile and reference articles."
+  fallback_rule: "When disabled, do not infer a personal style; apply baseline clarity, evidence, and anti-fabrication rules only."
+
+source_policy:
+  source: "content-plans/source-policy.yaml"
+  required_for_publication: true
+  rule: "Every publishable entry must use an approved fact ledger. Time-sensitive and high-impact claims need primary evidence; personal experience needs author-provided evidence."
+
+editorial_scorecard:
+  source: "content-plans/editorial-scorecard.yaml"
+  required_for_publication: true
+  rule: "Machine checks provide evidence, never a publication verdict. Human reviewers decide each quality dimension and must resolve blocking risks before approval."
+
+lifecycle:
+  states: [idea, researched, brief-approved, drafted, reviewed, published, stale]
+  transitions:
+    idea: [researched]
+    researched: [brief-approved]
+    brief-approved: [drafted]
+    drafted: [reviewed]
+    reviewed: [published]
+    published: [stale]
+    stale: [researched]
+  publication_rule: "Published MDX must reference a content-workflow in published state with approved research, brief, fact ledger, editorial scorecard, and passing teaching, voice, SEO, display, and publishing reviews."
+
+commands:
+  create: "pnpm content:new"
+  validate: "pnpm content:validate"
+  audit: "pnpm content:audit"
+  transition: "pnpm content:transition"
+  editorial_audit: "pnpm content:editorial-audit"
+  prompt_regression: "pnpm prompt:regression"
+
+adapters:
+  rule: "Adapters must reference this file and must not redefine stage IDs, methodologies, lifecycle states, or quality gates."
+  files:
+    - ".ai/skills/ai-first-blogger/SKILL.md"
+    - "docs/playbooks/content-pipeline.md"
+    - "prompts/content-pipeline.md"
+    - "prompts/article-brief.md"
+    - "prompts/content-plan.md"
+    - "prompts/seo-geo-audit.md"
+    - "mcp/server.ts"
 
 methodologies:
   backward_design:
@@ -85,6 +147,8 @@ stages:
     inputs: ["article_brief"]
     outputs: ["mdx_article"]
     agent_should:
+      - "Read content-plans/author-style.yaml only when enabled is true."
+      - "Do not infer personal style or experience when the writing-style profile is disabled."
       - "Use concrete examples before broad abstractions."
       - "Prefer short paragraphs and explicit transitions."
       - "Include tradeoffs, failure modes, and decision criteria."
@@ -104,7 +168,9 @@ stages:
       - "Delete filler claims, symmetrical lists, and vague superlatives."
       - "Remove placeholder phrases such as 即将更新, 敬请期待, 预留, 占位, 内容资产, 一站式, 赋能, 深度解析 unless the author explicitly wants them."
       - "Add constraints, personal judgment, edge cases, and practical tradeoffs."
-      - "Keep the author's style consistent with src/data/site.ts and existing articles."
+      - "When content-plans/author-style.yaml is enabled, compare the draft with its user-approved preferences and examples."
+      - "When it is disabled, do not manufacture a personal style from generic assumptions."
+      - "Use content:editorial-audit as a review aid; its heuristic warnings never publish or reject content by themselves."
   - id: display_review
     goal: "Keep the public site honest when content is missing."
     inputs: ["content_inventory", "changed_pages", "navigation"]

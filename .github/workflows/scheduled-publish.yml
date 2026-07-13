@@ -1,0 +1,56 @@
+name: Scheduled production publish
+
+"on":
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-main
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  PUBLIC_SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+  PUBLIC_DEPLOY_ENV: production
+  CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
+
+jobs:
+  publish:
+    name: Rebuild scheduled content
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect newly due content
+        id: schedule
+        run: pnpm exec tsx scripts/scheduled-content.ts --window-minutes 70 --github-output "$GITHUB_OUTPUT"
+
+      - name: Validate and build
+        if: github.event_name == 'workflow_dispatch' || steps.schedule.outputs.has_due == 'true'
+        run: pnpm check && pnpm build
+
+      - name: Deploy production
+        if: github.event_name == 'workflow_dispatch' || steps.schedule.outputs.has_due == 'true'
+        run: pnpm dlx wrangler@latest pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

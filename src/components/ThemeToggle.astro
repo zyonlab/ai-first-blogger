@@ -1,19 +1,21 @@
-<button class="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
+<button class="theme-toggle" type="button" aria-label="切换颜色主题">主题</button>
 <script>
-  const button = document.querySelector('.theme-toggle');
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.theme-toggle');
   const storageKey = document.documentElement.dataset.themeKey ?? 'zi-yong-notes-theme';
   const root = document.documentElement;
   const applyTheme = (theme: string) => {
     root.dataset.theme = theme;
     localStorage.setItem(storageKey, theme);
-    document.querySelector('[data-theme-color]')?.setAttribute('content', theme === 'light' ? '#f7f8fb' : '#0b1020');
-    if (button) {
-      button.textContent = theme === 'light' ? 'Dark' : 'Light';
-      button.setAttribute('aria-label', `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`);
-    }
+    document.querySelector('[data-theme-color]')?.setAttribute('content', theme === 'light' ? '#faf9f6' : '#181613');
+    buttons.forEach((button) => {
+      button.textContent = theme === 'light' ? '深色' : '浅色';
+      button.setAttribute('aria-label', `切换到${theme === 'light' ? '深色' : '浅色'}主题`);
+    });
   };
-  applyTheme(root.dataset.theme === 'light' ? 'light' : 'dark');
-  button?.addEventListener('click', () => {
-    applyTheme(root.dataset.theme === 'light' ? 'dark' : 'light');
+  applyTheme(root.dataset.theme === 'dark' ? 'dark' : 'light');
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      applyTheme(root.dataset.theme === 'light' ? 'dark' : 'light');
+    });
   });
 </script>

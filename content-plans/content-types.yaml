@@ -1,0 +1,52 @@
+contract_version: "1.0.0"
+source: "content-plans/content-pipeline.yaml"
+
+content_types:
+  tutorial:
+    reader_job: "Learn a new capability through a guided sequence."
+    required_sections: ["Outcome and prerequisites", "Step-by-step path", "Worked result", "Common failure and recovery", "Next practice"]
+    required_evidence: ["A complete reproducible example", "Observed output", "At least one failure case"]
+    optional_sections: ["Concept explanation", "Alternatives"]
+    anti_patterns: ["Skipping setup assumptions", "Presenting several competing paths before the first success"]
+
+  how-to:
+    reader_job: "Complete a known task efficiently."
+    required_sections: ["When to use this", "Prerequisites", "Procedure", "Verification", "Failure handling"]
+    required_evidence: ["Commands or concrete actions", "A verification signal"]
+    optional_sections: ["Alternative approach", "Automation"]
+    anti_patterns: ["Long conceptual history before the procedure", "Unverified commands"]
+
+  explanation:
+    reader_job: "Build a useful mental model and understand tradeoffs."
+    required_sections: ["Direct explanation", "Mental model", "Mechanism", "Tradeoffs", "Applied example"]
+    required_evidence: ["A concrete example or diagram", "Boundary conditions"]
+    optional_sections: ["Historical context", "Comparison table"]
+    anti_patterns: ["Pretending the topic has one universal rule", "Using analogies without returning to the real mechanism"]
+
+  reference:
+    reader_job: "Look up accurate facts, options, APIs, or constraints."
+    required_sections: ["Scope and version", "Structured reference", "Examples", "Limitations"]
+    required_evidence: ["Primary documentation", "Version or date context"]
+    optional_sections: ["Migration notes", "Compatibility matrix"]
+    anti_patterns: ["Opinion presented as API fact", "Unversioned time-sensitive details"]
+
+  opinion:
+    reader_job: "Evaluate a position and the evidence behind it."
+    required_sections: ["Position", "Context", "Evidence", "Counterargument", "Decision boundary"]
+    required_evidence: ["Author experience or cited evidence", "A serious counterexample"]
+    optional_sections: ["Prediction", "Personal workflow"]
+    anti_patterns: ["Consensus-shaped filler", "Invented first-hand experience", "Hiding uncertainty"]
+
+  case-study:
+    reader_job: "Understand a real decision through its context and outcome."
+    required_sections: ["Context", "Problem and constraints", "Options considered", "Decision", "Implementation", "Outcome", "What would change next time"]
+    required_evidence: ["Real constraints", "Observable outcome", "Tradeoff or rejected option"]
+    optional_sections: ["Architecture diagram", "Timeline", "Metrics"]
+    anti_patterns: ["Turning a hypothetical example into a claimed real project", "Reporting success without measurement"]
+
+  video-companion:
+    reader_job: "Preview, navigate, and retain the useful parts of a video."
+    required_sections: ["What the video answers", "Key points", "Chapters", "Referenced resources", "Related reading"]
+    required_evidence: ["Stable video URL", "Accurate timestamps when chapters are present"]
+    optional_sections: ["Transcript", "Code repository", "Corrections"]
+    anti_patterns: ["Repeating the title without a useful summary", "Claiming a transcript or chapters that do not exist"]
