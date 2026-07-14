@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import matter from "gray-matter";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
 const root = process.env.AI_FIRST_BLOGGER_ROOT ?? process.cwd();
@@ -29,8 +30,44 @@ const workflowPromptMap = {
   maintenance: "seoGeoAudit",
 } as const;
 
+const contentPipelineStages = [
+  "topic_research",
+  "series_planning",
+  "article_brief",
+  "draft",
+  "teaching_review",
+  "human_edit",
+  "display_review",
+  "seo_geo_optimization",
+  "publishing_review",
+] as const;
+
+const workflowWritingStageMap = {
+  setup: null,
+  planning: "series_planning",
+  contentResearch: "topic_research",
+  seriesPlanning: "series_planning",
+  writing: "draft",
+  teachingReview: "teaching_review",
+  humanEdit: "human_edit",
+  seoGeo: "seo_geo_optimization",
+  deployment: null,
+  maintenance: "publishing_review",
+} as const;
+
 type PromptName = keyof typeof promptFiles;
 type WorkflowName = keyof typeof workflowPromptMap;
+type ContentPipelineStage = (typeof contentPipelineStages)[number];
+type WritingSkillHookPhase = "before" | "after";
+type WritingSkillConfig = {
+  id: string;
+  version?: string;
+  path: string;
+  enabled?: boolean;
+  hooks?: Partial<Record<ContentPipelineStage, WritingSkillHookPhase[]>>;
+};
+
+const siteSkillsRoot = path.resolve(root, ".ai/site-skills");
 
 async function readProjectFile(relativePath: string) {
   return readFile(path.join(root, relativePath), "utf8");
@@ -42,6 +79,92 @@ async function readOptionalProjectFile(relativePath: string) {
   } catch {
     return "";
   }
+}
+
+function resolveSiteSkillFile(relativePath: string) {
+  const absolutePath = path.resolve(root, relativePath);
+  const pathFromSkillsRoot = path.relative(siteSkillsRoot, absolutePath);
+
+  if (
+    pathFromSkillsRoot.startsWith("..") ||
+    path.isAbsolute(pathFromSkillsRoot) ||
+    path.basename(absolutePath) !== "SKILL.md"
+  ) {
+    throw new Error(
+      `Writing skill paths must point to SKILL.md under .ai/site-skills: ${relativePath}`,
+    );
+  }
+
+  return absolutePath;
+}
+
+async function getWritingSkillConfigs() {
+  const sitePlan = parseYaml(
+    await readOptionalProjectFile("content-plans/site-plan.yaml"),
+  ) as {
+    writing_skills?: {
+      active?: WritingSkillConfig[];
+    };
+  } | null;
+
+  return (sitePlan?.writing_skills?.active ?? [])
+    .map((skill) => {
+      if (!skill.id || !skill.path) {
+        throw new Error("Each writing skill requires id and path.");
+      }
+
+      for (const [stage, phases] of Object.entries(skill.hooks ?? {})) {
+        if (!contentPipelineStages.includes(stage as ContentPipelineStage)) {
+          throw new Error(`Unknown writing skill hook stage: ${stage}`);
+        }
+
+        if (!phases.every((phase) => phase === "before" || phase === "after")) {
+          throw new Error(
+            `Writing skill ${skill.id} has an invalid hook phase for ${stage}.`,
+          );
+        }
+      }
+
+      return skill;
+    })
+    .filter((skill) => skill.enabled !== false);
+}
+
+async function getConfiguredWritingSkills(
+  stage?: ContentPipelineStage,
+  includeContent = true,
+) {
+  const skills = await getWritingSkillConfigs();
+  const matchingSkills = stage
+    ? skills.filter((skill) => (skill.hooks?.[stage] ?? []).length > 0)
+    : skills;
+
+  return Promise.all(
+    matchingSkills.map(async (skill) => {
+      try {
+        const absolutePath = resolveSiteSkillFile(skill.path);
+        const skillStat = await stat(absolutePath);
+
+        return {
+          ...skill,
+          stage: stage ?? null,
+          hookPhases: stage ? (skill.hooks?.[stage] ?? []) : [],
+          ok: skillStat.isFile(),
+          content: includeContent
+            ? await readFile(absolutePath, "utf8")
+            : undefined,
+        };
+      } catch (error) {
+        return {
+          ...skill,
+          stage: stage ?? null,
+          hookPhases: stage ? (skill.hooks?.[stage] ?? []) : [],
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }),
+  );
 }
 
 async function walkContentFiles(directory: string): Promise<string[]> {
@@ -169,6 +292,30 @@ server.registerResource(
   }),
 );
 
+server.registerResource(
+  "writing-skills",
+  "ai-first-blogger://writing-skills",
+  {
+    title: "Configured site writing skills",
+    description:
+      "User-configured writing skills and their pipeline hook registrations.",
+    mimeType: "application/json",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(
+          await getConfiguredWritingSkills(undefined, false),
+          null,
+          2,
+        ),
+      },
+    ],
+  }),
+);
+
 server.registerTool(
   "get_site_context",
   {
@@ -197,6 +344,7 @@ server.registerTool(
       contentPipeline: await readOptionalProjectFile(
         "content-plans/content-pipeline.yaml",
       ),
+      writingSkills: await getConfiguredWritingSkills(undefined, false),
       contentInventory: includeContentInventory
         ? await getContentInventory()
         : undefined,
@@ -254,6 +402,7 @@ server.registerTool(
   },
   async ({ workflow, includeContentInventory }) => {
     const promptName = workflowPromptMap[workflow];
+    const writingStage = workflowWritingStageMap[workflow];
     const checks = {
       setup: [
         "Update src/data/site.ts",
@@ -314,6 +463,10 @@ server.registerTool(
             "content-plans/site-plan.yaml",
           ],
           checks: checks[workflow],
+          writingStage,
+          writingSkills: writingStage
+            ? await getConfiguredWritingSkills(writingStage)
+            : [],
           contentInventory: includeContentInventory
             ? await getContentInventory()
             : undefined,
@@ -349,10 +502,32 @@ server.registerTool(
           ),
           playbook: await readProjectFile("docs/playbooks/content-pipeline.md"),
           prompt: await readProjectFile("prompts/content-pipeline.md"),
+          writingSkills: await getConfiguredWritingSkills(),
           contentInventory: includeContentInventory
             ? await getContentInventory()
             : undefined,
         },
+        null,
+        2,
+      ),
+    ),
+);
+
+server.registerTool(
+  "get_writing_skills",
+  {
+    title: "Get configured writing skills",
+    description:
+      "Return enabled site writing skills and their before/after hooks, optionally filtered to one content pipeline stage.",
+    inputSchema: {
+      stage: z.enum(contentPipelineStages).optional(),
+      includeContent: z.boolean().optional().default(true),
+    },
+  },
+  async ({ stage, includeContent }) =>
+    textResponse(
+      JSON.stringify(
+        await getConfiguredWritingSkills(stage, includeContent),
         null,
         2,
       ),
@@ -394,7 +569,11 @@ server.registerTool(
       }),
     );
 
-    return textResponse(JSON.stringify({ root, results }, null, 2));
+    const writingSkills = await getConfiguredWritingSkills(undefined, false);
+
+    return textResponse(
+      JSON.stringify({ root, results, writingSkills }, null, 2),
+    );
   },
 );
 

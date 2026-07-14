@@ -245,3 +245,19 @@ maintenance_cadence:
     - "Revisit positioning, navigation, and content pillars."
     - "Archive, merge, or rewrite thin content."
     - "Review SEO/GEO performance and update old facts."
+
+writing_skills:
+  active:
+    - id: "tech-article-learning-seo"
+      version: "1.2.0"
+      path: ".ai/site-skills/tech-article-learning-seo/SKILL.md"
+      enabled: true
+      hooks:
+        topic_research: [after]
+        series_planning: [before, after]
+        article_brief: [before, after]
+        draft: [before, after]
+        teaching_review: [before, after]
+        human_edit: [after]
+        seo_geo_optimization: [before, after]
+        publishing_review: [before]

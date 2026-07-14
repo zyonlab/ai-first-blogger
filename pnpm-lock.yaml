@@ -29,6 +29,9 @@ importers:
       turndown:
         specifier: latest
         version: 7.2.4
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
     devDependencies:
       '@astrojs/check':
         specifier: latest

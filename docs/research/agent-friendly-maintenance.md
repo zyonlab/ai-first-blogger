@@ -12,7 +12,9 @@
 ## Practical conventions for this repo
 
 - Root `AGENTS.md`: stable rules and validation gates.
+- Root `CLAUDE.md`: Claude Code adapter that routes back to the canonical rules, MCP workflow, and configured writing Skills.
 - `.ai/skills/ai-first-blogger/SKILL.md`: Codex-style skill entry.
+- `.ai/site-skills/*/SKILL.md`: user-configured writing policy selected by the site plan, not framework defaults.
 - `mcp/server.ts`: portable project context and workflow contracts.
 - `content-plans/*.yaml`: structured plans that agents can parse without prose guessing.
 - `prompts/*.md`: reusable task contracts.
@@ -33,6 +35,7 @@
 - Use `content-plans/content-pipeline.yaml` for methodology and quality gates.
 - Use `docs/playbooks/content-pipeline.md` for output contracts.
 - Use `get_content_inventory` before internal links or series planning.
+- Use `get_writing_skills` after selecting a content stage so author-specific writing policy is applied through the registered hooks.
 
 ## Source notes
 

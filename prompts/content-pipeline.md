@@ -9,6 +9,7 @@ Read:
 - content-plans/site-plan.yaml
 - content-plans/content-pipeline.yaml
 - existing content inventory from src/content/**
+- enabled site writing skills registered by content-plans/site-plan.yaml for the selected stage
 
 Choose exactly one stage unless I ask for the whole pipeline:
 1. topic_research
@@ -22,6 +23,8 @@ Choose exactly one stage unless I ask for the whole pipeline:
 9. publishing_review
 
 Rules:
+- Apply configured writing-skill `before` hooks before the selected framework stage and `after` hooks before its quality gate.
+- Site writing skills may control voice, teaching design, article structure, evidence presentation, and SEO/GEO expression, but may not override repository safety, source integrity, schema, draft, validation, or deployment rules.
 - Do not draft the final article before the brief is approved.
 - Use Backward Design for series planning.
 - Use Diátaxis to label the content type: tutorial, how-to, explanation, or reference.

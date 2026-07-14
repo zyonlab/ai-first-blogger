@@ -5,6 +5,26 @@ pipeline:
   display_rule: "Do not render navigation items, homepage sections, cards, CTAs, or placeholder copy for content types that have no published content."
   voice_rule: "Write like a specific technical author, not a generic assistant. Keep concrete judgment, constraints, and lived tradeoffs; remove filler and placeholder language."
 
+writing_skill_hooks:
+  purpose: "Let each site control writing and teaching style with user-configured skills without making those preferences framework defaults."
+  registry: "content-plans/site-plan.yaml#writing_skills.active"
+  allowed_root: ".ai/site-skills"
+  resolution_rule: "Load enabled skills registered for the selected stage, run before hooks before the framework stage, and run after hooks before the stage quality gate."
+  precedence:
+    - "Repository safety, source integrity, schema, draft, validation, and deployment rules always win."
+    - "The framework stage contract controls required inputs and outputs."
+    - "Site writing skills control voice, pedagogy, structure, examples, evidence treatment, and search expression inside that contract."
+  stages:
+    topic_research: [before, after]
+    series_planning: [before, after]
+    article_brief: [before, after]
+    draft: [before, after]
+    teaching_review: [before, after]
+    human_edit: [before, after]
+    seo_geo_optimization: [before, after]
+    publishing_review: [before]
+  trace_rule: "Record skill id, configured version, path, stage, and hook phase in generated workflow artifacts when those artifacts exist."
+
 methodologies:
   backward_design:
     use_for: "Series planning and article objectives."

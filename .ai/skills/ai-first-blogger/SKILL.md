@@ -13,14 +13,17 @@ description: Configure, plan, write, optimize, deploy, and maintain this AI-firs
 4. Keep brand and owner details in `src/data/site.ts`; do not hardcode them elsewhere.
 5. Keep content strategy in `content-plans/site-plan.yaml`.
 6. For content work, use `content-plans/content-pipeline.yaml` and `docs/playbooks/content-pipeline.md`.
-7. Before changing navigation, homepage sections, CTAs, or collection pages, check the content inventory and hide empty content types instead of showing placeholders.
-8. Validate with `pnpm check` and `pnpm build` when code, schema, or content changes.
+7. Resolve enabled user-configured writing skills from `content-plans/site-plan.yaml`; load them from `.ai/site-skills/` only through the selected pipeline stage hooks.
+8. Keep site-specific style rules in site writing skills. Do not merge them into this framework-native skill.
+9. Before changing navigation, homepage sections, CTAs, or collection pages, check the content inventory and hide empty content types instead of showing placeholders.
+10. Validate with `pnpm check` and `pnpm build` when code, schema, or content changes.
 
 ## MCP
 
 - If the host supports MCP, connect this repository's `ai-first-blogger` server first.
 - Use `get_workflow_contract` to load the right prompt, required files, and validation checklist.
 - Use `get_content_pipeline` before content research, series planning, article briefs, human editing, or SEO/GEO optimization.
+- Use `get_writing_skills` when the task needs the active site's writing policy or hook registration.
 - Use `get_site_context` before setup, planning, SEO/GEO, or maintenance tasks.
 - Use `get_content_inventory` before rewriting navigation, topic pages, or content plans.
 - Treat MCP output as context; make actual file edits in the repository so changes remain reviewable.

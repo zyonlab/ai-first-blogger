@@ -4,6 +4,76 @@ AI First Blogger is a reusable Astro + MDX static blog framework designed for AI
 
 It is not a traditional CMS. The system is file-based, structured, and agent-friendly: AI can update site settings, generate content briefs, write MDX, audit SEO/GEO, validate builds, and deploy through GitHub Actions.
 
+## What AI-first Means
+
+AI is an operator of a reviewable content system, not a text box attached to a blog. The repository provides stable workflow rules, structured site context, configurable writing policy, validation commands, Git history, staging previews, and production deployment boundaries.
+
+The framework separates three responsibilities:
+
+- **Framework contract**: workflow order, file ownership, safety, schema, validation, and deployment rules.
+- **Site context**: brand, author, audience, content strategy, domain, social links, and conversion goals.
+- **Writing skills**: user-configured voice, teaching method, article structure, evidence treatment, and SEO/GEO expression.
+
+This allows Codex, Claude Code, OpenCode, OpenClaw-like agents, or any MCP-capable coding agent to maintain the same blog without relying on one long conversation or one model-specific prompt.
+
+## System Model
+
+```mermaid
+flowchart LR
+  U["User intent"] --> A["Agent host"]
+  A --> C["AGENTS.md / CLAUDE.md / host adapter"]
+  A --> M["AI First Blogger MCP"]
+  C --> P["Content pipeline"]
+  M --> P
+  P --> H["Configured writing-skill hooks"]
+  H --> F["MDX, YAML, site configuration"]
+  F --> V["Skill lint, pnpm check, pnpm build"]
+  V --> R["release staging"]
+  R --> Q["Human review"]
+  Q --> X["main production"]
+```
+
+Git remains the source of truth. An Agent may plan and edit, but changes stay visible as files and diffs, `release` is the review environment, and `main` is the production boundary.
+
+## Source of Truth
+
+| Responsibility | Canonical location |
+| --- | --- |
+| Cross-agent rules | `AGENTS.md` |
+| Claude Code entry | `CLAUDE.md` |
+| Framework Skill | `.ai/skills/ai-first-blogger/SKILL.md` |
+| User writing Skills | `.ai/site-skills/*/SKILL.md` |
+| OpenCode adapter | `.opencode/agents/content-strategist.md` |
+| Brand and identity | `src/data/site.ts` |
+| Editorial strategy and active Skills | `content-plans/site-plan.yaml` |
+| Pipeline stages and Hook protocol | `content-plans/content-pipeline.yaml` |
+| Publishable content | `src/content/**` |
+| Reusable prompts | `prompts/*.md` |
+| Deployment workflow | `.github/workflows/cloudflare-pages.yml` |
+
+## AI Agent Quick Start
+
+Give an Agent this instruction after cloning the repository:
+
+```text
+Treat this repository as an AI First Blogger project.
+Read AGENTS.md and the host-specific entry file if one exists.
+If MCP is available, call healthcheck, then get_workflow_contract for my task.
+For content work, also call get_content_pipeline and get_writing_skills for the selected stage.
+Show assumptions and planned file changes before writing publishable content.
+Run pnpm check after code or content changes and pnpm build before deployment readiness claims.
+```
+
+Available MCP entry points:
+
+- `healthcheck`: verify repository context and configured writing Skills.
+- `get_site_context`: read brand, site plan, pipeline, and optional content inventory.
+- `get_workflow_contract`: resolve the prompt, required files, checks, and applicable writing stage.
+- `get_content_pipeline`: read methodologies, stages, quality gates, and active writing Skills.
+- `get_writing_skills`: resolve user-configured Skills and their `before`/`after` Hooks for one stage.
+- `get_content_inventory`: inspect published and draft MD/MDX entries.
+- `list_prompts` / `read_prompt`: discover reusable task contracts.
+
 ## Stack
 
 - Astro
@@ -46,6 +116,8 @@ content-plans/site-plan.yaml
 
 `src/data/site.ts` controls the brand name, domain, author, email, social links, hero copy, CTAs, and service/contact copy.
 
+To change how the site writes articles, add or replace a Skill under `.ai/site-skills/`, then register it in `content-plans/site-plan.yaml#writing_skills.active`. Do not put one author's writing preferences into the framework-native Skill.
+
 ## AI-first Workflow
 
 Core instructions live in:
@@ -69,6 +141,16 @@ prompts/article-brief.md
 prompts/seo-geo-audit.md
 prompts/deploy.md
 ```
+
+Site-specific writing policy lives separately from the framework skill:
+
+```txt
+.ai/site-skills/<skill-name>/SKILL.md
+content-plans/site-plan.yaml#writing_skills.active
+content-plans/content-pipeline.yaml#writing_skill_hooks
+```
+
+The framework pipeline controls stage order, safety, validation, and publishing. An enabled site writing skill controls how articles and series are taught, structured, voiced, evidenced, and expressed for SEO/GEO through configured `before` and `after` hooks.
 
 Agent tools that support MCP can expose the same context through:
 

@@ -2,6 +2,7 @@
 
 ```text
 Audit this Astro blog for SEO and GEO readiness.
+Resolve and apply enabled site writing skills registered for the seo_geo_optimization stage. Treat them as expression policy, not permission to weaken source, schema, or publishing checks.
 Check:
 - titles and meta descriptions
 - canonical URLs

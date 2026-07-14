@@ -14,6 +14,7 @@ Read first:
 - `content-plans/site-plan.yaml`
 - `content-plans/content-pipeline.yaml`
 - `docs/playbooks/content-pipeline.md`
+- enabled writing skills registered in `content-plans/site-plan.yaml` for the selected pipeline stage
 
 Focus on:
 

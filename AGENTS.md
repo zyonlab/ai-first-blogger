@@ -13,6 +13,8 @@ Scope: entire repository.
 - Start with this file for cross-agent project rules.
 - Use `docs/playbooks/content-pipeline.md` for content research, series planning, article briefs, teaching edits, human edits, and SEO/GEO optimization.
 - Use `content-plans/content-pipeline.yaml` for machine-readable methodology, stages, and quality gates.
+- Resolve active site writing skills from `content-plans/site-plan.yaml` and apply them only through the generic hooks declared by `content-plans/content-pipeline.yaml`.
+- Treat `.ai/site-skills/**` as user-configured writing policy. Do not copy a site skill's style rules into the framework-native `.ai/skills/ai-first-blogger/SKILL.md`.
 - Use `docs/research/agent-friendly-maintenance.md` for why the repo is structured this way for Codex, OpenCode, OpenClaw-like agents, Claude Code, and similar tools.
 - If MCP is available, call `healthcheck`, then `get_workflow_contract`, `get_content_pipeline`, or `get_site_context`.
 

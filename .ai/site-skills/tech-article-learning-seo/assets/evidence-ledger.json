@@ -1,0 +1,30 @@
+{
+  "article": "path/to/article.md",
+  "evidence_tier": "standard",
+  "traceability_required": true,
+  "claims": [
+    {
+      "id": "C01",
+      "importance": "core",
+      "claim_type": "fact",
+      "published_claim": "文章中实际使用的完整主张。",
+      "article_location": "## 对应章节",
+      "citation_markers": ["[1]"],
+      "source_type": "paper",
+      "source": "来源标题、标准号、文档页或仓库提交。",
+      "source_locator": "章节、页码、段落、代码行、实验记录或稳定 URL。",
+      "source_summary": "来源实际表达的内容，不复制大段原文。",
+      "reviewer_verdict": "direct",
+      "scope_match": "yes",
+      "strength_match": "yes",
+      "qualifier_in_article": "",
+      "limitations": "适用版本、环境和例外。",
+      "rationale": "",
+      "provenance": "",
+      "counterevidence_checked": false,
+      "verification_status": "source_checked",
+      "reviewed_by": "",
+      "reviewed_at": ""
+    }
+  ]
+}

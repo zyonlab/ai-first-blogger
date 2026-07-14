@@ -32,9 +32,19 @@ One-shot article generation produces generic structure, repeated claims, and wea
 1. Load `AGENTS.md`.
 2. If MCP is available, call `get_content_pipeline`.
 3. Call `get_content_inventory` before proposing series or internal links.
-4. Select one pipeline stage unless the user explicitly asks for the full pipeline.
-5. Return assumptions and missing inputs before writing files.
-6. Validate with `pnpm check`; run `pnpm build` for SEO/GEO, layout, MCP, or deployment changes.
+4. Resolve enabled site writing skills from `content-plans/site-plan.yaml` for the selected stage.
+5. Run configured `before` hooks, execute the framework stage, then run configured `after` hooks before the quality gate.
+6. Select one pipeline stage unless the user explicitly asks for the full pipeline.
+7. Return assumptions and missing inputs before writing files.
+8. Validate with `pnpm check`; run `pnpm build` for SEO/GEO, layout, MCP, or deployment changes.
+
+## Writing Skill Hooks
+
+Framework stages own workflow order, required artifacts, source integrity, validation, and publishing safety. Site writing skills under `.ai/site-skills/` may change voice, teaching strategy, structure, examples, evidence presentation, and SEO/GEO expression, but may not bypass framework rules.
+
+Active skills are registered in `content-plans/site-plan.yaml` rather than hardcoded in this playbook. A stage can expose `before` and `after` hooks. When workflow artifacts exist, record the skill id, configured version, stage, and hook phase so a later agent can reproduce the writing behavior.
+
+If no writing skill is active for a stage, run the normal framework stage unchanged.
 
 ## Display Rules
 

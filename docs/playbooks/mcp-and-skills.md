@@ -64,6 +64,7 @@ AI_FIRST_BLOGGER_ROOT=/absolute/path/to/ai-first-blogger
 - `read_prompt`: reads one prompt template.
 - `get_workflow_contract`: returns the prompt, required files, and checklist for setup, planning, writing, SEO/GEO, deployment, or maintenance.
 - `get_content_pipeline`: returns methodology, pipeline stages, and quality gates for research, series planning, article briefs, editing, and SEO/GEO.
+- `get_writing_skills`: returns enabled site writing skills, their configured versions, and the `before`/`after` hooks for an optional pipeline stage.
 - `get_content_inventory`: lists MD/MDX content files with collection, title, slug, status, and tags.
 
 ## Recommended agent flow
@@ -71,6 +72,16 @@ AI_FIRST_BLOGGER_ROOT=/absolute/path/to/ai-first-blogger
 1. Call `healthcheck`.
 2. Call `get_workflow_contract` with the closest workflow.
 3. For content tasks, call `get_content_pipeline`.
-4. Read only the referenced files needed for the task.
-5. Edit repository files directly.
-6. Run `pnpm check`; run `pnpm build` for SEO/GEO, layout, schema, and deployment changes.
+4. Call `get_writing_skills` for the selected stage and apply registered hooks around the framework stage.
+5. Read only the referenced files needed for the task.
+6. Edit repository files directly.
+7. Run `pnpm check`; run `pnpm build` for SEO/GEO, layout, schema, and deployment changes.
+
+## Framework Skills vs Site Writing Skills
+
+- `.ai/skills/ai-first-blogger/` is framework-native and owns routing, safety, validation, and publishing discipline.
+- `.ai/site-skills/` contains user-configured writing policy for one site or author.
+- `content-plans/site-plan.yaml#writing_skills.active` selects and versions site writing skills.
+- `content-plans/content-pipeline.yaml#writing_skill_hooks` defines the generic hook protocol.
+
+Do not move a site's voice, teaching style, or preferred article structure into the framework-native skill. A reusable framework must still work when no site writing skill is enabled.

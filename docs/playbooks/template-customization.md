@@ -13,6 +13,12 @@ Edit `src/data/site.ts` first. It controls:
 ## Content Strategy
 Edit `content-plans/site-plan.yaml` for audience, positioning, content pillars, SEO/GEO rules, and maintenance cadence.
 
+## Writing Style
+
+Put site- or author-specific writing skills under `.ai/site-skills/<skill-name>/`. Register enabled skills, versions, and stage hooks in `content-plans/site-plan.yaml#writing_skills.active`.
+
+Do not edit the framework-native `.ai/skills/ai-first-blogger/SKILL.md` to add one author's voice or article structure. The content pipeline loads configured site skills through generic `before` and `after` hooks.
+
 ## Navigation
 Edit `src/data/nav.ts` only when the information architecture changes.
 
