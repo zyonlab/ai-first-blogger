@@ -66,13 +66,38 @@ export type EngineContentType = {
   /** Render a tag cloud above the list page, built from `data.tags`. */
   listTagCloud?: boolean;
   /** Extra JSON-LD for the detail page, on top of the breadcrumb graph. */
-  jsonLd?: (entry: ContentEntry, ctx: { canonical: string }) => Record<string, unknown>[];
+  jsonLd?: (entry: ContentEntry, ctx: { canonical: string; locale: string }) => Record<string, unknown>[];
   /** SEO hints for the detail page. */
   seo?: (entry: ContentEntry) => SeoHints;
 };
 
 /** The merged view every consumer sees: mechanism + the site's half. */
 export type ContentTypeDef = EngineContentType & SiteContentType;
+
+/**
+ * The two fields every content type carries once a site publishes in more than
+ * one language, added to each type's own schema in content.config.ts rather
+ * than written into each of them.
+ *
+ * That is not tidiness. A content type is two halves and one of them ships
+ * inside `node_modules`; if `locale` had to be declared per type, a site could
+ * not translate a type whose engine module it cannot edit, and every type added
+ * after this change would silently be the one type that could not be
+ * translated. The shared contract is the only half a site can rely on.
+ *
+ *   locale          which language this file is. Defaults to the directory it
+ *                   is in — `content/posts/en/x.mdx` is the `en` locale — and
+ *                   to the site's default locale when that says nothing. State
+ *                   it explicitly only to contradict the path.
+ *   translationKey  what makes two files the same article in two languages.
+ *                   Defaults to `slug`, so a translation that keeps the slug is
+ *                   paired with no field at all. Set it on the translation when
+ *                   its slug is localised too, which is the case worth doing:
+ *                   `/en/writing/why-retries-made-it-worse/` should not be the
+ *                   URL of the Chinese article's English twin if the English
+ *                   article deserves an English slug.
+ */
+export const LOCALE_FIELDS = ['locale', 'translationKey'] as const;
 
 /** Narrow a def without losing the literal `name`. */
 export function defineContentType<T extends EngineContentType>(def: T): T {

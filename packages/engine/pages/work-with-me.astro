@@ -1,16 +1,22 @@
 ---
-import { site } from '@config/site';
+import { siteFor } from '@config/site';
 import { requirePageCopy } from '@config/pages';
-import { homePath, pagePath } from '@config/routes';
+import { homePath, localeOfPath, localeStaticPaths, locales, pagePath } from '@config/routes';
+import { alternatesForPath } from '@lib/alternates';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
 
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
 const title = site.services.title;
 const description = site.services.description;
-const { services, action } = requirePageCopy('workWithMe');
-const canonical = pagePath('work-with-me');
+const { services, action } = requirePageCopy('workWithMe', locale);
+const canonical = pagePath('work-with-me', locale);
+const alternates = alternatesForPath('/work-with-me/', locales);
 const jsonLd = [
-  collectionPageSchema(title, description, canonical),
+  collectionPageSchema(title, description, canonical, locale),
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -25,7 +31,7 @@ const jsonLd = [
     serviceType: site.services.serviceTypes,
   },
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
+    { name: 'Home', url: homePath(locale) },
     { name: title, url: canonical },
   ]),
 ];
@@ -37,6 +43,7 @@ const jsonLd = [
   canonical={canonical}
   jsonLd={jsonLd}
   breadcrumbs={[{ href: canonical, label: title }]}
+  alternates={alternates}
 >
   <section class="section grid two">
     {services.map(({ name, body: note }) => (

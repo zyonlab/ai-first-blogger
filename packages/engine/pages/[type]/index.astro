@@ -3,34 +3,66 @@
  * List page for every content type in the registry.
  * Replaces the former per-type index.astro files. Do not add new ones —
  * declare the content type in engine/content-types/ instead.
+ *
+ * A listing exists in a locale when that locale has something to list. The
+ * default locale is the exception and keeps its empty page: a site with a
+ * declared type and no entries yet has always had `/videos/`, and it is the
+ * site's own section standing ready. A *second* language's empty section is not
+ * that — it is a section nobody has translated, and shipping it is shipping a
+ * page whose whole content is the sentence "nothing here yet" in a language the
+ * reader did not ask for.
  */
 import PageLayout from '@layouts/PageLayout.astro';
-import { homePath } from '@config/routes';
-import { site } from '@config/site';
-import { getContentTypeByRoute, listPath, registry } from '@content-types/index';
-import { getEntries } from '@lib/content';
+import { homePath, localeOfPath, localeParam, localeParams, defaultLocale } from '@config/routes';
+import { siteFor } from '@config/site';
+import { getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
+import { alternatesForPath } from '@lib/alternates';
+import { getEntries, localesWithEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
-export function getStaticPaths() {
-  return registry.map((type) => ({ params: { type: type.route } }));
+export async function getStaticPaths() {
+  const perLocale = await Promise.all(
+    localeParams().map(async ({ locale, param }) => {
+      const types = registryFor(locale);
+      const populated = await Promise.all(
+        types.map(async (type) =>
+          locale === defaultLocale || (await getEntries(type, locale)).length > 0 ? type.route : undefined,
+        ),
+      );
+      return populated
+        .filter((route): route is string => route !== undefined)
+        .map((route) => ({ params: { ...localeParam(param), type: route } }));
+    }),
+  );
+  return perLocale.flat();
 }
 
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
 const { type: route } = Astro.params;
-const type = getContentTypeByRoute(route!);
+const type = getContentTypeByRoute(route!, locale);
 if (!type) throw new Error(`No content type registered for route "${route}"`);
 
 const Card = cardFor(type.card);
 
-const entries = await getEntries(type);
-const canonical = listPath(type);
+const entries = await getEntries(type, locale);
+const canonical = listPath(type, locale);
+
+// Only the locales whose build actually produced this listing. The default
+// locale is always one of them; see getStaticPaths.
+const populated = await localesWithEntries(type);
+const alternates = alternatesForPath(
+  `/${type.route}/`,
+  populated.includes(defaultLocale) ? populated : [defaultLocale, ...populated],
+);
 
 const tags = type.listTagCloud
   ? [...new Set(entries.flatMap((entry) => (entry.data.tags as string[] | undefined) ?? []))].sort()
   : [];
 
 const jsonLd = [
-  collectionPageSchema(type.listTitle, type.listDescription, canonical),
+  collectionPageSchema(type.listTitle, type.listDescription, canonical, locale),
   itemListSchema(
     `${site.name} ${type.listTitle}`,
     entries.map((entry) => ({
@@ -40,7 +72,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
+    { name: 'Home', url: homePath(locale) },
     { name: type.listTitle, url: canonical },
   ]),
 ];
@@ -52,6 +84,7 @@ const jsonLd = [
   canonical={canonical}
   jsonLd={jsonLd}
   breadcrumbs={[{ href: canonical, label: type.listTitle }]}
+  alternates={alternates}
 >
   {tags.length > 0 && (
     <section class="section">

@@ -1,17 +1,23 @@
 ---
-import { site } from '@config/site';
+import { siteFor } from '@config/site';
 import { requirePageCopy } from '@config/pages';
-import { homePath, pagePath } from '@config/routes';
+import { homePath, localeOfPath, localeStaticPaths, locales, pagePath } from '@config/routes';
+import { alternatesForPath } from '@lib/alternates';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, personSchema } from '@lib/schema';
 
-const { title, sections } = requirePageCopy('about');
-const canonical = pagePath('about');
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const { title, sections } = requirePageCopy('about', locale);
+const canonical = pagePath('about', locale);
+const alternates = alternatesForPath('/about/', locales);
 const description = site.author.bio;
 const jsonLd = [
-  personSchema(),
+  personSchema(true, locale),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
+    { name: 'Home', url: homePath(locale) },
     { name: title, url: canonical },
   ]),
 ];
@@ -23,6 +29,7 @@ const jsonLd = [
   canonical={canonical}
   jsonLd={jsonLd}
   breadcrumbs={[{ href: canonical, label: title }]}
+  alternates={alternates}
 >
   <section class="section prose narrow">
     {sections.map((section) => (

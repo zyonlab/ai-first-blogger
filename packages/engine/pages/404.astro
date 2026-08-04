@@ -5,6 +5,15 @@ import { listPath, navTypes, registry } from '@content-types/index';
 import { t } from '@i18n/index';
 
 /**
+ * The one page with no locale of its own.
+ *
+ * A 404 is served for a URL that did not resolve, so there is no page to read a
+ * locale off — and it is served by the host at the origin, which is why a
+ * mounted engine does not emit one at all (ADR 0005). On a bilingual site it is
+ * the default language's 404, which is the same answer every static host gives.
+ */
+
+/**
  * The two ways out are looked up, not written down.
  *
  * The first button used to point at `/writing/` literally — one site's route

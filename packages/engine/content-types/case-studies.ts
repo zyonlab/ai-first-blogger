@@ -39,7 +39,7 @@ export default defineContentType({
     };
   },
 
-  jsonLd: (entry, { canonical }) => {
+  jsonLd: (entry, { canonical, locale }) => {
     const data = entry.data as {
       title: string;
       description: string;
@@ -59,7 +59,7 @@ export default defineContentType({
         author: { '@type': 'Person', name: site.author.name, url: site.url },
         publisher: { '@type': 'Person', name: site.author.name, url: site.url },
         mainEntityOfPage: absoluteUrl(canonical),
-        inLanguage: site.locale,
+        inLanguage: locale,
         articleSection: data.category,
         keywords: data.tags,
       },

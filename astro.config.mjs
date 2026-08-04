@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
-import { engine } from 'aifb-engine';
+import { engine, sitemapOptions } from 'aifb-engine';
 
 /**
  * Three planes:
@@ -44,7 +44,13 @@ export default defineConfig({
     mdx(),
     // No filter needed: `draft: true` entries are dropped in getEntries(), so
     // they never produce a page for the sitemap to pick up.
-    ...(isPreview ? [] : [sitemap()]),
+    //
+    // `sitemapOptions()` is `{}` until site/site.yaml declares more than one
+    // locale, and then it is the `i18n` block @astrojs/sitemap needs to write
+    // xhtml:link alternates. The sitemap integration stays the site's — a
+    // preview build drops it, and a host site may already have one — so the
+    // engine answers the one question about it that requires reading site.yaml.
+    ...(isPreview ? [] : [sitemap(sitemapOptions())]),
     // Injects the engine's routes and resolves its internal aliases, so the
     // package works the same whether it sits in packages/ or node_modules/.
     engine(),

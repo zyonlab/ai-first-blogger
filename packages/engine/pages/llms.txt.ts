@@ -1,7 +1,7 @@
-import { hasPage, seriesPath, topicPath } from '@config/routes';
-import { site } from '@config/site';
+import { hasPage, localeOfPath, localeStaticPaths, seriesPath, topicPath } from '@config/routes';
+import { siteFor } from '@config/site';
 import { getActiveSeries, getActiveTopics } from '@lib/taxonomy';
-import { entryPath, listPath, llmsTypes } from '@content-types/index';
+import { entryPath, listPath, llmsTypesFor } from '@content-types/index';
 import { getEntries } from '@lib/content';
 import type { APIRoute } from 'astro';
 
@@ -9,15 +9,25 @@ import type { APIRoute } from 'astro';
  * Machine-readable site summary for AI crawlers.
  * Sections are derived from the registry, so any content type declaring
  * `surfaces.llms` is covered automatically — no per-type edits here.
+ *
+ * One per locale, for the same reason as the feed: a summary is a claim about
+ * what a reader will find at those URLs, and a mixed-language list makes the
+ * claim false for whichever language the reader came for.
  */
-export const GET: APIRoute = async () => {
+export const getStaticPaths = localeStaticPaths;
+
+export const GET: APIRoute = async (context) => {
+  const locale = localeOfPath(context.url.pathname);
+  const site = siteFor(locale);
+  const llmsTypes = llmsTypesFor(locale);
+
   // Only the sections this site publishes: a summary that points an AI crawler
   // at pages the build never produced is worse than a shorter summary.
-  const topicList = hasPage('topics') ? await getActiveTopics() : [];
-  const seriesList = hasPage('series') ? await getActiveSeries() : [];
+  const topicList = hasPage('topics') ? await getActiveTopics(locale) : [];
+  const seriesList = hasPage('series') ? await getActiveSeries(locale) : [];
   const sections = await Promise.all(
     llmsTypes.map(async (type) => {
-      const entries = (await getEntries(type)).slice(0, type.surfaces.llms!.limit);
+      const entries = (await getEntries(type, locale)).slice(0, type.surfaces.llms!.limit);
       if (entries.length === 0) return [];
       return [
         '',
@@ -26,7 +36,7 @@ export const GET: APIRoute = async () => {
         '',
         ...entries.map(
           (entry) =>
-            `- [${entry.data.title as string}](${entryPath(type, entry.data.slug)}): ${entry.data.description as string}`,
+            `- [${entry.data.title as string}](${entryPath(type, entry.data.slug, locale)}): ${entry.data.description as string}`,
         ),
       ];
     }),
@@ -44,12 +54,12 @@ export const GET: APIRoute = async () => {
     ...site.brand.keywords.map((item) => `- ${item}`),
     '',
     '## Sections',
-    ...llmsTypes.map((type) => `- [${type.listTitle}](${listPath(type)}): ${type.listDescription}`),
+    ...llmsTypes.map((type) => `- [${type.listTitle}](${listPath(type, locale)}): ${type.listDescription}`),
     ...(topicList.length > 0
-      ? ['', '## Topics', ...topicList.map((topic) => `- [${topic.title}](${topicPath(topic.slug)}): ${topic.description}`)]
+      ? ['', '## Topics', ...topicList.map((topic) => `- [${topic.title}](${topicPath(topic.slug, locale)}): ${topic.description}`)]
       : []),
     ...(seriesList.length > 0
-      ? ['', '## Series', ...seriesList.map((item) => `- [${item.title}](${seriesPath(item.slug)}): ${item.description}`)]
+      ? ['', '## Series', ...seriesList.map((item) => `- [${item.title}](${seriesPath(item.slug, locale)}): ${item.description}`)]
       : []),
     ...sections.flat(),
     '',

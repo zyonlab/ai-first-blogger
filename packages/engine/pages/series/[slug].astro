@@ -1,39 +1,54 @@
 ---
 import PageLayout from '@layouts/PageLayout.astro';
-import { homePath, pagePath, seriesPath } from '@config/routes';
-import { series } from '@config/taxonomy';
+import { homePath, localeOfPath, localeParam, localeParams, locales, pagePath, seriesPath } from '@config/routes';
+import { seriesFor } from '@config/taxonomy';
 import { getActiveSeries } from '@lib/taxonomy';
-import { entryPath, registry } from '@content-types/index';
+import { entryPath, registryFor } from '@content-types/index';
+import { alternatesForPath } from '@lib/alternates';
 import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
-import { t } from '@i18n/index';
+import { messages } from '@i18n/index';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
-  return (await getActiveSeries()).map((item) => ({ params: { slug: item.slug } }));
+  const perLocale = await Promise.all(
+    localeParams().map(async ({ locale, param }) =>
+      (await getActiveSeries(locale)).map((item) => ({ params: { ...localeParam(param), slug: item.slug } })),
+    ),
+  );
+  return perLocale.flat();
 }
 
-const slug = Astro.params.slug as keyof typeof series;
-const item = series[slug];
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
+const slug = Astro.params.slug as string;
+const item = seriesFor(locale)[slug]!;
 
-const matches = (await findEntries(registry, (entry) => entry.data.series === slug)).sort(
+const matches = (await findEntries(registryFor(locale), (entry) => entry.data.series === slug, locale)).sort(
   (a, b) => ((a.entry.data.seriesOrder as number) ?? 999) - ((b.entry.data.seriesOrder as number) ?? 999),
 );
-const canonical = seriesPath(slug);
+const canonical = seriesPath(slug, locale);
+
+const built = (
+  await Promise.all(
+    locales.map(async (tag) => ((await getActiveSeries(tag)).some((entry) => entry.slug === slug) ? tag : undefined)),
+  )
+).filter((tag): tag is string => tag !== undefined);
+const alternates = alternatesForPath(`/series/${slug}/`, built);
 
 const jsonLd = [
-  collectionPageSchema(item.title, item.description, canonical),
+  collectionPageSchema(item.title, item.description, canonical, locale),
   itemListSchema(
     `${item.title} Reading Path`,
     matches.map(({ type, entry }) => ({
       name: entry.data.title as string,
       description: entry.data.description as string,
-      url: entryPath(type, entry.data.slug),
+      url: entryPath(type, entry.data.slug, locale),
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
-    { name: 'Series', url: pagePath('series') },
+    { name: 'Home', url: homePath(locale) },
+    { name: 'Series', url: pagePath('series', locale) },
     { name: item.title, url: canonical },
   ]),
 ];
@@ -45,7 +60,8 @@ const jsonLd = [
   eyebrow="Series"
   canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: pagePath('series'), label: 'Series' }, { href: canonical, label: item.title }]}
+  breadcrumbs={[{ href: pagePath('series', locale), label: 'Series' }, { href: canonical, label: item.title }]}
+  alternates={alternates}
 >
   <section data-item-list class="section">
     <div class="section-head">

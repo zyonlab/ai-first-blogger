@@ -1,15 +1,20 @@
 ---
 import PageLayout from '@layouts/PageLayout.astro';
 import { requirePageCopy } from '@config/pages';
-import { homePath, pagePath } from '@config/routes';
+import { homePath, localeOfPath, localeStaticPaths, locales, pagePath } from '@config/routes';
+import { alternatesForPath } from '@lib/alternates';
 import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
 
-const { title, description, items } = requirePageCopy('uses');
-const canonical = pagePath('uses');
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const { title, description, items } = requirePageCopy('uses', locale);
+const canonical = pagePath('uses', locale);
+const alternates = alternatesForPath('/uses/', locales);
 const jsonLd = [
-  collectionPageSchema(title, description, canonical),
+  collectionPageSchema(title, description, canonical, locale),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
+    { name: 'Home', url: homePath(locale) },
     { name: title, url: canonical },
   ]),
 ];
@@ -21,6 +26,7 @@ const jsonLd = [
   canonical={canonical}
   jsonLd={jsonLd}
   breadcrumbs={[{ href: canonical, label: title }]}
+  alternates={alternates}
 >
   <section class="section grid">
     {items.map(({ name, body: note }) => (
