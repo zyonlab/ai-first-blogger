@@ -163,6 +163,29 @@ the build rather than shipping.
 **C-10** — structured data must describe what is on the page. Detail pages render
 `<Breadcrumbs />`; list pages pass `breadcrumbs` to `PageLayout`.
 
+### Rules that read URL shape, and a mounted engine
+
+C-04, C-10, C-19, C-21, C-22, C-23 and C-25 all decide something from the segments
+of a URL: one segment is a listing page, two is a detail page, `/` is the home
+page nothing has to link to. When the engine is mounted under a prefix
+(`engine({ mount: '/zh/blog' })`) they measure from the engine's root, not the
+origin's — otherwise every listing page files as a detail page and the rules stop
+matching what they were written for, silently.
+
+The mount comes from `.aifb/build.json`, written by the build; `AIFB_MOUNT`
+overrides it. The arithmetic is `packages/cli/src/validate/url.ts`, and
+`pnpm validate:self-test` exercises fourteen mounted cases, each asserting a rule
+still fires or still stays quiet.
+
+Two consequences worth knowing while writing:
+
+- Links inside articles are real paths. Under a mount they carry the prefix —
+  `/zh/blog/writing/my-post/`. C-03 catches one that does not and names the URL
+  it should have been.
+- A link to a page *outside* the mount belongs to the host site, which C-25 knows
+  nothing about, so it does not judge it. C-03 still does, against the pages the
+  build produced.
+
 ## What the gate is, and is not
 
 C-01 … C-13 ask *is this page well-formed*. C-14 … C-23 ask what a professional

@@ -190,6 +190,26 @@ import or a component, so the boundary cannot erode. The contract is
 [`docs/specs/site-config-contract.md`](docs/specs/site-config-contract.md); the
 reasoning is [`docs/adr/0002-three-planes.md`](docs/adr/0002-three-planes.md).
 
+### Adding a blog to a site that already exists
+
+The engine does not have to own the origin. Install it as a dependency of the
+site you already have and mount it under a prefix:
+
+```js
+// astro.config.mjs
+engine({
+  mount: '/zh/blog',           // every route the engine injects lives here
+  pages: ['topics', 'series'], // and these are the fixed pages you want
+})
+```
+
+`/zh/blog/`, `/zh/blog/writing/my-post/`, `/zh/blog/topics/*`, `/zh/blog/rss.xml`
+— with the prefix on every canonical, sitemap entry, feed link and breadcrumb,
+and **no** `/`, `/404` or `/robots.txt`: those belong to whoever owns the origin.
+
+Options: [`docs/specs/engine-options.md`](docs/specs/engine-options.md).
+Reasoning: [`docs/adr/0005-mounting-the-engine.md`](docs/adr/0005-mounting-the-engine.md).
+
 ## Content
 
 ```

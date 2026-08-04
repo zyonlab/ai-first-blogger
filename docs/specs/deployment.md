@@ -142,11 +142,15 @@ The framework targets Cloudflare Pages only. Porting to Netlify or Vercel is
 mostly mechanical — both read `_redirects`/`_headers` equivalents and serve a
 static directory — so it is a workflow file plus a different artefact writer.
 
-**GitHub Pages is the exception and needs real work.** A project page is served
-from `user.github.io/repo`, so the site lives under `/repo/` rather than at the
-root. That changes every absolute internal link, the canonical, the sitemap and
-`llms.txt`, and rules C-03, C-19 and C-25 would all have to become base-path
-aware. Do not treat it as a configuration change.
+**GitHub Pages is still the exception.** A project page is served from
+`user.github.io/repo`, so the site lives under `/repo/` rather than at the root.
+`engine({ mount: '/repo' })` now moves the routes, the canonicals, the sitemap
+entries and `llms.txt`, and the URL-shaped rules measure from the mount — see
+[`engine-options.md`](./engine-options.md). What it does **not** move is the
+assets: `/_astro/…`, `/favicon.svg` and everything from `public/` stay at the
+origin root, which is correct for an engine installed into a site that owns that
+root and wrong for a project page. That part is Astro's `base`, and the two have
+not been used together here. Do not treat it as a configuration change yet.
 
 ## Related
 
