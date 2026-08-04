@@ -61,8 +61,26 @@ function collectRoutes(dir: string, base = ''): { pattern: string; entrypoint: s
 const THEMES_MODULE = 'virtual:aifb/themes';
 const RENDERERS_MODULE = 'virtual:aifb/renderers';
 
-/** Directories a site may shadow, mirroring the engine's own layout. */
-const OVERRIDABLE = ['components', 'layouts'] as const;
+/**
+ * Directories a site may shadow, mirroring the engine's own layout.
+ *
+ * `styles` is here for the site that installs the engine into a design system
+ * it already has. `BaseLayout` imports `../styles/global.css` — 1379 lines of
+ * reset and structure that land on every page — and the only way to be rid of
+ * it was to override `BaseLayout` itself: taking over the SEO, the JSON-LD and
+ * the theme injection to avoid one stylesheet, and forking all three away from
+ * every later engine release. An empty `site/templates/styles/global.css` now
+ * drops it; a real one replaces the structure and keeps the head.
+ *
+ * It is deliberately not in ALIASES. Those are the paths the engine's own
+ * modules import by, and nothing imports `@styles/…` — the single stylesheet
+ * import is relative, which `templatesPlugin` already catches. Adding an alias
+ * no engine file uses would publish one more import for overrides to depend
+ * on, and the point of ADR 0004 is that the promised list stays short. An
+ * override that wants the shipped sheet back has a specifier already:
+ * `aifb-engine/styles/global.css` is in the package's `exports`.
+ */
+const OVERRIDABLE = ['components', 'layouts', 'styles'] as const;
 
 /**
  * The template hierarchy: a site's file wins over the engine's.

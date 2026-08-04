@@ -44,7 +44,11 @@ Walkthrough: `../recipes/add-locale.md`.
 ## Visual design
 `site/themes/<name>.css` holds the token set; `packages/engine/styles/global.css` holds structure
 and must contain no literal colours (rule C-13).
-Walkthrough: `../recipes/add-theme.md`.
+A site with its own reset and tokens replaces the structural sheet wholesale with
+`site/templates/styles/global.css` — empty to drop it, or its own CSS to supply the
+structure. Same for the four components that carry a `<script>`: an empty override
+removes the script with them.
+Walkthrough: `../recipes/add-theme.md`. Reference: `../specs/templates.md`.
 
 ## Content
 ```

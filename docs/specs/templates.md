@@ -12,6 +12,7 @@ site/templates/
   cards/<Name>.astro         shadows (or adds to) the card set
   details/<Name>.astro       shadows (or adds to) the detail set
   layouts/<Name>.astro       shadows BaseLayout / PageLayout
+  styles/global.css          shadows the engine's base stylesheet
   pages/<route>.astro        replaces an injected route at the same URL
 ```
 
@@ -58,6 +59,46 @@ reporting — not a reason to copy a page.
 byline, drop a section, or change what a card shows — and that is the second
 thing every site owner wants. A theme layer that can only recolour is a theme
 layer people work around.
+
+## Installing into a site that has a design system already
+
+"The engine *is* this site" and "the engine is a dependency of a site that
+already exists" are two ways of consuming it, and the second one mostly wants to
+**subtract**: a host site with its own reset and token system does not want the
+engine's 1379-line `global.css` stacked on top of it, and a host site that ships
+no client JavaScript does not want the four components that carry a `<script>`.
+
+Both are override files, and both may be empty. An empty file is not a special
+case in the hierarchy — it is a file that exists, so it wins.
+
+```
+site/templates/styles/global.css                 # empty: the engine's sheet is gone
+site/templates/components/ThemeToggle.astro      # empty: no toggle, no script
+site/templates/components/ReadingProgress.astro
+site/templates/components/MermaidRenderer.astro
+site/templates/components/AIStudyLinks.astro     # the copy-prompt button in ArticleBrief
+```
+
+The engine's stylesheet is then not merely unused — it is never emitted, because
+nothing imports it and the asset is never produced. Writing real CSS in that file
+instead replaces the engine's structural rules with yours; there is no merge.
+
+Two things survive this and should, because they are not the engine's taste:
+
+- **Theme tokens.** `site/themes/<name>.css` is linked from the `<head>` by
+  `site.theme.name`, not imported through `global.css`. Dropping the base sheet
+  does not drop the token file, and `BaseLayout` still fails the build if the
+  named theme does not exist. A host site that wants no tokens either points
+  `theme.name` at a token file of its own.
+- **The inline theme script in `BaseLayout`.** It sets `data-theme` before first
+  paint, so it cannot be deferred or externalised without a flash. Removing it
+  means overriding `BaseLayout` — which is the all-or-nothing step everything
+  above exists to avoid, so weigh it against one inline block.
+
+Emptying all four takes `examples/agent-native-engineer` from 116 JavaScript
+assets to none, and nothing in the gate depends on any of them. That was already
+true before `styles` was overridable; it was just written down nowhere, which is
+why sites reached for `BaseLayout` instead.
 
 ## The difference from a CMS
 
@@ -137,13 +178,15 @@ Three different mechanisms, because three different things resolve the import:
 | `pages/` | `injectRoute` — the site's file is the entrypoint for that URL |
 | `cards/`, `details/` | the `virtual:aifb/renderers` merge, by filename |
 | `components/`, `layouts/` | `resolve.alias` with a `customResolver`, plus a plugin for relative sibling imports |
+| `styles/` | the same plugin — `BaseLayout` imports its sheet by relative path, and there is no `@styles` alias |
 
-The last row is the one that bit. It was first written as an `enforce: 'pre'`
-Vite plugin matching `@components/…`, on the assumption that `pre` runs before
-aliases. It does not: Vite applies `resolve.alias` ahead of *every* user plugin,
-so the plugin never saw the id, and `site/templates/components/Header.astro` was
-silently ignored while the build log still reported the site's page overrides.
-The redirect therefore has to live on the alias entry itself.
+The `components` / `layouts` row is the one that bit. It was first written as an
+`enforce: 'pre'` Vite plugin matching `@components/…`, on the assumption that
+`pre` runs before aliases. It does not: Vite applies `resolve.alias` ahead of
+*every* user plugin, so the plugin never saw the id, and
+`site/templates/components/Header.astro` was silently ignored while the build
+log still reported the site's page overrides. The redirect therefore has to live
+on the alias entry itself.
 
 Two ids reach the same component and both are covered:
 
@@ -163,10 +206,11 @@ Overrides are counted in the build output:
 [aifb-engine] 15 route(s) injected, 2 overridden by site/templates/pages
 ```
 
-Three scenarios in `pnpm test:scenarios` hold this down — a component override
-reaching the page, a page override reaching the URL, and a head-less override
-being stopped by the gate. A silent no-op is the failure mode this layer has
-already had once; only an end-to-end assertion catches it.
+Four scenarios in `pnpm test:scenarios` hold this down — a component override
+reaching the page, a stylesheet override being the only sheet that ships, a page
+override reaching the URL, and a head-less override being stopped by the gate. A
+silent no-op is the failure mode this layer has already had once; only an
+end-to-end assertion catches it.
 
 ## Related
 

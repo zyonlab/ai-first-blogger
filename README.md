@@ -177,7 +177,7 @@ cp -r examples/agent-native-engineer/site/. site/
 | `site/voice.md` | writing style: frontmatter for the analyser, prose for the agent |
 | `site/redirects.yaml` | URL history — emitted as `_redirects`, targets verified at build |
 | `site/themes/<name>.css` | the design token set |
-| `site/templates/**` | markup overrides — any engine component, layout, card or page |
+| `site/templates/**` | markup overrides — any engine component, layout, stylesheet, card or page |
 | `packages/engine/content-types/<name>.ts` | schema, JSON-LD and components for one type |
 | `packages/engine/i18n/<locale>.ts` | UI chrome strings |
 
