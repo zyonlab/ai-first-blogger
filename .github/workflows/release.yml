@@ -43,6 +43,13 @@ jobs:
       # The framework's own tests gate the release for the same reason they gate
       # the deploy: `pnpm build` proves the site renders, not that the checks
       # inside these packages are still wired to anything.
+      # The scaffold's template is generated from this repository at build time
+      # and is not committed, so the release check has nothing to inspect until
+      # this has run. `prepublishOnly` does it before a real publish — which is
+      # too late for a check whose whole job is to run *before* one.
+      - name: Build the packages
+        run: pnpm --filter aifb-cli --filter create-aifb build
+
       - name: Every rule still catches its own violation
         run: pnpm validate:self-test
 

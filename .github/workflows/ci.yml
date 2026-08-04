@@ -51,6 +51,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The scaffold's template is generated from this repository at build time
+      # and is not committed, so the release check has nothing to inspect until
+      # this has run. `prepublishOnly` does it before a real publish — which is
+      # too late for a check whose whole job is to run *before* one.
+      - name: Build the packages
+        run: pnpm --filter aifb-cli --filter create-aifb build
+
       - name: Types
         run: pnpm check
 
