@@ -23,6 +23,7 @@ import { policy, policyOverrides } from 'aifb-engine/config/policy';
 import { site } from 'aifb-engine/config/site';
 import { pillarList, seriesList, topicList, topics, series as allSeries } from 'aifb-engine/config/taxonomy';
 import { voice } from 'aifb-engine/config/voice';
+import { enginePath } from './paths';
 import { acknowledgedAreas, blockingIssues, checkReadiness, type ReadinessIssue } from './readiness';
 import { collectEntries } from './validate/collect';
 import { displayWidth } from './validate/html';
@@ -267,8 +268,11 @@ async function typeContext() {
   }
   say();
 
-  const cards = await fs.readdir(path.join(root, 'packages/engine/components/cards')).catch(() => []);
-  const details = await fs.readdir(path.join(root, 'packages/engine/components/details')).catch(() => []);
+  // Through the package, not through `packages/engine`: an installed site has
+  // these under node_modules, where the joined path found nothing and the two
+  // lists printed empty — telling an agent there is nothing to reuse.
+  const cards = await fs.readdir(enginePath('components/cards')).catch(() => []);
+  const details = await fs.readdir(enginePath('components/details')).catch(() => []);
   say(`REUSABLE CARDS:   ${cards.filter((f) => f.endsWith('.astro')).map((f) => f.replace('.astro', '')).join(', ')}`);
   say(`REUSABLE DETAILS: ${details.filter((f) => f.endsWith('.astro')).map((f) => f.replace('.astro', '')).join(', ')}`);
   say('  Reuse a pair when the shape fits. Writing a new one is design work, not boilerplate.');

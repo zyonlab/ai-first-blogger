@@ -14,7 +14,7 @@ import { seoRules } from './rules/seo';
 import { typographyRules } from './rules/typography';
 import { onPageRules } from './rules/onpage';
 import { qualityRules, styleFloorViolations } from './rules/quality';
-import { themeRules } from './rules/theme';
+import { colourScanTargets, hardcodedColours, missingTokens, themeFiles, themeRules } from './rules/theme';
 import type { BuiltPage, Rule, RuleContext, SourceEntry } from './types';
 
 const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules];
@@ -205,9 +205,39 @@ const cases: Record<string, { bad: RuleContext; good: RuleContext }> = {
   },
 };
 
-// C-12/C-13 read the real site/themes/ and packages/engine/styles/ trees rather than the
-// synthetic context, so they are verified against the repo instead of fixtures.
-const FILESYSTEM_RULES = new Set(['C-12', 'C-13']);
+/**
+ * C-12 and C-13 read real trees — `site/themes/`, and the installed engine
+ * wherever module resolution puts it — rather than the synthetic context, so
+ * they are checked against the repository instead of a fixture.
+ *
+ * "No violations in the repository" was the whole of that check, and it is
+ * exactly what a broken rule reports. C-13 spent every release scanning zero
+ * files, because its paths only existed in this repository's own layout, and
+ * this line printed a ✓ for it each time. So each one now has to show its
+ * inputs and answer a planted violation: the files it looked at, one text it
+ * must flag, and one it must not.
+ */
+const FILESYSTEM_RULES: Record<string, () => Promise<{ scanned: string[]; caught: number; clean: number }>> = {
+  'C-12': async () => {
+    const full = { base: new Set(['--fg', '--bg']), alternate: new Set(['--fg']) };
+    const partial = { base: new Set(['--fg']), alternate: new Set<string>() };
+    return {
+      // An unreadable directory is C-12's own violation to report; here it is
+      // simply nothing scanned, which fails this check on its own.
+      scanned: (await themeFiles().catch(() => [])).map((file) => `site/themes/${file}`),
+      caught: missingTokens(full, partial).length,
+      clean: missingTokens(full, full).length,
+    };
+  },
+  'C-13': async () => {
+    const target = { file: 'fixture.css', absolute: '', kind: 'css' as const };
+    return {
+      scanned: (await colourScanTargets()).targets.map((item) => item.file),
+      caught: hardcodedColours('.a { color: #ff0044; }', target).length,
+      clean: hardcodedColours('.a { color: var(--fg, #ff0044); }', target).length,
+    };
+  },
+};
 
 /**
  * C-27 is off unless the site sets a floor, so `run` against the default policy
@@ -229,13 +259,20 @@ const POLICY_GATED: Record<string, () => { caught: number; clean: number }> = {
 let failures = 0;
 
 for (const rule of rules.sort((a, b) => a.id.localeCompare(b.id))) {
-  if (FILESYSTEM_RULES.has(rule.id)) {
+  const filesystem = FILESYSTEM_RULES[rule.id];
+  if (filesystem) {
     const found = await rule.run(ctx());
-    console.log(`${found.length === 0 ? '✓' : '✗'} ${rule.id} ${rule.title} (filesystem rule, ${found.length} issue(s) in repo)`);
-    if (found.length > 0) {
-      for (const item of found) console.log(`    ${item.file} — ${item.message}`);
-      failures += 1;
-    }
+    const { scanned, caught, clean } = await filesystem();
+    const ok = found.length === 0 && scanned.length > 0 && caught > 0 && clean === 0;
+
+    console.log(
+      `${ok ? '✓' : '✗'} ${rule.id} ${rule.title} (filesystem rule, ${scanned.length} file(s) scanned, ${found.length} issue(s) in repo)`,
+    );
+    if (scanned.length === 0) console.log('    read no files at all — a pass from this run would mean nothing');
+    if (caught === 0) console.log('    did not flag a known violation');
+    if (clean > 0) console.log('    false positive on clean input');
+    for (const item of found) console.log(`    ${item.file} — ${item.message}`);
+    if (!ok) failures += 1;
     continue;
   }
 
