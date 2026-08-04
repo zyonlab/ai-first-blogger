@@ -1,5 +1,6 @@
 ---
 import { series, topics, type TopicSlug } from '@config/taxonomy';
+import { entryPath } from '@content-types/index';
 import { formatDate } from '@lib/dates';
 import type { CardProps } from './card-props';
 
@@ -16,7 +17,7 @@ const data = entry.data as {
 };
 const topic = topics[data.category as TopicSlug];
 const seriesItem = data.series ? series[data.series as keyof typeof series] : undefined;
-const href = `/${type.route}/${data.slug}/`;
+const href = entryPath(type, data.slug);
 ---
 
 <article class="card article-card">

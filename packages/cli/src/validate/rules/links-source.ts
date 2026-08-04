@@ -31,7 +31,7 @@ export const sourceLinkRules: Rule[] = [
     id: 'C-25',
     title: 'Authored links resolve',
     severity: 'error',
-    run: ({ entries }) => {
+    run: ({ entries, mount }) => {
       const out: Violation[] = [];
 
       // What the site will actually render, derived the same way the pages are.
@@ -58,10 +58,21 @@ export const sourceLinkRules: Rule[] = [
 
       for (const entry of entries) {
         for (const match of entry.body.matchAll(linkPattern)) {
-          const href = normalise(match[1]!);
+          const written = normalise(match[1]!);
 
           // Assets are not pages.
-          if (/\.[a-z0-9]{2,5}\/$/i.test(href)) continue;
+          if (/\.[a-z0-9]{2,5}\/$/i.test(written)) continue;
+
+          /**
+           * A mounted engine shares the origin with a site this rule knows
+           * nothing about. `/privacy/` on the host is a perfectly good link and
+           * resolves against pages that are not in `content/`, so only links
+           * inside the mount are ours to judge — the rest are C-03's, which
+           * checks them against everything the build actually produced.
+           */
+          if (mount !== '' && !written.startsWith(`${mount}/`)) continue;
+          const href = mount === '' ? written : written.slice(mount.length);
+
           if (STATIC_PAGES.has(href)) continue;
 
           const segments = href.split('/').filter(Boolean);
@@ -72,8 +83,8 @@ export const sourceLinkRules: Rule[] = [
             if (routes.has(segments[0]!)) continue;
             out.push({
               ...at,
-              message: `Links to "${href}", which is not a section of this site.`,
-              fix: `Sections are: ${[...routes.keys()].map((route) => `/${route}/`).join(', ')}, plus /topics/ and /series/.`,
+              message: `Links to "${written}", which is not a section of this site.`,
+              fix: `Sections are: ${[...routes.keys()].map((route) => `${mount}/${route}/`).join(', ')}, plus ${mount}/topics/ and ${mount}/series/.`,
             });
             continue;
           }
@@ -87,8 +98,8 @@ export const sourceLinkRules: Rule[] = [
               out.push({
                 ...at,
                 message: declared
-                  ? `Links to "${href}", which is declared but has no published entry, so no page is built.`
-                  : `Links to "${href}", which is not in site/taxonomy.yaml.`,
+                  ? `Links to "${written}", which is declared but has no published entry, so no page is built.`
+                  : `Links to "${written}", which is not in site/taxonomy.yaml.`,
                 fix: declared
                   ? 'A topic or series page appears once an entry uses it. Publish one first, or link somewhere else — `pnpm context write` lists what exists today.'
                   : `Valid: ${(head === 'topics' ? Object.keys(topics) : Object.keys(series)).join(', ') || '(none)'}.`,
@@ -100,7 +111,7 @@ export const sourceLinkRules: Rule[] = [
               if (slugsByRoute.get(head)?.has(slug)) continue;
               out.push({
                 ...at,
-                message: `Links to "${href}", but no ${routes.get(head)} entry has the slug "${slug}".`,
+                message: `Links to "${written}", but no ${routes.get(head)} entry has the slug "${slug}".`,
                 fix: 'Check the slug, or write that entry first. Drafts do not count — they are never built.',
               });
               continue;
@@ -109,7 +120,7 @@ export const sourceLinkRules: Rule[] = [
 
           out.push({
             ...at,
-            message: `Links to "${href}", which does not match any route this site produces.`,
+            message: `Links to "${written}", which does not match any route this site produces.`,
             fix: 'Run `pnpm context write` — it lists every page that exists and can be linked to.',
           });
         }

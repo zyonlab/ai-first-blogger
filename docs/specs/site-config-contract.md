@@ -50,7 +50,7 @@ most likely to tune the ones it could only tune by forking the engine.
 | `site/taxonomy.yaml` | pillars, topics, series — and the category vocabulary derived from them | Always |
 | `site/content-types.yaml` | route, label, list copy and surfaces per content type | When adding a type |
 | `site/policy.yaml` | thresholds and switches | When the defaults do not fit |
-| `site/pages.yaml` | About / Uses / Newsletter / Work-with-me copy | Always |
+| `site/pages.yaml` | copy for the fixed pages — a key per page the site publishes | Always |
 | `site/voice.md` | writing style — signals for the analyser, prose for the agent | When the voice changes |
 | `site/themes/<name>.css` | the token set | When restyling |
 | `site/templates/**` | markup that shadows the engine's, file for file | When tokens are not enough |

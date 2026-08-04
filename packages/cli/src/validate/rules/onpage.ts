@@ -23,6 +23,7 @@ import {
   unfollowableAnchors,
 } from '../html';
 import type { BuiltPage, Rule, Violation } from '../types';
+import { engineSegments } from '../url';
 
 /** Anchor text that transfers no meaning to the page it points at. */
 const EMPTY_ANCHORS = [
@@ -30,16 +31,23 @@ const EMPTY_ANCHORS = [
   'click here', 'here', 'read more', 'more', 'link', 'this',
 ];
 
-/** Pages whose job is to be a hub, so a short intro is expected of them. */
-function isListingPage(page: BuiltPage) {
-  const segments = page.url.split('/').filter(Boolean);
+/**
+ * Pages whose job is to be a hub, so a short intro is expected of them.
+ *
+ * Measured from the engine's root, not the origin's: under
+ * `engine({ mount: '/zh/blog' })` the listing page is `/zh/blog/writing/`, and
+ * counting from `/` would file it as a two-segment detail page — so C-21 and
+ * C-22 would stop checking listing pages altogether and report nothing.
+ */
+function isListingPage(page: BuiltPage, mount: string) {
+  const segments = engineSegments(page.url, mount);
   if (segments.length === 0) return false;
   if (segments.length === 1) return true; // /writing/, /projects/
   return segments.length === 2 && (segments[0] === 'topics' || segments[0] === 'series');
 }
 
-function isDetailPage(page: BuiltPage) {
-  const segments = page.url.split('/').filter(Boolean);
+function isDetailPage(page: BuiltPage, mount: string) {
+  const segments = engineSegments(page.url, mount);
   return segments.length >= 2 && segments[0] !== 'topics' && segments[0] !== 'series';
 }
 
@@ -170,11 +178,15 @@ export const onPageRules: Rule[] = [
     title: 'URL structure',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages }) => {
+    run: ({ pages, mount }) => {
       const out: Violation[] = [];
       const maxDepth = policy.seo.maxUrlDepth;
       for (const page of pages) {
-        const segments = page.url.split('/').filter(Boolean);
+        // The mount is the host's decision about where the engine lives, not an
+        // authored slug and not depth this site chose per page. Judging either
+        // one against it would make `seo.maxUrlDepth` mean something different
+        // on every site that mounts the engine one level deeper.
+        const segments = engineSegments(page.url, mount);
         for (const segment of segments) {
           // Files served at a path — /404.html, /rss.xml, /llms.txt — are not
           // directory-style URLs and are not authored slugs.
@@ -239,9 +251,9 @@ export const onPageRules: Rule[] = [
     title: 'Listing pages introduce their subject',
     severity: 'warn',
     needsBuild: true,
-    run: ({ pages }) =>
+    run: ({ pages, mount }) =>
       pages
-        .filter((page) => isListingPage(page))
+        .filter((page) => isListingPage(page, mount))
         .flatMap((page) => {
           const width = displayWidth(proseText(page.html));
           if (width >= policy.seo.listingIntroMinWidth) return [];
@@ -262,10 +274,10 @@ export const onPageRules: Rule[] = [
     title: 'ItemList matches the page',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages }) => {
+    run: ({ pages, mount }) => {
       const out: Violation[] = [];
       for (const page of pages) {
-        if (!isListingPage(page)) continue;
+        if (!isListingPage(page, mount)) continue;
         const blocks = [...page.html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)]
           .flatMap((match) => {
             try {
@@ -305,9 +317,9 @@ export const onPageRules: Rule[] = [
     title: 'Detail pages declare their type',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages }) =>
+    run: ({ pages, mount }) =>
       pages
-        .filter((page) => isDetailPage(page) && !page.file.endsWith('.xml'))
+        .filter((page) => isDetailPage(page, mount) && !page.file.endsWith('.xml'))
         .flatMap((page) => {
           const types = [...page.html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)]
             .flatMap((match) => {

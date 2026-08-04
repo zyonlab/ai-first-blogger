@@ -1,14 +1,16 @@
 ---
 import { site } from '@config/site';
-import { pages } from '@config/pages';
+import { requirePageCopy } from '@config/pages';
+import { homePath, pagePath } from '@config/routes';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, collectionPageSchema } from '@lib/schema';
 
 const title = site.services.title;
 const description = site.services.description;
-const { services, action } = pages.workWithMe;
+const { services, action } = requirePageCopy('workWithMe');
+const canonical = pagePath('work-with-me');
 const jsonLd = [
-  collectionPageSchema(title, description, '/work-with-me/'),
+  collectionPageSchema(title, description, canonical),
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -23,8 +25,8 @@ const jsonLd = [
     serviceType: site.services.serviceTypes,
   },
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
-    { name: title, url: '/work-with-me/' },
+    { name: 'Home', url: homePath },
+    { name: title, url: canonical },
   ]),
 ];
 ---
@@ -32,9 +34,9 @@ const jsonLd = [
 <PageLayout
   title={title}
   description={description}
-  canonical="/work-with-me/"
+  canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: '/work-with-me/', label: title }]}
+  breadcrumbs={[{ href: canonical, label: title }]}
 >
   <section class="section grid two">
     {services.map(({ name, body: note }) => (

@@ -6,6 +6,9 @@ dist
 migration/ghost-export.json
 migration/images
 
+# What the last build was — mount and published pages, read by the gate
+.aifb
+
 # Generated reports
 validate-report.json
 metrics.json

@@ -2,26 +2,28 @@
 import { site } from '@config/site';
 import TopicCard from '@components/TopicCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
-import { pages } from '@config/pages';
+import { requirePageCopy } from '@config/pages';
+import { homePath, pagePath, topicPath } from '@config/routes';
 import { getActiveTopics } from '@lib/taxonomy';
 import { t } from '@i18n/index';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
-const { title, description } = pages.topics;
+const { title, description } = requirePageCopy('topics');
+const canonical = pagePath('topics');
 const topicList = await getActiveTopics();
 const jsonLd = [
-  collectionPageSchema(title, description, '/topics/'),
+  collectionPageSchema(title, description, canonical),
   itemListSchema(
     `${site.name} Topics`,
     topicList.map((topic) => ({
       name: topic.title,
       description: topic.description,
-      url: `/topics/${topic.slug}/`,
+      url: topicPath(topic.slug),
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
-    { name: title, url: '/topics/' },
+    { name: 'Home', url: homePath },
+    { name: title, url: canonical },
   ]),
 ];
 ---
@@ -29,9 +31,9 @@ const jsonLd = [
 <PageLayout
   title={title}
   description={description}
-  canonical="/topics/"
+  canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: '/topics/', label: title }]}
+  breadcrumbs={[{ href: canonical, label: title }]}
 >
   <section data-item-list class="section grid">
     {topicList.length > 0

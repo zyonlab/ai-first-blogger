@@ -3,6 +3,7 @@ import Breadcrumbs from '@components/Breadcrumbs.astro';
 import NewsletterCTA from '@components/NewsletterCTA.astro';
 import { categoryLabel } from '@config/taxonomy';
 import type { AnyComponent } from '@lib/renderers';
+import { listPath } from '@content-types/index';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -16,7 +17,7 @@ const data = entry.data as {
 ---
 
 <article class="article-shell">
-  <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="article-header">
     <p class="eyebrow">{type.label} · {categoryLabel(data.category)}</p>
     <h1>{data.title}</h1>

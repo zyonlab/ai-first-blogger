@@ -5,6 +5,7 @@
  * declare the content type in engine/content-types/ instead.
  */
 import PageLayout from '@layouts/PageLayout.astro';
+import { homePath } from '@config/routes';
 import { site } from '@config/site';
 import { getContentTypeByRoute, listPath, registry } from '@content-types/index';
 import { getEntries } from '@lib/content';
@@ -39,7 +40,7 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
+    { name: 'Home', url: homePath },
     { name: type.listTitle, url: canonical },
   ]),
 ];

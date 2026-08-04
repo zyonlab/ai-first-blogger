@@ -10,6 +10,10 @@ undo the decision without knowing what it cost.
 | # | Title | Status |
 |---|---|---|
 | [0001](./0001-content-type-registry.md) | Content type registry | accepted |
+| [0002](./0002-three-planes.md) | Three planes: intent, content, engine | accepted |
+| [0003](./0003-workspace.md) | pnpm workspace: the framework becomes packages | accepted |
+| [0004](./0004-template-api.md) | What a template override may import | accepted |
+| [0005](./0005-mounting-the-engine.md) | Mounting the engine under a prefix | accepted |
 
 ## Writing one
 

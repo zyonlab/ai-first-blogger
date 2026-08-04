@@ -1,15 +1,18 @@
 ---
 import { navItems } from '@config/nav';
+import { homePath } from '@config/routes';
 import { site } from '@config/site';
 import { t } from '@i18n/index';
 import ThemeToggle from './ThemeToggle.astro';
 
 const currentPath = Astro.url.pathname;
-const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+// The engine's root is `/` unmounted and `/zh/blog/` mounted; either way it is
+// the one href that must match exactly, since every other route starts with it.
+const isActiveHref = (href: string) => (href === homePath ? currentPath === homePath : currentPath.startsWith(href));
 ---
 
 <header class="site-header">
-  <a class="brand" href="/" aria-label={`${site.name} home`}>
+  <a class="brand" href={homePath} aria-label={`${site.name} home`}>
     <span class="brand-mark">{site.brand.initial}</span>
     <span>{site.name}</span>
   </a>

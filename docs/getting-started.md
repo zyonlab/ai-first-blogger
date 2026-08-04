@@ -26,6 +26,10 @@ config. `aifb-engine` and `aifb-cli` are dependencies.
 Prefer to edit a finished site down rather than fill in a blank one?
 `npm create aifb@latest my-blog --example agent-native-engineer`
 
+Already have an Astro site? Add `aifb-engine` to it instead of scaffolding a new
+one, and mount the blog under a prefix — `engine({ mount: '/blog' })`. See
+[`specs/engine-options.md`](./specs/engine-options.md).
+
 The site builds and runs with no content at all — that is the shipped state. Astro
 logs one "collection is empty" notice per content type until you add your first file.
 
@@ -190,3 +194,5 @@ resets the URLs search engines have indexed.
 - [`recipes/add-locale.md`](./recipes/add-locale.md) — another language
 - [`playbooks/ai-first-workflow.md`](./playbooks/ai-first-workflow.md) — the AI loop
 - [`specs/content-contract.md`](./specs/content-contract.md) — what "publishable" means
+- [`specs/engine-options.md`](./specs/engine-options.md) — every option `engine()` takes,
+  including mounting the blog under a prefix of a site you already have

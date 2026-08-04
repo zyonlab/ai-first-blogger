@@ -4,6 +4,7 @@ import NewsletterCTA from '@components/NewsletterCTA.astro';
 import YouTubeEmbed from '@components/YouTubeEmbed.astro';
 import { formatDate } from '@lib/dates';
 import type { AnyComponent } from '@lib/renderers';
+import { listPath } from '@content-types/index';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -22,7 +23,7 @@ const chapterCount = data.chapters.length;
 ---
 
 <article class="video-page">
-  <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="video-hero">
     <div class="video-hero-copy">
       <p class="eyebrow">{type.label}</p>

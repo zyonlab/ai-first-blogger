@@ -21,6 +21,7 @@ packages/cli/src/validate/
   collect.ts        reads content/** (drafts excluded) and dist/**
   html.ts           meta/title/canonical/JSON-LD/link extraction, displayWidth
   types.ts          Rule, Violation, RuleContext
+  url.ts            engine-relative paths, for the rules that count URL segments
   rules/
     content.ts      source-only rules   (C-02, C-08, C-09, C-11)
     seo.ts          built-HTML rules    (C-01, C-05, C-06, C-07, C-10)
@@ -39,6 +40,7 @@ type RuleContext = {
   pages: BuiltPage[];       // parsed dist/**/*.html, with site-absolute URLs
   hasBuild: boolean;
   siteOrigin: string;
+  mount: string;            // where the engine was mounted; '' at the origin root
 };
 
 type Rule = {

@@ -1,16 +1,18 @@
 ---
 import { site } from '@config/site';
-import { pages } from '@config/pages';
+import { requirePageCopy } from '@config/pages';
+import { homePath, pagePath } from '@config/routes';
 import PageLayout from '@layouts/PageLayout.astro';
 import { breadcrumbSchema, personSchema } from '@lib/schema';
 
-const { title, sections } = pages.about;
+const { title, sections } = requirePageCopy('about');
+const canonical = pagePath('about');
 const description = site.author.bio;
 const jsonLd = [
   personSchema(),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
-    { name: title, url: '/about/' },
+    { name: 'Home', url: homePath },
+    { name: title, url: canonical },
   ]),
 ];
 ---
@@ -18,9 +20,9 @@ const jsonLd = [
 <PageLayout
   title={title}
   description={description}
-  canonical="/about/"
+  canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: '/about/', label: title }]}
+  breadcrumbs={[{ href: canonical, label: title }]}
 >
   <section class="section prose narrow">
     {sections.map((section) => (

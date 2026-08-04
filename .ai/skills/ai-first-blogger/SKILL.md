@@ -50,6 +50,8 @@ All of it ships with the framework, not the site:
 - `specs/content-contract.md` — what "publishable" means (29 rules + preflight)
 - `specs/site-config-contract.md` — which plane a value belongs to
 - `specs/templates.md` — overriding markup without losing the gate
+- `specs/engine-options.md` — `engine()` options, incl. mounting the blog under a
+  prefix of a site that already exists
 - `recipes/` — add a content type / theme / locale · `adr/` — decisions
 
 ## Guardrails

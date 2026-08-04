@@ -19,6 +19,13 @@ site/templates/
 Nothing to register. A file that exists wins; a file that does not falls through
 to the engine. `templatesDir` in `astro.config.mjs` moves the directory.
 
+One boundary on the last row: an override replaces the page at a URL the engine
+injects. It cannot create one. A page excluded by `engine({ pages })` is not
+injected even when `site/templates/pages/` has a file for it — the build warns
+and injects nothing, because a whitelist an override can quietly undo is not a
+whitelist. Serve your own page there from the site's own `src/pages/` instead.
+See [`engine-options.md`](./engine-options.md).
+
 ```astro
 ---
 // site/templates/components/Footer.astro — replaces the engine's footer
@@ -146,6 +153,7 @@ everything else may change in a patch.
 '@layouts/BaseLayout.astro'   '@layouts/PageLayout.astro'
 '@components/cards/card-props'                       // the CardProps type
 '@config/site' '@config/taxonomy' '@config/nav' '@config/policy' '@config/voice'
+'@config/routes'              // withMount · homePath · pagePath · topicPath · seriesPath · hasPage
 '@content-types/index'        // registry · getContentTypeByRoute · listPath · entryPath
 '@lib/content'                // getEntries
 '@lib/schema'                 // breadcrumbSchema · collectionPageSchema · itemListSchema

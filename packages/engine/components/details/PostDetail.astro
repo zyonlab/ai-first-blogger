@@ -9,6 +9,7 @@ import Toc from '@components/Toc.astro';
 import { absoluteUrl } from '@lib/seo';
 import { readingTime } from '@lib/reading-time';
 import type { AnyComponent } from '@lib/renderers';
+import { listPath } from '@content-types/index';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, headings, canonical } = Astro.props as DetailProps;
@@ -28,7 +29,7 @@ const readingMinutes = readingTime(entry.body ?? '');
 <ReadingProgress />
 <article class="article-shell">
   <div class="article-grid">
-    <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+    <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
     <ArticleHeader
       title={data.title}
       description={data.description}

@@ -26,7 +26,11 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 const root = process.cwd();
 const SNAPSHOT = path.join(root, '.scenario-snapshot');
-const MUTABLE = ['site', 'content', 'public', '.github/workflows/cloudflare-pages.yml'];
+// astro.config.mjs is in here because the mount scenarios change the one line a
+// site owner would change — `engine({ mount })`. Driving the option through the
+// real config is the difference between testing the feature and testing a
+// private helper that happens to agree with it.
+const MUTABLE = ['site', 'content', 'public', 'astro.config.mjs', '.github/workflows/cloudflare-pages.yml'];
 
 /** The path data in the mark this framework ships; mirrors src/brand.ts. */
 const FRAMEWORK_MARK = 'M17 19h31L27 45h21';
@@ -86,6 +90,9 @@ async function restore() {
   await fs.rm(path.join(root, 'node_modules/.astro'), { recursive: true, force: true });
   await fs.rm(path.join(root, '.astro'), { recursive: true, force: true });
   await fs.rm(path.join(root, 'dist'), { recursive: true, force: true });
+  // What the last build was. Left behind, it would tell the next scenario's
+  // gate that the engine is mounted somewhere this build never put it.
+  await fs.rm(path.join(root, '.aifb'), { recursive: true, force: true });
 }
 
 /**
@@ -399,6 +406,212 @@ try {
     const result = await validate();
     expect(result.code !== 0, 'an override without a head should block publishing');
     expect(/canonical/i.test(result.out), `the report should name the missing canonical:\n${result.out.slice(-600)}`);
+  });
+
+  console.log('\nmounting the engine');
+
+  /* ---------------------------------------------------------------- *
+   * The engine can be installed into a site that already exists, under
+   * a prefix. Everything below is about the two ways that goes wrong
+   * without anyone noticing: a URL that keeps the old root (a canonical
+   * or a sitemap entry pointing at a page nobody built), and a page the
+   * site declined that is still linked from the chrome.
+   *
+   * Both build green. That is why they are scenarios.
+   * ---------------------------------------------------------------- */
+
+  const MOUNT = '/zh/blog';
+  const exists = (relative: string) => fs.access(path.join(root, relative)).then(() => true).catch(() => false);
+  const dist = (file: string) => fs.readFile(path.join(root, 'dist', file), 'utf8');
+
+  /** Remove one top-level block from a YAML file — the key and everything under it. */
+  async function dropYamlKey(file: string, key: string) {
+    const target = path.join(root, file);
+    const text = await fs.readFile(target, 'utf8');
+    const without = text.replace(new RegExp(`^${key}:\\n(?:[ \\t].*\\n|\\n(?=[ \\t]))*`, 'm'), '');
+    if (without === text) throw new Error(`scenario setup: no "${key}:" block in ${file}`);
+    await fs.writeFile(target, without);
+  }
+
+  /**
+   * Load the example and mount it, including the three places a *site* — not
+   * the engine — states a URL of its own: the nav, redirect targets, and links
+   * inside articles. None of those are rewritten for it, and each one is a
+   * documented consequence of mounting rather than an oversight.
+   */
+  async function mountExample(options = `{ mount: '${MOUNT}', pages: ['topics', 'series'] }`) {
+    await loadExample();
+    await edit('astro.config.mjs', [['    engine(),', `    engine(${options}),`]]);
+
+    const siteYaml = path.join(root, 'site/site.yaml');
+    const withoutDeclined = (await fs.readFile(siteYaml, 'utf8'))
+      .split('\n')
+      .filter((line) => !/href: \/(about|work-with-me|uses|newsletter)\//.test(line))
+      .join('\n');
+    await fs.writeFile(siteYaml, withoutDeclined);
+
+    const redirects = path.join(root, 'site/redirects.yaml');
+    await fs.writeFile(
+      redirects,
+      (await fs.readFile(redirects, 'utf8')).replace(/(\n\s+to: )\/(writing|topics|series)\//g, `$1${MOUNT}/$2/`),
+    );
+
+    const posts = path.join(root, 'content/posts');
+    for (const file of await fs.readdir(posts)) {
+      if (!file.endsWith('.mdx') && !file.endsWith('.md')) continue;
+      const article = path.join(posts, file);
+      await fs.writeFile(
+        article,
+        (await fs.readFile(article, 'utf8')).replace(/\]\(\/(writing|topics|series)\//g, `](${MOUNT}/$1/`),
+      );
+    }
+  }
+
+  await scenario('the default mount is still the site root', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the default build should succeed');
+    for (const file of ['index.html', '404.html', 'robots.txt', 'about/index.html', 'topics/index.html']) {
+      expect(await exists(`dist/${file}`), `an unmounted engine should still build dist/${file}`);
+    }
+    expect(!(await exists('dist/zh')), 'nothing should be mounted anywhere');
+    const info = JSON.parse(await fs.readFile(path.join(root, '.aifb/build.json'), 'utf8'));
+    expect(info.mount === '', `the build should record no mount, recorded "${info.mount}"`);
+  });
+
+  await scenario('a mounted engine injects every route under the prefix and none at the root', async () => {
+    await mountExample();
+    const result = await build();
+    expect(result.code === 0, `a mounted build should succeed:\n${result.out.slice(-600)}`);
+    expect(result.out.includes(`under ${MOUNT}/`), `the build should report the mount:\n${result.out.slice(-400)}`);
+
+    for (const file of ['index.html', 'writing/index.html', 'writing/why-retries-made-it-worse/index.html', 'topics/index.html', 'series/index.html', 'rss.xml', 'llms.txt']) {
+      expect(await exists(`dist${MOUNT}/${file}`), `dist${MOUNT}/${file} should be built`);
+    }
+
+    // The three the host owns, and the four this site declined.
+    for (const file of ['index.html', '404.html', 'robots.txt']) {
+      expect(!(await exists(`dist/${file}`)), `a mounted engine must not take over /${file}`);
+    }
+    expect(!(await exists(`dist${MOUNT}/robots.txt`)), 'robots.txt under a prefix is read by nobody and must not be emitted');
+    expect(!(await exists(`dist${MOUNT}/404.html`)), 'a 404 route under a prefix cannot be what the host serves');
+    for (const page of ['about', 'uses', 'newsletter', 'work-with-me']) {
+      expect(!(await exists(`dist${MOUNT}/${page}/index.html`)), `${page} was declined and must not be built`);
+      expect(!(await exists(`dist/${page}/index.html`)), `${page} must not appear at the root either`);
+    }
+  });
+
+  await scenario('every URL a mounted build emits carries the prefix', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+
+    const article = await dist(`${MOUNT}/writing/why-retries-made-it-worse/index.html`);
+    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(article)?.[1] ?? '';
+    expect(canonical.includes(`${MOUNT}/writing/why-retries-made-it-worse/`), `canonical should carry the mount: ${canonical}`);
+
+    const breadcrumb = [...article.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .flatMap((match) => {
+        const parsed = JSON.parse(match[1]!);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      })
+      .find((block: { '@type'?: string }) => block['@type'] === 'BreadcrumbList') as
+      | { itemListElement: { item: string }[] }
+      | undefined;
+    expect(breadcrumb !== undefined, 'the detail page should carry a breadcrumb trail');
+    for (const item of breadcrumb!.itemListElement) {
+      expect(item.item.includes(MOUNT), `a breadcrumb points outside the mount: ${item.item}`);
+    }
+
+    const listing = await dist(`${MOUNT}/writing/index.html`);
+    const itemList = [...listing.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .flatMap((match) => {
+        const parsed = JSON.parse(match[1]!);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      })
+      .find((block: { '@type'?: string }) => block['@type'] === 'ItemList') as
+      | { itemListElement: { url: string }[] }
+      | undefined;
+    expect(itemList !== undefined, 'the listing page should carry an ItemList');
+    for (const item of itemList!.itemListElement) {
+      expect(item.url.includes(`${MOUNT}/writing/`), `an ItemList url points outside the mount: ${item.url}`);
+    }
+
+    const sitemap = await dist('sitemap-0.xml');
+    const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => new URL(match[1]!).pathname);
+    expect(locations.length > 0, 'the sitemap should list the mounted pages');
+    for (const location of locations) {
+      expect(location.startsWith(`${MOUNT}/`), `the sitemap lists ${location}, which is outside the mount`);
+    }
+
+    const feed = await dist(`${MOUNT}/rss.xml`);
+    for (const link of [...feed.matchAll(/<link>([^<]+)<\/link>/g)].map((match) => match[1]!).slice(1)) {
+      expect(link.includes(`${MOUNT}/`), `an RSS item links outside the mount: ${link}`);
+    }
+    expect((await dist(`${MOUNT}/llms.txt`)).includes(`](${MOUNT}/writing/`), 'llms.txt should link into the mount');
+
+    // The site wrote `/topics/` in site.yaml; it must not have to know the mount.
+    expect((await dist(`${MOUNT}/index.html`)).includes(`href="${MOUNT}/topics/"`), 'a nav entry should be moved with the engine');
+  });
+
+  await scenario('the gate measures a mounted build from the mount', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+
+    const clean = await validate();
+    expect(clean.code === 0, `a mounted site should pass every rule:\n${clean.out.slice(-800)}`);
+    const report = JSON.parse(await fs.readFile(path.join(root, 'validate-report.json'), 'utf8'));
+    expect(report.mount === MOUNT, `the report should record the mount, recorded "${report.mount}"`);
+    expect(report.rulesRun === report.rulesTotal, `all rules should run, ran ${report.rulesRun}/${report.rulesTotal}`);
+    expect(report.errors === 0 && report.warnings === 0, 'a mounted example should have no findings');
+
+    // …and still catches the mistake a mounted site actually makes: a link
+    // written the way it was before the engine moved.
+    const article = path.join(root, 'content/posts/why-retries-made-it-worse.mdx');
+    await fs.writeFile(
+      article,
+      (await fs.readFile(article, 'utf8')).replace(`](${MOUNT}/topics/`, '](/topics/'),
+    );
+    await build();
+    const broken = await validate();
+    expect(broken.code !== 0, 'a link that forgot the prefix should block publishing');
+    expect(broken.out.includes(`${MOUNT}/topics/`), `the report should offer the prefixed URL:\n${broken.out.slice(-600)}`);
+  });
+
+  await scenario('a declined page needs no copy, and cannot be brought back by an override', async () => {
+    await mountExample();
+
+    // Nothing in pages.yaml for the four pages this site does not publish.
+    for (const key of ['about', 'newsletter', 'uses', 'workWithMe']) await dropYamlKey('site/pages.yaml', key);
+    const trimmed = await fs.readFile(path.join(root, 'site/pages.yaml'), 'utf8');
+    expect(!trimmed.includes('workWithMe:'), 'the copy for the declined pages should be gone');
+
+    const result = await build();
+    expect(result.code === 0, `a declined page should not require its copy:\n${result.out.slice(-600)}`);
+    expect((await validate()).code === 0, 'and the site should still pass the gate');
+
+    // An override for a declined page is reported rather than silently ignored,
+    // and does not put the URL back.
+    await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/uses.astro'),
+      "---\nimport PageLayout from '@layouts/PageLayout.astro';\n---\n" +
+        '<PageLayout title="Uses" description="What I use." canonical="/uses/"><p data-site-uses>Mine.</p></PageLayout>\n',
+    );
+    const withOverride = await build();
+    expect(withOverride.code === 0, 'a stranded override should not break the build');
+    expect(withOverride.out.includes('does not publish'), `the build should report it:\n${withOverride.out.slice(-500)}`);
+    expect(!(await exists(`dist${MOUNT}/uses/index.html`)), 'the whitelist decides whether a URL exists at all');
+    expect(!(await exists('dist/uses/index.html')), 'and the override must not appear at the root either');
+  });
+
+  await scenario('a page kept in the whitelist still needs its copy, by name', async () => {
+    await mountExample(`{ mount: '${MOUNT}', pages: ['topics', 'series', 'uses'] }`);
+    await dropYamlKey('site/pages.yaml', 'uses');
+
+    const result = await build();
+    expect(result.code !== 0, 'a published page with no copy should fail the build');
+    expect(result.out.includes('site/pages.yaml'), `the error should name the file:\n${result.out.slice(-500)}`);
+    expect(result.out.includes('uses'), 'the error should name the key');
+    expect(result.out.includes('engine({ pages'), 'the error should offer the other way out');
   });
 
   console.log('\ncustom writing voice');

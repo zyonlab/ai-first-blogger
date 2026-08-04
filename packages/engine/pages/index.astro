@@ -1,4 +1,6 @@
 ---
+import { engineHref } from '@config/nav';
+import { hasPage, pagePath } from '@config/routes';
 import { site } from '@config/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import TopicCard from '@components/TopicCard.astro';
@@ -11,8 +13,12 @@ import { t } from '@i18n/index';
 import { itemListSchema, websiteSchema, personSchema } from '@lib/schema';
 
 /** Home sections are derived from `surfaces.home` in the registry. */
-const topicList = await getActiveTopics();
-const seriesList = await getActiveSeries();
+// The taxonomy sections are links into `/topics/` and `/series/`, so they are
+// only rendered when the site publishes those pages. A section of cards whose
+// destinations were never built is not a smaller home page — it is a home page
+// full of dead links.
+const topicList = hasPage('topics') ? await getActiveTopics() : [];
+const seriesList = hasPage('series') ? await getActiveSeries() : [];
 
 const sections = await Promise.all(
   homeTypes.map(async (type) => {
@@ -47,7 +53,7 @@ const jsonLd = [
       <p>{site.hero.description}</p>
       <div class="actions">
         {site.hero.actions.map((action) => (
-          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={action.href}>{action.label}</a>
+          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={engineHref(action.href)}>{action.label}</a>
         ))}
       </div>
     </div>
@@ -81,7 +87,7 @@ const jsonLd = [
         <p class="eyebrow">{t('home.series.eyebrow')}</p>
         <h2>{t('home.series.title')}</h2>
       </div>
-      <a class="button" href="/series/">{t('home.series.viewAll')}</a>
+      <a class="button" href={pagePath('series')}>{t('home.series.viewAll')}</a>
     </div>
     <div class="grid">
       {seriesList.map((item) => <SeriesCard item={item} />)}

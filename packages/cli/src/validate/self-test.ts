@@ -62,6 +62,7 @@ function ctx(overrides: Partial<RuleContext> = {}): RuleContext {
     pages: [page('/')],
     hasBuild: true,
     siteOrigin: ORIGIN,
+    mount: '',
     ...overrides,
   };
 }
@@ -306,9 +307,162 @@ for (const rule of rules.sort((a, b) => a.id.localeCompare(b.id))) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Mounted engine.
+ *
+ * Everything above is exercised at the origin root. A mounted engine
+ * (`engine({ mount: '/zh/blog' })`) is the same site a few directories
+ * deeper, and the rules that read meaning out of URL shape — one segment is
+ * a listing page, two is a detail page, `/` is the home page — measure from
+ * the engine's root rather than the origin's.
+ *
+ * A rule that forgot to subtract the prefix would not fail here by
+ * erroring: it would file every listing page as a detail page and quietly
+ * stop checking what it was written for. So each case states which
+ * direction it is proving — the defect is still caught, or the correct
+ * mounted page is still passed.
+ * ------------------------------------------------------------------ */
+
+const MOUNT = '/zh/blog';
+const byId = new Map(rules.map((rule) => [rule.id, rule]));
+
+type MountCase = { rule: string; what: string; expect: 'fires' | 'silent'; ctx: RuleContext };
+
+const mountCases: MountCase[] = [
+  {
+    rule: 'C-03',
+    what: 'a link that forgot the prefix is caught, and the message offers the prefixed URL',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/`, { body: '<a href="/writing/x/">x</a>' }), page(`${MOUNT}/writing/x/`)] }),
+  },
+  {
+    rule: 'C-04',
+    what: 'the mount root is the home page, not an orphan',
+    expect: 'silent',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/`, { body: `<a href="${MOUNT}/writing/">x</a>` }), page(`${MOUNT}/writing/`)] }),
+  },
+  {
+    rule: 'C-04',
+    what: 'a mounted page nothing links to is still an orphan',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/`), page(`${MOUNT}/lonely/`)] }),
+  },
+  {
+    rule: 'C-10',
+    what: 'a mounted listing page carries breadcrumb schema without a trail',
+    expect: 'silent',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/writing/`, { breadcrumbSchema: true, breadcrumbMarkup: false })] }),
+  },
+  {
+    rule: 'C-10',
+    what: 'a mounted detail page without the trail it declares',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/writing/post/`, { breadcrumbSchema: true, breadcrumbMarkup: false })] }),
+  },
+  {
+    rule: 'C-19',
+    what: 'the mount does not count toward the URL depth the site chose',
+    expect: 'silent',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/writing/post/`)] }),
+  },
+  {
+    rule: 'C-19',
+    what: 'a mounted URL segment that is not kebab-case',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/Writing_Posts/`)] }),
+  },
+  {
+    rule: 'C-20',
+    what: 'a mounted noindex page listed in the sitemap',
+    expect: 'fires',
+    ctx: ctx({
+      mount: MOUNT,
+      pages: [
+        page(`${MOUNT}/secret/`, { body: '<meta name="robots" content="noindex">' }),
+        { url: '/sitemap-0.xml', file: 'dist/sitemap-0.xml', html: `<loc>${ORIGIN}${MOUNT}/secret/</loc>` },
+      ],
+    }),
+  },
+  {
+    rule: 'C-20',
+    what: 'a mounted noindex page kept out of the sitemap',
+    expect: 'silent',
+    ctx: ctx({
+      mount: MOUNT,
+      pages: [
+        page(`${MOUNT}/secret/`, { body: '<meta name="robots" content="noindex">' }),
+        { url: '/sitemap-0.xml', file: 'dist/sitemap-0.xml', html: `<loc>${ORIGIN}${MOUNT}/</loc>` },
+      ],
+    }),
+  },
+  {
+    rule: 'C-21',
+    what: 'a mounted listing page is still asked to introduce its subject',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, pages: [page(`${MOUNT}/writing/`, { intro: 'too short' })] }),
+  },
+  {
+    rule: 'C-22',
+    what: 'a mounted listing page whose ItemList does not match what it renders',
+    expect: 'fires',
+    ctx: ctx({
+      mount: MOUNT,
+      pages: [
+        page(`${MOUNT}/writing/`, {
+          body: '<section data-item-list><article>one</article></section><script type="application/ld+json">{"@type":"ItemList","itemListElement":[1,2,3]}</script>',
+        }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-23',
+    what: 'a mounted listing page is not mistaken for an untyped detail page',
+    expect: 'silent',
+    ctx: ctx({
+      mount: MOUNT,
+      pages: [{ url: `${MOUNT}/writing/`, file: `dist${MOUNT}/writing/index.html`, html: '<main><h1>t</h1></main>' }],
+    }),
+  },
+  {
+    rule: 'C-25',
+    what: 'a link to the host site outside the mount is not this rule\'s to judge',
+    expect: 'silent',
+    ctx: ctx({ mount: MOUNT, entries: [entry({ body: 'See [privacy](/privacy/) and [terms](/terms/).\n' })] }),
+  },
+  {
+    rule: 'C-25',
+    what: 'a link inside the mount that resolves to nothing',
+    expect: 'fires',
+    ctx: ctx({ mount: MOUNT, entries: [entry({ body: `See [gone](${MOUNT}/not-a-section/) here.\n` })] }),
+  },
+];
+
+console.log('');
+console.log('mounted engine (mount: /zh/blog)');
+
+for (const item of mountCases) {
+  const rule = byId.get(item.rule)!;
+  const found = (await rule.run(item.ctx)).filter((violation) => violation.rule === item.rule);
+  const ok = item.expect === 'fires' ? found.length > 0 : found.length === 0;
+  console.log(`${ok ? '✓' : '✗'} ${item.rule} ${item.what}`);
+  if (!ok) {
+    console.log(`    expected the rule to ${item.expect === 'fires' ? 'fire' : 'stay quiet'}${found[0] ? ` — got "${found[0].message}"` : ''}`);
+    failures += 1;
+  }
+}
+
+// The prefixed suggestion is the whole value of C-03 under a mount: without it
+// the report says "not a built page" about a link that is one prefix away.
+const mountedHint = (await byId.get('C-03')!.run(mountCases[0]!.ctx)).find((violation) => violation.rule === 'C-03');
+if (!mountedHint?.fix.includes(`${MOUNT}/writing/x/`)) {
+  console.log('✗ C-03 does not offer the mounted URL a content link should have used');
+  failures += 1;
+}
+
 console.log('');
 if (failures > 0) {
-  console.log(`${failures} rule(s) failed self-test.`);
+  console.log(`${failures} check(s) failed self-test.`);
   process.exit(1);
 }
 console.log(`All ${rules.length} rules verified: each catches a known violation and passes clean input.`);
+console.log(`${mountCases.length} mounted-engine case(s) verified.`);

@@ -3,6 +3,7 @@ import Breadcrumbs from '@components/Breadcrumbs.astro';
 import NewsletterCTA from '@components/NewsletterCTA.astro';
 import { t } from '@i18n/index';
 import type { AnyComponent } from '@lib/renderers';
+import { listPath } from '@content-types/index';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -21,7 +22,7 @@ const statusLabel = t(`project.status.${data.status}`);
 ---
 
 <article class="project-page">
-  <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="project-hero">
     <div class="project-hero-copy">
       <p class="eyebrow">{type.label} · {statusLabel}</p>

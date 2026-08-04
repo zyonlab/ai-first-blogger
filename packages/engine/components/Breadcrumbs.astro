@@ -1,4 +1,6 @@
 ---
+import { homePath } from '@config/routes';
+
 type Crumb = {
   href: string;
   label: string;
@@ -12,7 +14,7 @@ const { items } = Astro.props;
 ---
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <a href="/">Home</a>
+  <a href={homePath}>Home</a>
   {items.map((item) => (
     <>
       <span aria-hidden="true">/</span>

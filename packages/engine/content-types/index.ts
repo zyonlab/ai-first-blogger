@@ -10,6 +10,7 @@
  * See docs/adr/0001-content-type-registry.md and docs/recipes/add-content-type.md.
  */
 import { siteContentTypes } from '../config/content-types';
+import { withMount } from '../config/routes';
 import caseStudies from './case-studies';
 import posts from './posts';
 import projects from './projects';
@@ -82,12 +83,20 @@ export const rssTypes = registry.filter((type) => type.surfaces.rss === true);
 
 export const llmsTypes = registry.filter((type) => type.surfaces.llms !== undefined);
 
-/** Absolute path of a list page, e.g. `/writing/`. */
+/**
+ * Absolute path of a list page, e.g. `/writing/` — or `/zh/blog/writing/` when
+ * the engine is mounted under a prefix.
+ *
+ * These two functions are the only place a content type becomes a URL, which is
+ * what made `mount` a small change rather than a sweep. Keep it that way: a page
+ * that builds `/${type.route}/${slug}/` by hand is correct until the day someone
+ * mounts the engine, and then it is a dead link the build reports as a success.
+ */
 export function listPath(type: ContentTypeDef) {
-  return `/${type.route}/`;
+  return withMount(`/${type.route}/`);
 }
 
 /** Absolute path of a detail page, e.g. `/writing/my-post/`. */
 export function entryPath(type: ContentTypeDef, slug: string) {
-  return `/${type.route}/${slug}/`;
+  return withMount(`/${type.route}/${slug}/`);
 }
