@@ -80,10 +80,14 @@ Setting `site.locale` also drives:
 
 | | Source |
 |---|---|
-| `<html lang>` | `activeLocale` |
-| Date formatting | `Intl.DateTimeFormat(activeLocale)` |
-| `og:locale` | `ogLocale` (underscore form) |
-| `inLanguage` in every JSON-LD block | `site.locale` |
+| `<html lang>` | the page's own locale |
+| Date formatting | `Intl.DateTimeFormat(locale)` |
+| `og:locale` | the page's locale, underscore form |
+| `inLanguage` in every JSON-LD block | the page's locale |
+
+On a single-language site the page's locale is `site.locale` everywhere, which is
+what this recipe is about. On a site with `locales:` it is read per page from the
+URL — see [`../specs/i18n.md`](../specs/i18n.md).
 
 ## Adding a message key
 
@@ -99,7 +103,7 @@ That failure is the feature: adding a locale cannot half-succeed.
 | `site.locale "xx" has no message table` | file missing, or not registered in `locales` |
 | Text still Chinese after switching | it is site content in `site/`, not chrome — rewrite it there |
 | `{minutes}` renders literally | placeholder renamed; only the reference locale's names work |
-| Want `/en/` and `/zh/` on one site | out of scope — see "Not covered" in [`../specs/i18n.md`](../specs/i18n.md) |
+| Want `/en/` and `/zh/` on one site | that is `locales:` in `site/site.yaml` — [`../specs/i18n.md`](../specs/i18n.md) |
 
 ## Related
 

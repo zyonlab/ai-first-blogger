@@ -46,7 +46,7 @@ most likely to tune the ones it could only tune by forking the engine.
 
 | File | Holds | Edited |
 |---|---|---|
-| `site/site.yaml` | name, url, locale, `titleTemplate`, author, social, hero, services, theme choice, static nav, OG default | Always |
+| `site/site.yaml` | name, url, locale, `locales`, `titleTemplate`, author, social, hero, services, theme choice, static nav, OG default | Always |
 | `site/taxonomy.yaml` | pillars, topics, series — and the category vocabulary derived from them | Always |
 | `site/content-types.yaml` | route, label, list copy and surfaces per content type | When adding a type |
 | `site/policy.yaml` | thresholds and switches | When the defaults do not fit |
@@ -80,7 +80,11 @@ already made that trade when it replaced `z.enum` with `refine`.
 
 Translating the About page into English is not what a new owner wants; they want
 to replace it. Adding a *locale* is therefore an engine change (a shipped
-translation), while choosing the locale is intent.
+translation), while choosing the locale — or choosing two — is intent.
+
+Site copy in a second language is intent as well, and lives beside the copy it
+translates: any mapping in `site/` may carry an `i18n:` block keyed by locale
+tag. See [`i18n.md`](./i18n.md).
 
 ## Prohibitions
 
@@ -90,7 +94,7 @@ documentation are exempt):
 | Prohibited | Instead |
 |---|---|
 | Natural-language copy (any script) | `t('key')` from `@i18n/index`, or `pages.*` |
-| A locale literal (`'zh-CN'`, `'en_US'`) | `activeLocale` / `ogLocale` from `@i18n/index`, or `site.locale` |
+| A locale literal (`'zh-CN'`, `'en_US'`) | `localeOfPath(Astro.url.pathname)` in a component; `site.locale` outside a render |
 | A brand string, domain, or email | `site.*` from `@config/site` |
 | A colour literal | a theme token via `var(--token)` |
 | A collection name in `getCollection('posts')` | `getEntries(type)` with a type from the registry |
@@ -118,6 +122,11 @@ degrading silently:
 | Mistake | What happens |
 |---|---|
 | `locale` has no message table | Build error listing how to add one |
+| A locale in `locales` has no message table | Build error naming each one |
+| `locale` is not listed in `locales` | Build error — the default locale is still a locale |
+| Two locales share a URL prefix | Build error naming both |
+| A locale prefix collides with a content type route or a fixed page | Build error naming the section it would shadow |
+| An `i18n:` block names a locale the site does not publish | Build error listing the declared ones |
 | `theme.name` has no CSS file | Build error listing available themes |
 | A series references an unknown topic | Build error from the taxonomy loader |
 | A topic references an unknown pillar | Build error listing valid pillars |

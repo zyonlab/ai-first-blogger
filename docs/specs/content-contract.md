@@ -94,14 +94,14 @@ anyone reading the report.
 | C-05 | Title length | ≤ `seo.titleMaxWidth` display columns | warn | `dist/` | `rules/seo.ts` |
 | C-06 | Description length | `seo.descriptionMinWidth`–`descriptionMaxWidth` columns | warn | `dist/` | `rules/seo.ts` |
 | C-07 | Same-origin canonical | canonical origin == `site.url` origin | error | `dist/` | `rules/seo.ts` |
-| C-08 | Slug uniqueness & filename match | unique per type; filename == slug | error | `content/` | `rules/content.ts` |
+| C-08 | Slug uniqueness & filename match | unique per type **and language**; `translationKey` unique per language; filename == slug | error | `content/` | `rules/content.ts` |
 | C-09 | Heading hierarchy | no H1 in body, no skipped levels | error | `content/` | `rules/content.ts` |
 | C-10 | Breadcrumb schema matches the page | `BreadcrumbList` ⇒ visible breadcrumb | error | `dist/` | `rules/seo.ts` |
 | C-11 | Required base fields | `title`, `description`, `slug` present | error | `content/` | `rules/content.ts` |
 | C-12 | Theme token completeness | every theme defines the full token set | error | `site/themes/` | `rules/theme.ts` |
 | C-13 | No hardcoded colours outside themes | zero literal colours in engine CSS, components, layouts or site overrides | error | the installed `aifb-engine`, `site/templates/` | `rules/theme.ts` |
-| C-14 | Title uniqueness | no two pages share a `<title>` | error | `dist/` | `rules/onpage.ts` |
-| C-15 | Description uniqueness | no two pages share a meta description | error | `dist/` | `rules/onpage.ts` |
+| C-14 | Title uniqueness | no two pages share a `<title>`, unless they are `hreflang` translations of each other | error | `dist/` | `rules/onpage.ts` |
+| C-15 | Description uniqueness | no two pages share a meta description, unless they are `hreflang` translations of each other | error | `dist/` | `rules/onpage.ts` |
 | C-16 | Exactly one H1 | every page has one, and only one | error | `dist/` | `rules/onpage.ts` |
 | C-17 | Images carry alt text | every `<img>` has an `alt` attribute | error | `dist/` | `rules/onpage.ts` |
 | C-18 | Anchor text carries meaning | no "点击这里" / "read more" links | warn | `dist/` | `rules/onpage.ts` |
@@ -116,6 +116,8 @@ anyone reading the report.
 | C-27 | Writing style floor | score ≥ `style.minScore`; off until a floor is set | warn | `content/` | `rules/quality.ts` |
 | C-28 | Every anchor is followable | no `<a>` with a missing, empty or `javascript:` href | error | `dist/` | `rules/onpage.ts` |
 | C-29 | Rendered heading order | no level skipped in the built outline | error | `dist/` | `rules/onpage.ts` |
+| C-30 | hreflang is true and reciprocal | every alternate was built, the set includes the page itself, both sides claim each other, `x-default` is in the set | error | `dist/` | `rules/locale.ts` |
+| C-31 | A translation says something different | two languages of one page do not share a `<title>` | warn | `dist/` | `rules/locale.ts` |
 
 ### Display columns, not characters
 
@@ -123,6 +125,31 @@ C-05 and C-06 measure **display width**: a CJK character occupies two columns in
 search result, so a 40-character Chinese title is as long as an 80-character English
 one. Counting width instead of `String.length` makes one threshold correct in any
 locale. Implemented in `packages/cli/src/validate/html.ts:displayWidth`.
+
+### The rules that only exist on a translated site
+
+C-30 and C-31 are silent until `site/site.yaml` declares more than one locale,
+and the URL-shape rules — C-04, C-10, C-19, C-21, C-22, C-23 — measure from the
+engine's root **in its own language**, subtracting the locale prefix the same way
+they subtract the mount. `/en/writing/` is a listing page; counted from the origin
+it looks like a detail page, and the rule stops matching rather than failing.
+
+C-30 is the one that matters. Everything else about publishing in two languages
+is visible when you look at the site; an `hreflang` pointing at a page that was
+never built is visible only to a crawler, and what it produces is a soft 404 with
+a reference from the page it is impersonating.
+
+C-31 is a warning on purpose: translating copy lands after routing does, and a
+section should be able to go live before every string in it has. It fires on a
+legitimately identical title too — "Uses" is "Uses" in both languages — which is
+why it warns rather than blocks.
+
+The pair also replaces something rather than only adding to it. C-14 and C-15
+used to call two languages of one article duplicate content, which would have
+failed a bilingual site on every page it translated. They now skip a reciprocal
+`hreflang` pair, and C-30 proves the pair is real while C-31 reports the one
+whose copy was never translated — so "not a duplicate" cannot quietly become
+"not checked".
 
 ### Notes on specific rules
 
@@ -163,19 +190,28 @@ the build rather than shipping.
 **C-10** — structured data must describe what is on the page. Detail pages render
 `<Breadcrumbs />`; list pages pass `breadcrumbs` to `PageLayout`.
 
-### Rules that read URL shape, and a mounted engine
+### Rules that read URL shape, under a mount or a second language
 
 C-04, C-10, C-19, C-21, C-22, C-23 and C-25 all decide something from the segments
 of a URL: one segment is a listing page, two is a detail page, `/` is the home
-page nothing has to link to. When the engine is mounted under a prefix
-(`engine({ mount: '/zh/blog' })`) they measure from the engine's root, not the
-origin's — otherwise every listing page files as a detail page and the rules stop
-matching what they were written for, silently.
+page nothing has to link to. Two things put segments in front of that:
 
-The mount comes from `.aifb/build.json`, written by the build; `AIFB_MOUNT`
-overrides it. The arithmetic is `packages/cli/src/validate/url.ts`, and
-`pnpm validate:self-test` exercises fourteen mounted cases, each asserting a rule
-still fires or still stays quiet.
+```
+/zh/blog/en/writing/my-post/
+^^^^^^^^ mount        where the host installed the engine
+         ^^ locale    which language this copy of the page is
+            ^^^^^^^^^^^^^^^^ what the rule is actually asking about
+```
+
+Both are subtracted, mount first, before any rule counts anything — otherwise
+every listing page files as a detail page and the rules stop matching what they
+were written for, silently.
+
+Both come from `.aifb/build.json`, written by the build; `AIFB_MOUNT` overrides
+the mount. The arithmetic is `packages/cli/src/validate/url.ts`, and
+`pnpm validate:self-test` exercises fourteen mounted cases and twenty-two
+translated ones, each asserting a rule still fires or still stays quiet, plus the
+mounted *and* translated composition.
 
 Two consequences worth knowing while writing:
 
@@ -185,6 +221,9 @@ Two consequences worth knowing while writing:
 - A link to a page *outside* the mount belongs to the host site, which C-25 knows
   nothing about, so it does not judge it. C-03 still does, against the pages the
   build produced.
+- A link that names a language resolves against that language. `/en/writing/x/`
+  written in a Chinese article is a deliberate cross-language link and C-25
+  checks it against the English entries, not against all of them.
 
 ## What the gate is, and is not
 
@@ -279,7 +318,9 @@ report without re-deriving the intent.
    (`content.ts` for source, `seo.ts` for built HTML, `links.ts` for the link graph,
    `theme.ts` for the theme layer).
 3. Add a self-test case in `packages/cli/src/validate/self-test.ts` — one context that must
-   trip the rule and one that must not.
+   trip the rule and one that must not. If the rule reads a URL, add a mounted
+   case and a translated case too: those do not fail when they are wrong, they
+   stop matching.
 4. `pnpm validate:self-test` must stay green.
 
 Step 3 is not optional. A validation suite reporting zero errors is

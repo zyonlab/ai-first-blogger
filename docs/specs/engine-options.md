@@ -4,12 +4,12 @@ Everything `engine()` takes, in `astro.config.mjs`. A site that is only a blog
 needs none of them.
 
 ```js
-import { engine } from 'aifb-engine';
+import { engine, sitemapOptions } from 'aifb-engine';
 
 export default defineConfig({
   integrations: [
     mdx(),
-    sitemap(),
+    sitemap(sitemapOptions()),
     engine({
       cloudflare: true,               // emit _redirects and _headers
       themesDir: 'site/themes',       // where the token files live
@@ -28,6 +28,19 @@ export default defineConfig({
 | `templatesDir` | `'site/templates'` | Where the site keeps markup overrides — see [templates.md](./templates.md). |
 | `mount` | `'/'` | The prefix every injected route lives under. |
 | `pages` | all | Whitelist of the fixed pages: `about`, `newsletter`, `series`, `topics`, `uses`, `work-with-me`. |
+
+There is one export beside `engine()`. `sitemapOptions()` returns what
+`@astrojs/sitemap` needs to know about the site's languages — `{}` until
+`site/site.yaml` declares more than one, so `sitemap(sitemapOptions())` is
+`sitemap()` for every site that has not. The sitemap integration stays the
+site's: a preview build drops it and a host site may already have one, so the
+engine answers only the question that requires reading `site.yaml`. See
+[i18n.md](./i18n.md).
+
+**Languages are not an option here.** Which languages a site publishes is an
+intent fact and lives in `site/site.yaml`, not in `astro.config.mjs` — `mount` is
+about where the *package* was installed, and that is a different kind of
+decision. [ADR 0006](../adr/0006-i18n-routing.md) has the argument.
 
 ## Installing into a site that already exists
 
@@ -111,14 +124,36 @@ The root page, `/rss.xml`, `/llms.txt` and the content type routes are not
 governed by `pages`. A content type is declined by removing it from
 `site/content-types.yaml`.
 
+## A mount and a second language together
+
+Mount outside, locale inside:
+
+```
+engine({ mount: '/blog' }) + locales: { zh-CN: zh, en-US: en }
+
+/blog/       /blog/writing/       zh-CN
+/blog/en/    /blog/en/writing/    en-US
+```
+
+The mount is where the *host* put the engine, and the host may already serve
+`/en/` for pages of its own. The engine partitions the space it was given rather
+than claiming a new one.
+
+The other direction is the one to watch: a site whose host is already bilingual
+and mounts a single-language engine at `/zh/blog/` is doing what 0.3.0 supported
+and should **not** also declare `locales`. The language is in the mount already,
+and declaring it twice produces `/zh/blog/zh/`.
+
 ## What the gate does with it
 
 `pnpm validate` runs in its own process and does not read `astro.config.mjs`. The
-build records the mount in `.aifb/build.json`, and the rules that read meaning
-out of URL shape — C-04, C-10, C-19, C-21, C-22, C-23, C-25 — measure from the
-engine's root rather than the origin's. `AIFB_MOUNT` overrides it when driving
-the rules by hand.
+build records the mount **and the locales** in `.aifb/build.json`, and the rules
+that read meaning out of URL shape — C-04, C-10, C-19, C-21, C-22, C-23, C-25 —
+measure from the engine's root in its own language rather than from the origin.
+`AIFB_MOUNT` overrides the mount when driving the rules by hand.
 
-Verified by `pnpm validate:self-test` (14 mounted cases, each asserting a rule
-still fires or still stays quiet) and by the mount scenarios in
-`pnpm test:scenarios`, which drive the real option through `astro.config.mjs`.
+Verified by `pnpm validate:self-test` (14 mounted cases and 22 translated ones,
+each asserting a rule still fires or still stays quiet, plus the mounted *and*
+translated composition) and by the scenarios in `pnpm test:scenarios`, which
+drive the real option through `astro.config.mjs` and the real `locales:` through
+`site/site.yaml`.

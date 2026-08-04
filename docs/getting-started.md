@@ -43,6 +43,9 @@ title: Your Site · what it is for      # home page <title>
 description: ...                       # one sentence, ≤160 display columns (C-06)
 url: https://your-domain.com           # overridden by PUBLIC_SITE_URL in CI
 locale: zh-CN                          # needs packages/engine/i18n/<locale>.ts
+# locales:                             # optional — omit it and the site is one language
+#   zh-CN: zh                          #   default: served at the root, no prefix
+#   en-US: en                          #   others: served under /en/
 theme:
   name: default                        # a file in site/themes/
   storageKey: your-site-theme          # avoid clashing with other sites
@@ -58,6 +61,12 @@ bug in the engine, not a step you missed.
 
 Not in English or Chinese? See [`recipes/add-locale.md`](./recipes/add-locale.md)
 first — `site.locale` must have a message table or the build stops with instructions.
+
+Publishing in **two** languages is the `locales` block above: the default keeps the
+root, the others get a prefix, and translations go in `content/<type>/<prefix>/`.
+Leave `locales` out until you need it — a single-language site behaves exactly as
+it did before the option existed. [`specs/i18n.md`](./specs/i18n.md) has the whole
+of it.
 
 ## 3. Taxonomy and page copy (8 min)
 

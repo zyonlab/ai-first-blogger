@@ -49,7 +49,7 @@ Every command runs through `npx aifb`, so nothing depends on this repository's
 ```bash
 npx aifb context write      # exactly what drafting an article needs — voice,
                             # categories, and the pages that actually exist to link to
-npx aifb validate           # planning preflight, then 29 rules → validate-report.json
+npx aifb validate           # planning preflight, then 31 rules → validate-report.json
 npx aifb analyze            # writing style → content-report.json
 npx aifb context status     # both reports merged, stale ones flagged
 npx aifb env                # versions, for a bug report
@@ -107,6 +107,7 @@ yet.
 | Add a content type | 1 yaml block + 1 engine file + 1 content directory |
 | Add a theme | 1 CSS file + 1 line |
 | Add a locale | 1 message file + 2 lines |
+| Publish the same site in two languages | `locales:` in `site/site.yaml`, then `i18n:` blocks for the copy |
 | Change what counts as publishable | `site/policy.yaml` |
 | Change the writing voice | `site/voice.md` |
 | Change what the SEO gate enforces | `site/policy.yaml` |
@@ -127,7 +128,7 @@ pnpm context setup|type|status
 pnpm dev                  # dev server
 pnpm check                # types
 pnpm build                # static build to dist/
-pnpm validate             # planning preflight + content/SEO gate (29 rules)
+pnpm validate             # planning preflight + content/SEO gate (31 rules)
 pnpm validate --strict    # warnings fail too
 pnpm validate:self-test   # prove every rule still catches its own violation
 pnpm test:scenarios       # drive the real pipeline: themes, voice, taxonomy, deploy
@@ -209,6 +210,42 @@ and **no** `/`, `/404` or `/robots.txt`: those belong to whoever owns the origin
 
 Options: [`docs/specs/engine-options.md`](docs/specs/engine-options.md).
 Reasoning: [`docs/adr/0005-mounting-the-engine.md`](docs/adr/0005-mounting-the-engine.md).
+
+### Publishing the same site in two languages
+
+The default language keeps the root; every other one gets a prefix. Declared in
+the intent layer, because which languages a site publishes is the same kind of
+decision as what it writes about:
+
+```yaml
+# site/site.yaml
+locale: zh-CN        # the default: served at the root
+locales:
+  zh-CN: zh
+  en-US: en
+```
+
+```
+/            /writing/       /topics/x/      zh-CN
+/en/         /en/writing/    /en/topics/x/   en-US
+```
+
+A translation is a file in `content/posts/en/`, paired with its original by
+`translationKey` — which defaults to the slug, so a translation that keeps its
+slug needs no field at all. Copy is translated by an `i18n:` block on any mapping
+in `site/`, and `<html lang>`, `hreflang`, `x-default`, `og:locale`, the sitemap's
+`i18n` block and one feed per language all follow.
+
+The part worth stating: **an article that exists only in Chinese produces no
+English page and advertises no English URL.** A page built out of politeness for
+a translation nobody wrote is a soft 404 with an `hreflang` tag vouching for it,
+and rule C-30 fails the build rather than let one ship.
+
+Omit `locales` and none of this exists — a single-language site's output is
+byte-identical to one built before the option did.
+
+How: [`docs/specs/i18n.md`](docs/specs/i18n.md).
+Reasoning: [`docs/adr/0006-i18n-routing.md`](docs/adr/0006-i18n-routing.md).
 
 ## Content
 
