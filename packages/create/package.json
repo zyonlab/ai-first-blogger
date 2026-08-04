@@ -1,6 +1,6 @@
 {
   "name": "create-aifb",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Scaffold a new site: the skeleton, or a worked example to edit down.",
   "bin": {
