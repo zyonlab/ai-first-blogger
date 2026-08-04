@@ -614,6 +614,396 @@ try {
     expect(result.out.includes('engine({ pages'), 'the error should offer the other way out');
   });
 
+  console.log('\npublishing in two languages');
+
+  /* ---------------------------------------------------------------- *
+   * A site declares a second language in site/site.yaml. The default
+   * language stays at the engine's root and the other one goes behind a
+   * prefix — the shape every static-site i18n uses, and the one Astro's
+   * own routing uses.
+   *
+   * The defect this set exists for is not a build failure. It is the
+   * English page that builds *anyway*: empty, for an article nobody
+   * translated, carrying a hreflang tag telling Google it is the English
+   * version of a real page. That ships green, gets indexed, and is only
+   * visible from outside the build.
+   * ---------------------------------------------------------------- */
+
+  const EN_NAV_ALL = [
+    '      - { href: /series/, label: Series, order: 20 }',
+    '      - { href: /topics/, label: Topics, order: 30 }',
+    '      - { href: /about/, label: About, order: 80 }',
+    '      - { href: /work-with-me/, label: Work With Me, order: 90 }',
+  ];
+
+  /**
+   * Turn the loaded example into a bilingual one: the `locales` block, plus an
+   * `i18n:` block in each of the four files that carry copy. Nothing here
+   * touches the engine — this is the whole of what a site owner writes.
+   */
+  async function applyLocales(options: { nav?: string[] } = {}) {
+    const { nav = EN_NAV_ALL } = options;
+
+    await edit('site/site.yaml', [['locale: zh-CN\n', 'locale: zh-CN\nlocales:\n  zh-CN: zh\n  en-US: en\n']]);
+    await fs.appendFile(
+      path.join(root, 'site/site.yaml'),
+      [
+        '',
+        'i18n:',
+        '  en-US:',
+        '    title: Agent Notes · engineering an agent that survives production',
+        "    description: Field notes from moving a backend engineer's instincts into agent work — what broke, what it cost, what I would do differently.",
+        '    hero:',
+        '      eyebrow: from backend to agents',
+        '      title: Notes on agents that stay up',
+        '      description: What broke, what it cost, and the judgement I would keep.',
+        '      actions:',
+        '        - { label: Read the notes, href: /writing/, variant: primary }',
+        '        - { label: Reading paths, href: /series/ }',
+        '    services:',
+        '      title: Work with me',
+        '      description: Moving a blog onto this framework, deciding what its topics are, and the SEO work that can be written down as rules.',
+        '      contactText: Mail me with what you are trying to publish and what is in the way of publishing it.',
+        '    nav:',
+        ...nav,
+        '',
+      ].join('\n'),
+    );
+
+    // A topic's title and description are copy, so they localise like all copy
+    // in site/. Its slug, its pillar and which entries belong to it do not.
+    await edit('site/taxonomy.yaml', [
+      [
+        '  llm-reliability:\n    title: 可靠性与降级\n',
+        '  llm-reliability:\n    i18n:\n      en-US:\n        title: Reliability and fallbacks\n' +
+          '        description: The model times out, changes its mind, and makes things up. On a backend those are exceptions; here they are the normal case.\n' +
+          '    title: 可靠性与降级\n',
+      ],
+      [
+        '  agent-in-production:\n    title: Agent 上生产\n',
+        '  agent-in-production:\n    i18n:\n      en-US:\n        title: Agents in production\n' +
+          '        description: Reliability, evaluation and cost, one approach each, and how to choose when the three of them disagree.\n' +
+          '    title: Agent 上生产\n',
+      ],
+    ]);
+
+    // A content type's labels are copy too. `route` is not: /writing/ and
+    // /en/writing/ stay parallel on purpose.
+    await edit('site/content-types.yaml', [
+      [
+        'posts:\n  route: writing\n',
+        'posts:\n  route: writing\n  i18n:\n    en-US:\n      listTitle: Notes\n' +
+          '      listDescription: Most of these start from something that broke in production — what the alert said, which wrong turns the investigation took, and which default I changed.\n',
+      ],
+    ]);
+
+    await fs.appendFile(
+      path.join(root, 'site/pages.yaml'),
+      [
+        '',
+        'i18n:',
+        '  en-US:',
+        '    topics:',
+        '      title: By topic',
+        '      description: Filed by the problem rather than by the date, so the articles about one problem can be read together.',
+        '    series:',
+        '      title: Reading paths',
+        '      description: The ones meant to be read in order. Each says where it starts and what you should already know.',
+        '    about:',
+        '      title: About this site',
+        '      sections:',
+        '        - { heading: What this site is for, body: siteDescription }',
+        '        - { heading: Who writes it, body: authorBio }',
+        '        - { heading: What it covers, body: keywords }',
+        '        - { heading: Working together, body: services }',
+        '    newsletter:',
+        '      title: The mailing list',
+        '      description: One email when there is a new post-mortem or a new set of notes. Twice a month at the very most.',
+        '      body: There is no subscription service yet. Mail me and I will add you by hand.',
+        '      action: Mail me to subscribe',
+        '    uses:',
+        '      title: What I use',
+        '      description: The tools actually in use right now, and why each one. This page changes when they do, and not otherwise.',
+        '      items:',
+        '        - { name: Editor, body: VS Code for code and Cursor for the large repetitive edits. }',
+        '        - { name: Deploy, body: Cloudflare Pages. The free tier covers a personal site and there is no cold start. }',
+        '    workWithMe:',
+        '      action: Send an email',
+        '      services:',
+        '        - { name: Move an existing blog here, body: Ghost or WordPress export to MDX with the old URLs kept as redirects. }',
+        '        - { name: Structure the content, body: Deciding what the topics are before the articles make that expensive to change. }',
+        '',
+      ].join('\n'),
+    );
+  }
+
+  const localiseExample = async (options: { nav?: string[] } = {}) => {
+    await loadExample();
+    await applyLocales(options);
+  };
+
+  /**
+   * One English article, paired with a Chinese one by `translationKey` and
+   * carrying a slug of its own.
+   *
+   * The localised slug is the case worth proving: an English article deserves an
+   * English URL, which means the pairing cannot come from the path and cannot
+   * come from the slug either. Everything hreflang says about this pair comes
+   * from that one field.
+   */
+  async function writeTranslation(prefix = '') {
+    const dir = path.join(root, 'content/posts/en');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'retries-made-it-worse.mdx'),
+      [
+        '---',
+        'title: Three retries to five cost 4.7 seconds',
+        'description: A change that looked obviously right took P99 from 2.1s to 6.8s and added $40 a month. Here is the arithmetic I did at the time.',
+        'slug: retries-made-it-worse',
+        'translationKey: why-retries-made-it-worse',
+        'pubDate: 2026-08-03',
+        'category: llm-reliability',
+        'tags: [retries, latency, cost]',
+        'series: agent-in-production',
+        'seriesOrder: 1',
+        '---',
+        '',
+        '## The conclusion first',
+        '',
+        'Going from 3 retries to 5 moved tool-call success from 91% to 94%, moved P99',
+        'from 2.1s to 6.8s, and added about $40 a month. For a user sitting there waiting',
+        'for an answer that was not worth it, so we went back to 3 and changed the failure',
+        'path to retry with a shorter prompt instead.',
+        '',
+        '## The number I got wrong',
+        '',
+        'I budgeted the retry against the average call, which was 400ms. The calls that',
+        'fail are not average calls: they are the long ones, already near the timeout, and',
+        'retrying them twice more meant paying the worst case three times over. Measuring',
+        'against the p99 of failing calls rather than the mean of all calls would have',
+        'shown the 4.7 seconds before any of it shipped. The rest of',
+        `[this topic](${prefix}/en/topics/llm-reliability/) and the`,
+        `[series](${prefix}/en/series/agent-in-production/) it belongs to have more of the same.`,
+        '',
+        '## What I would do differently',
+        '',
+        'Decide the latency budget first and let it decide the retry count, rather than',
+        'picking a retry count and discovering the latency afterwards. A retry is a product',
+        'decision with a stopwatch attached, and on an agent it is being made against the',
+        'slowest requests you have. It took an incident and a bill to learn something a',
+        'spreadsheet would have told me in ten minutes.',
+      ].join('\n'),
+    );
+  }
+
+  await scenario('one language is still the whole site at the root', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'a single-language build should succeed');
+    expect(!(await exists('dist/en')), 'nothing should be published under a locale prefix');
+    const home = await dist('index.html');
+    expect(home.includes('lang="zh-CN"'), 'the html lang should be the site locale');
+    expect(!home.includes('rel="alternate"'), 'a single-language site must not emit hreflang at all');
+    const info = JSON.parse(await fs.readFile(path.join(root, '.aifb/build.json'), 'utf8'));
+    expect(info.locales.length === 1, `one locale should be recorded, got ${JSON.stringify(info.locales)}`);
+  });
+
+  await scenario('a second language is served under its prefix, the default at the root', async () => {
+    await localiseExample();
+    await writeTranslation();
+    const result = await build();
+    expect(result.code === 0, `a two-language build should succeed:\n${result.out.slice(-600)}`);
+    expect(result.out.includes('zh-CN, en-US'), `the build should report both locales:\n${result.out.slice(-400)}`);
+
+    for (const file of ['index.html', 'about/index.html', 'writing/index.html', 'writing/retries-made-it-worse/index.html', 'rss.xml', 'llms.txt']) {
+      expect(await exists(`dist/en/${file}`), `dist/en/${file} should be built`);
+    }
+    // The default language keeps every URL it had.
+    for (const file of ['index.html', 'about/index.html', 'writing/why-retries-made-it-worse/index.html', 'robots.txt', '404.html']) {
+      expect(await exists(`dist/${file}`), `the default locale should still have dist/${file}`);
+    }
+    expect(!(await exists('dist/en/404.html')), 'a 404 belongs to the origin, not to a language');
+    expect(!(await exists('dist/en/robots.txt')), 'one robots.txt per host, and it is not under a prefix');
+
+    const en = await dist('en/index.html');
+    expect(en.includes('lang="en-US"'), 'the English page should declare its language');
+    expect(en.includes('Notes on agents that stay up'), 'the English hero copy should come from the i18n block');
+    expect(en.includes('og:locale" content="en_US"'), 'og:locale should follow the page');
+    expect(en.includes('og:locale:alternate" content="zh_CN"'), 'the other language should be advertised to Open Graph');
+    expect(en.includes('href="/en/writing/"'), 'the English nav should link into the English section');
+    expect(en.includes('>Notes<'), "a content type's label should come from its own i18n block");
+    expect((await dist('index.html')).includes('>Writing<'), 'and the default language keeps its own');
+
+    // The taxonomy is one vocabulary read through two languages.
+    expect((await dist('en/topics/llm-reliability/index.html')).includes('Reliability and fallbacks'), 'the topic title should be the English one');
+    expect((await dist('topics/llm-reliability/index.html')).includes('可靠性与降级'), 'and the default one unchanged');
+  });
+
+  await scenario('hreflang pairs both ways, with x-default on the root language', async () => {
+    await localiseExample();
+    await writeTranslation();
+    expect((await build()).code === 0, 'a two-language build should succeed');
+
+    const links = (html: string) =>
+      new Map(
+        [...html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)].map(
+          (match) => [match[1]!, match[2]!] as const,
+        ),
+      );
+
+    for (const [where, html] of [
+      ['the Chinese article', await dist('writing/why-retries-made-it-worse/index.html')],
+      ['the English article', await dist('en/writing/retries-made-it-worse/index.html')],
+    ] as const) {
+      const tags = links(html);
+      expect(tags.get('zh-CN')?.endsWith('/writing/why-retries-made-it-worse/') === true, `${where} should point at the Chinese URL`);
+      expect(tags.get('en-US')?.endsWith('/en/writing/retries-made-it-worse/') === true, `${where} should point at the English URL`);
+      expect(tags.get('x-default') === tags.get('zh-CN'), `${where}: x-default should be the default language`);
+    }
+
+    /**
+     * …and the sitemap says the same thing, via @astrojs/sitemap's i18n option.
+     *
+     * It pairs by path-after-the-prefix, so it covers every URL that is the
+     * same in both languages — the roots, the listings, the fixed pages — and
+     * cannot pair an article whose English slug differs from its Chinese one.
+     * That article is paired by the `<link rel="alternate">` tags asserted
+     * above, which Google documents as an equivalent signal; a sitemap
+     * annotation is an alternative to them, not an addition. Asserted here so
+     * the limit is a stated fact rather than something a reader discovers.
+     */
+    const sitemap = await dist('sitemap-0.xml');
+    expect(sitemap.includes('xhtml:link'), 'the sitemap should carry alternates');
+    expect(
+      sitemap.includes('hreflang="en-US" href="https://agent-notes.example.dev/en/about/"'),
+      `the sitemap should pair the pages whose path is the same in both:\n${sitemap.slice(0, 400)}`,
+    );
+    expect(
+      !sitemap.includes('/en/writing/retries-made-it-worse/"/><xhtml'),
+      'and the localised-slug article is paired in the page head instead',
+    );
+  });
+
+  await scenario('an article in one language does not produce a page in the other', async () => {
+    await localiseExample();
+    await writeTranslation();
+    expect((await build()).code === 0, 'a two-language build should succeed');
+
+    // backend-instincts-that-broke exists in Chinese only.
+    expect(await exists('dist/writing/backend-instincts-that-broke/index.html'), 'the Chinese article should be built');
+    expect(
+      !(await exists('dist/en/writing/backend-instincts-that-broke/index.html')),
+      'an untranslated article must not get an English URL',
+    );
+    expect(
+      !(await dist('writing/backend-instincts-that-broke/index.html')).includes('rel="alternate"'),
+      'and must not advertise a translation it does not have',
+    );
+
+    // The same rule one level up: a topic with no English entry has no English
+    // page, and neither does a series.
+    expect(await exists('dist/topics/from-backend/index.html'), 'the topic exists in Chinese');
+    expect(!(await exists('dist/en/topics/from-backend/index.html')), 'and not in English, where it would be empty');
+    expect(
+      !(await exists('dist/en/series/first-year-with-agents/index.html')),
+      'a series with no English entry has no English page either',
+    );
+
+    // The feeds are per language and carry only that language.
+    const feed = await dist('en/rss.xml');
+    expect(feed.includes('/en/writing/retries-made-it-worse/'), 'the English feed should carry the English article');
+    expect(!feed.includes('backend-instincts-that-broke'), 'and must not carry an article nobody translated');
+    expect((await dist('en/llms.txt')).includes('/en/writing/retries-made-it-worse/'), 'llms.txt should be per language too');
+
+    const result = await validate();
+    expect(result.code === 0, `and the whole thing should pass the gate:\n${result.out.slice(-800)}`);
+    const report = JSON.parse(await fs.readFile(path.join(root, 'validate-report.json'), 'utf8'));
+    expect(report.localePrefixes.join() === 'en', `the report should record the prefixes, got ${report.localePrefixes}`);
+    expect(report.errors === 0 && report.warnings === 0, 'a translated example should have no findings');
+  });
+
+  await scenario('the gate catches an hreflang pointing at a page nobody built', async () => {
+    await localiseExample();
+    await writeTranslation();
+    expect((await build()).code === 0, 'a two-language build should succeed');
+    expect((await validate()).code === 0, 'and pass, before anything is broken');
+
+    // The translation goes away and the tags that advertised it stay: a
+    // half-reverted translation, or an override computing its own alternates.
+    // Both build green, and both tell a crawler an empty URL is the English
+    // version of a real page.
+    await fs.rm(path.join(root, 'dist/en/writing/retries-made-it-worse'), { recursive: true, force: true });
+
+    const result = await validate();
+    expect(result.code !== 0, 'an hreflang pointing at a missing page must block publishing');
+    expect(result.out.includes('C-30'), `the report should name the rule:\n${result.out.slice(-800)}`);
+    expect(
+      result.out.includes('/en/writing/retries-made-it-worse/'),
+      'and name the URL that does not exist',
+    );
+  });
+
+  await scenario('untranslated copy is reported rather than shipped quietly', async () => {
+    // Everything above translates the copy. This is the site that declared a
+    // second language and translated nothing: it is not an error — a section
+    // can go live before every string in it does — but it must not be silent.
+    await loadExample();
+    await edit('site/site.yaml', [['locale: zh-CN\n', 'locale: zh-CN\nlocales:\n  zh-CN: zh\n  en-US: en\n']]);
+    await writeTranslation();
+    expect((await build()).code === 0, 'an untranslated second language should still build');
+
+    const result = await validate();
+    expect(result.out.includes('C-31'), `the gate should report the untranslated pages:\n${result.out.slice(-800)}`);
+    const report = JSON.parse(await fs.readFile(path.join(root, 'validate-report.json'), 'utf8'));
+    const untranslated = report.violations.filter((item: { rule: string }) => item.rule === 'C-31');
+    expect(untranslated.length > 0, 'C-31 should have found the pages whose copy never changed');
+    expect(
+      untranslated.every((item: { severity: string }) => item.severity === 'warn'),
+      'and should warn rather than block — translating copy lands after the routing does',
+    );
+    // …and the pair it reports is not also reported as duplicate content.
+    const duplicates = report.violations.filter((item: { rule: string }) => item.rule === 'C-14' || item.rule === 'C-15');
+    expect(
+      duplicates.length === 0,
+      `translations are not duplicate content: ${duplicates.map((item: { file: string }) => item.file).join(', ')}`,
+    );
+  });
+
+  await scenario('a mounted engine and a second language compose in that order', async () => {
+    await mountExample(`{ mount: '${MOUNT}', pages: ['topics', 'series'] }`);
+    await applyLocales({
+      nav: [
+        '      - { href: /series/, label: Series, order: 20 }',
+        '      - { href: /topics/, label: Topics, order: 30 }',
+      ],
+    });
+    await writeTranslation(MOUNT);
+
+    const result = await build();
+    expect(result.code === 0, `a mounted, translated build should succeed:\n${result.out.slice(-800)}`);
+
+    // Mount outside, locale inside — and nothing at the origin root.
+    expect(await exists(`dist${MOUNT}/index.html`), 'the default language sits at the mount root');
+    expect(await exists(`dist${MOUNT}/en/index.html`), 'the other language sits one level inside it');
+    expect(await exists(`dist${MOUNT}/en/writing/retries-made-it-worse/index.html`), 'and so do its articles');
+    expect(!(await exists('dist/en')), 'the locale prefix must not escape the mount');
+    expect(!(await exists('dist/index.html')), 'and the origin root still belongs to the host');
+
+    const en = await dist(`${MOUNT}/en/index.html`);
+    expect(en.includes('lang="en-US"'), 'the English page should declare its language');
+    expect(en.includes(`href="${MOUNT}/en/writing/"`), `nav links should carry both prefixes: ${MOUNT}/en/writing/`);
+
+    const article = await dist(`${MOUNT}/en/writing/retries-made-it-worse/index.html`);
+    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(article)?.[1] ?? '';
+    expect(canonical.endsWith(`${MOUNT}/en/writing/retries-made-it-worse/`), `canonical should carry both: ${canonical}`);
+    expect(
+      article.includes(`hreflang="zh-CN" href="https://agent-notes.example.dev${MOUNT}/writing/why-retries-made-it-worse/"`),
+      'and so should the hreflang pointing back at the other language',
+    );
+
+    const gate = await validate();
+    expect(gate.code === 0, `a mounted, translated site should pass the gate:\n${gate.out.slice(-900)}`);
+  });
   console.log('\ncustom writing voice');
 
   await scenario('site-specific signals fire, and are not hardcoded', async () => {
