@@ -7,9 +7,11 @@
 # schema, JSON-LD and card/detail components — is mechanism and lives in
 # engine/content-types/<name>.ts.
 #
-# Both halves must exist: a key here with no engine file (or the reverse) fails
-# the build by name. That is deliberate — a content type that exists in only one
-# of the two places is exactly how case-studies once shipped as orphan pages.
+# The engine offers content types; this file decides which ones are published.
+# An engine type nobody declares here is simply not published — that is how a
+# site declines a type it does not want, without deleting anything the engine
+# ships. Only the reverse fails the build by name: a key here with no engine
+# module means the site asked for something that does not exist.
 #
 # `surfaces`: omitting one means "not there".
 #   nav    sort weight in the main navigation; omit to stay out of the nav
@@ -36,7 +38,7 @@ videos:
   route: videos
   label: Video
   listTitle: Videos
-  listDescription: TODO 这个分区写什么。不做视频就删掉整个 videos 块和 engine/content-types/videos.ts。
+  listDescription: TODO 这个分区写什么。不做视频就删掉整个 videos 块，引擎那半边不用动。
   surfaces:
     nav: 40
     home: { limit: 3, order: 30 }
