@@ -16,7 +16,8 @@
  *
  * The merge, and the history behind the asymmetry: ../content-types/index.ts.
  */
-import { fail, KEBAB_CASE, readYaml } from './load';
+import { fail, KEBAB_CASE, localised, readYaml } from './load';
+import { defaultLocale, siteLocales } from './site';
 
 const FILE = 'site/content-types.yaml';
 
@@ -70,7 +71,8 @@ export type SiteContentType = {
   listTagCloud?: boolean;
 };
 
-const raw = readYaml<Record<string, SiteContentType>>('content-types.yaml');
+const document = readYaml<Record<string, Record<string, any>>>('content-types.yaml');
+const raw = localised(document, defaultLocale) as Record<string, SiteContentType>;
 
 /** Static page routes a content type must not shadow. */
 const RESERVED_ROUTES = new Set([
@@ -108,7 +110,48 @@ for (const [name, def] of Object.entries(raw)) {
   }
 }
 
+/**
+ * A locale prefix is a path segment like any other, and it is the *first* one.
+ * `locales: { en-US: writing }` would put the English site on top of the Writing
+ * section: two different pages claiming `/writing/`, one of which wins by
+ * whichever route Astro sorts first. Caught here rather than in site.ts because
+ * this is the file that knows what the sections are called.
+ */
+for (const locale of siteLocales) {
+  const clash = seenRoutes.get(locale.prefix);
+  if (clash) {
+    problems.push(
+      `locales."${locale.tag}" uses the prefix "${locale.prefix}", which is also "${clash}.route". ` +
+        'A locale prefix is the first URL segment and cannot be a section of the site.',
+    );
+  }
+  if (RESERVED_ROUTES.has(locale.prefix)) {
+    problems.push(
+      `locales."${locale.tag}" uses the prefix "${locale.prefix}", which is a static page of the engine's.`,
+    );
+  }
+}
+
 if (problems.length > 0) fail(FILE, problems);
 
 export const siteContentTypes = raw;
 export const declaredTypeNames = Object.keys(raw);
+
+const byLocale = new Map<string, Record<string, SiteContentType>>();
+
+/**
+ * The site's half of every content type, in one locale's copy.
+ *
+ * `route` is not localised and that is a decision, not an omission: one route
+ * per type keeps `/writing/` and `/en/writing/` parallel, so a page's
+ * translation is derivable from its own URL instead of from a lookup table. The
+ * *slug* of an individual entry is free to differ per language — that is what
+ * `translationKey` pairs — but the section it lives in is structure.
+ */
+export function siteContentTypesFor(locale: string = defaultLocale): Record<string, SiteContentType> {
+  const cached = byLocale.get(locale);
+  if (cached) return cached;
+  const merged = localised(document, locale) as Record<string, SiteContentType>;
+  byLocale.set(locale, merged);
+  return merged;
+}
