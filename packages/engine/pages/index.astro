@@ -1,0 +1,108 @@
+---
+import { site } from '@config/site';
+import SeriesCard from '@components/SeriesCard.astro';
+import TopicCard from '@components/TopicCard.astro';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { getActiveSeries, getActiveTopics } from '@lib/taxonomy';
+import { entryPath, homeTypes, listPath } from '@content-types/index';
+import { getEntries } from '@lib/content';
+import { cardFor } from '@lib/renderers';
+import { t } from '@i18n/index';
+import { itemListSchema, websiteSchema, personSchema } from '@lib/schema';
+
+/** Home sections are derived from `surfaces.home` in the registry. */
+const topicList = await getActiveTopics();
+const seriesList = await getActiveSeries();
+
+const sections = await Promise.all(
+  homeTypes.map(async (type) => {
+    return {
+      type,
+      Card: cardFor(type.card),
+      entries: (await getEntries(type)).slice(0, type.surfaces.home!.limit),
+    };
+  }),
+);
+
+const featured = sections.flatMap(({ type, entries }) =>
+  entries.map((entry) => ({
+    name: entry.data.title as string,
+    description: entry.data.description as string,
+    url: entryPath(type, entry.data.slug),
+  })),
+);
+
+const jsonLd = [
+  websiteSchema(),
+  personSchema(),
+  itemListSchema(`${site.name} Featured Content`, featured),
+];
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <section class="hero">
+    <div>
+      <p class="eyebrow">{site.hero.eyebrow}</p>
+      <h1>{site.hero.title}</h1>
+      <p>{site.hero.description}</p>
+      <div class="actions">
+        {site.hero.actions.map((action) => (
+          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={action.href}>{action.label}</a>
+        ))}
+      </div>
+    </div>
+    <div class="hero-panel">
+      <p class="eyebrow">{t('home.focusMap')}</p>
+      <div class="signal-grid">
+        {site.hero.signals.map((signal) => <span>{signal}</span>)}
+      </div>
+    </div>
+  </section>
+
+  {topicList.length > 0 && (
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">{t('home.topics.eyebrow')}</p>
+        <h2>{t('home.topics.title')}</h2>
+      </div>
+      <p>{t('home.topics.description')}</p>
+    </div>
+    <div class="grid">
+      {topicList.map((topic) => <TopicCard topic={topic} />)}
+    </div>
+  </section>
+  )}
+
+  {seriesList.length > 0 && (
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">{t('home.series.eyebrow')}</p>
+        <h2>{t('home.series.title')}</h2>
+      </div>
+      <a class="button" href="/series/">{t('home.series.viewAll')}</a>
+    </div>
+    <div class="grid">
+      {seriesList.map((item) => <SeriesCard item={item} />)}
+    </div>
+  </section>
+  )}
+
+  {sections.map(({ type, Card, entries }) => (
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">{type.label}</p>
+          <h2>{type.listTitle}</h2>
+        </div>
+        <a class="button" href={listPath(type)}>{t('home.viewAll', { label: type.listTitle })}</a>
+      </div>
+      <div class={type.listLayout ?? 'grid'}>
+        {entries.length > 0
+          ? entries.map((entry) => <Card entry={entry} type={type} />)
+          : <p>{t('home.empty')}</p>}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

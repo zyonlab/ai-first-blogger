@@ -1,0 +1,89 @@
+name: "Gate: a rule is wrong"
+description: A C-nn rule blocked something correct, or let something broken through.
+title: "[C-nn] "
+labels: ["gate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The gate decides whether a site can publish, so a rule that is wrong is
+        expensive in both directions — a false positive makes people silence it,
+        and a miss means the gate was never protecting what it claimed to.
+
+        **Before filing, check whether it is a threshold rather than a rule.**
+        Most numbers live in `site/policy.yaml` and are yours to change. If the
+        number is wrong *for your site*, change it there. File here when the rule
+        is wrong for everyone, or when the threshold you need does not exist.
+
+        Two of this project's rules were relaxed after reports like this — the
+        description-length floor was lowered twice because it kept flagging good
+        short sentences. A rule that fires on correct content gets ignored, and
+        an ignored rule protects nothing.
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way is it wrong?
+      options:
+        - False positive — it blocked something that is fine
+        - Miss — it passed something that is actually broken
+        - Message — it fired correctly but the `fix` text did not help
+    validations:
+      required: true
+
+  - type: input
+    id: rule
+    attributes:
+      label: Rule
+      placeholder: "C-21"
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: The content or markup it judged
+      description: >
+        The smallest thing that reproduces it — an article's frontmatter and a
+        paragraph, or the built HTML of one element. Not the whole file.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: What the report said
+      description: >
+        The entry from `validate-report.json`, not the console line — it carries
+        the `fix` field, and for a "Message" report that field is the subject.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should it have said, and why
+      description: >
+        If this is a miss, what would the defect have cost in production? A rule
+        earns its place by the failure it prevents.
+    validations:
+      required: true
+
+  - type: textarea
+    id: policy
+    attributes:
+      label: Relevant part of your site/policy.yaml
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `npx aifb env`.
+      render: text
+    validations:
+      required: true

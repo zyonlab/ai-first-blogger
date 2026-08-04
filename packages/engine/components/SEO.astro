@@ -1,0 +1,63 @@
+---
+import { site } from '@config/site';
+import { absoluteUrl } from '@lib/seo';
+import { ogLocale } from '@i18n/index';
+
+type Props = {
+  title: string;
+  description: string;
+  canonical?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  publishedTime?: Date | string;
+  modifiedTime?: Date | string;
+  tags?: string[];
+};
+
+const {
+  title,
+  description,
+  canonical = Astro.url.pathname,
+  image = site.og.default,
+  type = 'website',
+  noindex = false,
+  publishedTime,
+  modifiedTime,
+  tags = [],
+} = Astro.props;
+
+// The home page uses site.title verbatim; every other page goes through the
+// site's own title template (site/site.yaml → titleTemplate).
+// A preview deploy is the same site on another hostname; indexing it splits
+// the authority of every page with its production twin.
+const isPreview = import.meta.env.DEPLOY_CONTEXT === 'preview';
+
+const pageTitle =
+  title === site.name
+    ? site.title
+    : site.titleTemplate.replace('{title}', title).replace('{name}', site.name);
+const canonicalUrl = absoluteUrl(canonical);
+const imageUrl = absoluteUrl(image);
+---
+
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content={site.author.name} />
+<meta name="robots" content={noindex || isPreview ? 'noindex,nofollow' : 'index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1'} />
+<link rel="canonical" href={canonicalUrl} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={type} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:image" content={imageUrl} />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:locale" content={ogLocale} />
+{type === 'article' && publishedTime && <meta property="article:published_time" content={new Date(publishedTime).toISOString()} />}
+{type === 'article' && modifiedTime && <meta property="article:modified_time" content={new Date(modifiedTime).toISOString()} />}
+{type === 'article' && <meta property="article:author" content={site.author.name} />}
+{type === 'article' && tags.map((tag) => <meta property="article:tag" content={tag} />)}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={pageTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={imageUrl} />

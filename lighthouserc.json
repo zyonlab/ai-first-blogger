@@ -1,0 +1,76 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "./dist",
+      "numberOfRuns": 1,
+      "maxAutodiscoverUrls": 0,
+      "settings": {
+        "onlyCategories": [
+          "seo",
+          "accessibility",
+          "best-practices"
+        ],
+        "skipAudits": [
+          "uses-http2"
+        ]
+      }
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": ".*/404\\.html$",
+          "assertions": {
+            "categories:seo": "off",
+            "is-crawlable": "off",
+            "categories:accessibility": [
+              "warn",
+              {
+                "minScore": 0.9
+              }
+            ]
+          }
+        },
+        {
+          "matchingUrlPattern": "^(?!.*404\\.html).*$",
+          "assertions": {
+            "categories:seo": [
+              "error",
+              {
+                "minScore": 0.95
+              }
+            ],
+            "categories:accessibility": [
+              "warn",
+              {
+                "minScore": 0.9
+              }
+            ],
+            "categories:best-practices": [
+              "warn",
+              {
+                "minScore": 0.9
+              }
+            ],
+            "meta-description": "error",
+            "document-title": "error",
+            "html-has-lang": "error",
+            "crawlable-anchors": "error",
+            "is-crawlable": "error",
+            "image-alt": "error",
+            "link-text": "warn",
+            "hreflang": "off",
+            "structured-data": "off",
+            "canonical": "off",
+            "color-contrast": "warn",
+            "heading-order": "warn",
+            "landmark-one-main": "warn"
+          }
+        }
+      ]
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "./lighthouse-report"
+    }
+  }
+}

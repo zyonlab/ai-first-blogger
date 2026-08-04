@@ -1,0 +1,77 @@
+name: Release
+
+# Publishing is triggered by a tag, not by a push to main.
+#
+# The three packages release as a set, and `create-aifb` pins the other two at
+# its own version — so "what is released" has to be one deliberate act with one
+# version number, not a side effect of merging.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  release:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # Full history: the release check compares packages/ against the
+        # previous tag, which a shallow clone cannot see.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The framework's own tests gate the release for the same reason they gate
+      # the deploy: `pnpm build` proves the site renders, not that the checks
+      # inside these packages are still wired to anything.
+      # The scaffold's template is generated from this repository at build time
+      # and is not committed, so the release check has nothing to inspect until
+      # this has run. `prepublishOnly` does it before a real publish — which is
+      # too late for a check whose whole job is to run *before* one.
+      - name: Build the packages
+        run: pnpm --filter aifb-cli --filter create-aifb build
+
+      - name: Every rule still catches its own violation
+        run: pnpm validate:self-test
+
+      - name: The pipeline still behaves across layers
+        run: pnpm test:scenarios
+
+      # The tag argument is what makes the check assert "this tag matches these
+      # packages". On a workflow_dispatch from a branch, `ref_name` is the
+      # branch, so passing it unconditionally made the only manual trigger this
+      # workflow declares fail every time it was used.
+      - name: Release preconditions
+        run: node tools/check-release.mjs "${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+
+      # `pnpm publish -r` walks the workspace in dependency order and skips any
+      # package whose version is already on npm, so a re-run is harmless.
+      - name: Publish
+        run: pnpm publish -r --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify what landed
+        run: |
+          for pkg in aifb-engine aifb-cli create-aifb; do
+            echo "$pkg $(npm view "$pkg" version)"
+          done

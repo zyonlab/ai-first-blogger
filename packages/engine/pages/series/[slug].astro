@@ -1,0 +1,61 @@
+---
+import PageLayout from '@layouts/PageLayout.astro';
+import { series } from '@config/taxonomy';
+import { getActiveSeries } from '@lib/taxonomy';
+import { entryPath, registry } from '@content-types/index';
+import { findEntries } from '@lib/content';
+import { cardFor } from '@lib/renderers';
+import { t } from '@i18n/index';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+export async function getStaticPaths() {
+  return (await getActiveSeries()).map((item) => ({ params: { slug: item.slug } }));
+}
+
+const slug = Astro.params.slug as keyof typeof series;
+const item = series[slug];
+
+const matches = (await findEntries(registry, (entry) => entry.data.series === slug)).sort(
+  (a, b) => ((a.entry.data.seriesOrder as number) ?? 999) - ((b.entry.data.seriesOrder as number) ?? 999),
+);
+const canonical = `/series/${slug}/`;
+
+const jsonLd = [
+  collectionPageSchema(item.title, item.description, canonical),
+  itemListSchema(
+    `${item.title} Reading Path`,
+    matches.map(({ type, entry }) => ({
+      name: entry.data.title as string,
+      description: entry.data.description as string,
+      url: entryPath(type, entry.data.slug),
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: 'Series', url: '/series/' },
+    { name: item.title, url: canonical },
+  ]),
+];
+---
+
+<PageLayout
+  title={item.title}
+  description={item.description}
+  eyebrow="Series"
+  canonical={canonical}
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: '/series/', label: 'Series' }, { href: canonical, label: item.title }]}
+>
+  <section data-item-list class="section">
+    <div class="section-head">
+      <h2>{t('taxonomy.readingOrder')}</h2>
+      <p>{t('taxonomy.readingOrderHint')}</p>
+    </div>
+    <div class="grid two">
+      {matches.map(({ type, entry }) => {
+        const Card = cardFor(type.card);
+        return <Card entry={entry} type={type} />;
+      })}
+    </div>
+  </section>
+</PageLayout>

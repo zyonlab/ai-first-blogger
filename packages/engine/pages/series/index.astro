@@ -1,0 +1,41 @@
+---
+import { site } from '@config/site';
+import SeriesCard from '@components/SeriesCard.astro';
+import PageLayout from '@layouts/PageLayout.astro';
+import { pages } from '@config/pages';
+import { getActiveSeries } from '@lib/taxonomy';
+import { t } from '@i18n/index';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+const { title, description } = pages.series;
+const seriesList = await getActiveSeries();
+const jsonLd = [
+  collectionPageSchema(title, description, '/series/'),
+  itemListSchema(
+    `${site.name} Series`,
+    seriesList.map((item) => ({
+      name: item.title,
+      description: item.description,
+      url: `/series/${item.slug}/`,
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: title, url: '/series/' },
+  ]),
+];
+---
+
+<PageLayout
+  title={title}
+  description={description}
+  canonical="/series/"
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: '/series/', label: title }]}
+>
+  <section data-item-list class="section grid">
+    {seriesList.length > 0
+      ? seriesList.map((item) => <SeriesCard item={item} headingLevel={2} />)
+      : <p>{t('taxonomy.empty')}</p>}
+  </section>
+</PageLayout>

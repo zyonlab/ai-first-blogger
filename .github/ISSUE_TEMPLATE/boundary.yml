@@ -1,0 +1,71 @@
+name: "Boundary: a site decision needed engine code"
+description: You had to edit the framework (or copy its code) to make a decision about your own site.
+title: "[boundary] "
+labels: ["boundary"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is the report the framework most wants.**
+
+        The rule the whole architecture rests on is: `site/` holds what a person
+        decides, the engine holds how it is rendered. If deciding something about
+        *your site* required touching the engine, the boundary is in the wrong
+        place — and that is a defect here, not a limitation you should work around.
+
+        Two real examples, both fixed from reports shaped like this one:
+
+        - which social platforms appear in the footer was hardcoded to four names,
+          so a site on Mastodon had nowhere to put it
+        - a list page could be `grid` or `grid two` and nothing else, so the first
+          site that wanted one entry per row copied 68 lines of engine code
+
+        Run `npx aifb env` and paste the output below — it is the whole
+        environment section, and it catches version mismatches between the three
+        packages, which are a bug on their own.
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: What were you trying to decide about your site?
+      description: The decision, not the code. "One entry per row on /writing/", not "add a stack class".
+      placeholder: |
+        I wanted the article list to be one entry per row instead of a grid.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What did you have to do instead?
+      description: >
+        The workaround is the evidence. Paste the override, the copied file, the
+        patched node_modules — whatever you actually did. If you gave up, say that.
+      placeholder: |
+        Copied packages/engine/pages/[type]/index.astro into site/templates/,
+        changed one class name. 44 of the 68 lines are identical to the engine's.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: looked
+    attributes:
+      label: Where did you look first?
+      description: >
+        Which `site/*.yaml` key or doc did you expect this to live under? A wrong
+        guess is useful — it says where the setting should have been.
+      placeholder: |
+        Looked in site/content-types.yaml and site/policy.yaml. Searched the docs
+        for "layout". Found docs/specs/theming.md, which is only about tokens.
+    validations:
+      required: false
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `npx aifb env`.
+      render: text
+    validations:
+      required: true

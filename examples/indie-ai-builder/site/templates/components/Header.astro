@@ -1,0 +1,67 @@
+---
+/**
+ * Flat text header — no brand mark, no pill nav, no bordered bar.
+ *
+ * The engine's header is a rounded card with a boxed initial and chip-shaped
+ * links. Nothing in site/themes/*.css can undo that, because the shape lives in
+ * the markup, not the tokens. So the site replaces the component.
+ */
+import { navItems } from '@config/nav';
+import { site } from '@config/site';
+import ThemeToggle from '@components/ThemeToggle.astro';
+
+const currentPath = Astro.url.pathname;
+const isActive = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+---
+
+<header>
+  <a class="name" href="/" aria-label={`${site.name} home`}>{site.name}</a>
+  <nav aria-label="primary">
+    {navItems.map((item) => (
+      <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>
+    ))}
+    <ThemeToggle />
+  </nav>
+</header>
+
+<style>
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .name {
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  nav {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+  }
+
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  nav a:hover,
+  nav a[aria-current='page'] {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>

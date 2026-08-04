@@ -1,0 +1,22 @@
+---
+import type { CardProps } from './card-props';
+
+const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const data = entry.data as {
+  title: string;
+  description: string;
+  slug: string;
+  topics: string[];
+};
+const href = `/${type.route}/${data.slug}/`;
+---
+
+<article class="card video-card">
+  <div class="video-thumb" aria-hidden="true">▶</div>
+  <Heading><a href={href}>{data.title}</a></Heading>
+  <p>{data.description}</p>
+  <div class="tags">
+    {data.topics.map((topic) => <span>{topic}</span>)}
+  </div>
+</article>

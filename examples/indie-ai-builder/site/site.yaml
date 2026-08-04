@@ -1,0 +1,76 @@
+# Example site — a solo builder shipping AI products, in the terminal-plain
+# style: monospace, lowercase section headings, no cards, no colour.
+#
+#   cp -r examples/indie-ai-builder/site/. site/
+#   cp -r examples/indie-ai-builder/content/. content/
+
+name: kai lund
+title: kai lund · ships small ai products, writes down what broke
+description: 一个独立开发者做 AI 产品的记录：模型换代时我实际改了什么、一次对话的真实账单、以及那些 demo 里看不见的失败模式。
+
+url: https://kailund.example.dev
+
+# The site name is short, but article titles here are already descriptive and
+# the suffix would only eat SERP width.
+titleTemplate: '{title}'
+
+locale: zh-CN
+
+theme:
+  name: mono
+  defaultMode: light
+  colorDark: '#0e0e0e'
+  colorLight: '#ffffff'
+  storageKey: kailund-theme
+
+og:
+  default: /og-default.png
+
+brand:
+  initial: k
+  tagline: 先跑起来，再讲道理
+  keywords:
+    - AI 产品
+    - 独立开发
+    - 模型评测
+    - 提示词
+    - 成本
+
+author:
+  name: Kai Lund
+  title: 独立开发者
+  bio: 一个人做产品，一个人扛线上。写下来的都是自己跑过、付过账单的东西。
+  email: kai@kailund.example.dev
+
+social:
+  github: https://github.com/kailund-example/notes
+  x: https://x.com/kailund_example
+
+hero:
+  eyebrow: 一个人 · 生产环境 · 真实账单
+  title: kai lund
+  description: 我做小而完整的 AI 产品，然后把坏掉的地方写下来。这里没有路线图，只有已经发生过的事。
+  actions:
+    - { label: 看文章, href: /writing/, variant: primary }
+    - { label: 做过的东西, href: /projects/ }
+    - { label: 找我聊聊, href: /work-with-me/ }
+  signals:
+    - 每篇从一次线上问题写起
+    - 给数字，不给形容词
+    - 只写自己跑过的
+
+services:
+  title: work with me
+  description: 如果你在把一个 AI demo 推向生产，卡在可靠性、成本或者评测上，可以聊聊。
+  serviceName: AI 产品落地咨询
+  serviceTypes:
+    - 架构评审
+    - 评测体系搭建
+    - 成本与延迟优化
+  contactText: 邮件写清楚卡在哪一步，我会先回一句判断，值得深聊再约。
+
+nav:
+  - { href: /series/, label: series, order: 20 }
+  - { href: /topics/, label: topics, order: 30 }
+  - { href: /about/, label: about, order: 80 }
+  - { href: /work-with-me/, label: work with me, order: 90 }

@@ -1,0 +1,142 @@
+<script>
+  type MermaidModule = typeof import('mermaid').default;
+
+  const originalBlocks = [
+    ...document.querySelectorAll<HTMLElement>('pre code.language-mermaid'),
+    ...document.querySelectorAll<HTMLElement>('pre[data-language="mermaid"] code'),
+  ];
+
+  if (originalBlocks.length > 0) {
+    const { default: mermaid } = await import('mermaid');
+
+    const diagrams = originalBlocks
+      .map((block, index) => {
+        const source = block.textContent?.trim() ?? '';
+        const pre = block.closest('pre');
+
+        if (!source || !pre) return null;
+
+        const wrapper = document.createElement('figure');
+        const container = document.createElement('div');
+
+        wrapper.className = 'mermaid-figure';
+        wrapper.dataset.mermaidSource = source;
+        wrapper.dataset.mermaidIndex = String(index);
+        container.className = 'mermaid-diagram';
+        container.setAttribute('role', 'img');
+        container.setAttribute('aria-label', 'Mermaid architecture diagram');
+        wrapper.append(container);
+        pre.replaceWith(wrapper);
+
+        return { wrapper, container, source, index };
+      })
+      .filter(Boolean);
+
+    const getThemeName = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+
+    /**
+     * Diagram colours come from the active theme's tokens, not from a palette
+     * written here.
+     *
+     * Two hardcoded palettes — one per mode — meant a site that authored its own
+     * theme got prose in its colours and diagrams in someone else's. It also put
+     * twenty-odd hex literals inside a component, which is exactly what rule
+     * C-13 forbids in CSS and could not see here.
+     *
+     * Read at render time from the computed style of :root, so it follows the
+     * theme *and* the mode toggle with no second source of truth.
+     */
+    const cssToken = (name: string, fallback: string) => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return value || fallback;
+    };
+
+    const getMermaidConfig = () => {
+      const bg = cssToken('--bg', '#ffffff');
+      const surface = cssToken('--surface', bg);
+      const surface2 = cssToken('--surface-2', surface);
+      const text = cssToken('--text', '#101725');
+      const muted = cssToken('--muted', text);
+      const line = cssToken('--line', muted);
+      const accent = cssToken('--accent', text);
+      const accent2 = cssToken('--accent-2', accent);
+      const warn = cssToken('--warn', accent);
+      const chip = cssToken('--chip-bg', surface2);
+
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        securityLevel: 'strict',
+        fontFamily: cssToken('font-family', 'ui-sans-serif, system-ui, sans-serif'),
+        themeVariables: {
+          background: bg,
+          mainBkg: surface,
+          secondBkg: surface2,
+          tertiaryBkg: surface2,
+          primaryColor: surface,
+          primaryTextColor: text,
+          primaryBorderColor: accent,
+          secondaryColor: surface2,
+          secondaryTextColor: text,
+          secondaryBorderColor: accent2,
+          tertiaryColor: surface2,
+          tertiaryTextColor: muted,
+          tertiaryBorderColor: line,
+          lineColor: line,
+          textColor: text,
+          nodeTextColor: text,
+          clusterBkg: bg,
+          clusterBorder: line,
+          edgeLabelBackground: bg,
+          labelBackground: bg,
+          actorBkg: surface,
+          actorBorder: accent,
+          actorTextColor: text,
+          noteBkgColor: chip,
+          noteTextColor: text,
+          noteBorderColor: warn,
+        },
+      };
+    };
+
+    /**
+     * A render token cancels stale passes: switching modes twice quickly starts
+     * two renders, and the slower one must not overwrite the newer output.
+     */
+    let renderToken = 0;
+
+    const renderDiagrams = async () => {
+      const themeName = getThemeName();
+      const token = ++renderToken;
+
+      mermaid.initialize(getMermaidConfig() as Parameters<MermaidModule['initialize']>[0]);
+
+      await Promise.all(
+        diagrams.map(async (diagram) => {
+          if (!diagram) return;
+
+          try {
+            const renderId = `mermaid-diagram-${diagram.index}-${themeName}-${token}`;
+            const { svg } = await mermaid.render(renderId, diagram.source);
+            if (token !== renderToken) return;
+            diagram.wrapper.dataset.theme = themeName;
+            diagram.container.innerHTML = svg;
+          } catch (error) {
+            console.error('Failed to render Mermaid diagram', error);
+            diagram.wrapper.classList.add('mermaid-error');
+          }
+        }),
+      );
+    };
+
+    await renderDiagrams();
+
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.attributeName === 'data-theme')) {
+        void renderDiagrams();
+      }
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+</script>

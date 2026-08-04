@@ -1,0 +1,65 @@
+---
+/**
+ * Detail page for every content type in the registry.
+ * Replaces the former per-type [slug].astro files.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { entryPath, getContentTypeByRoute, listPath, registry } from '@content-types/index';
+import { bySlug, getEntries } from '@lib/content';
+import { detailFor } from '@lib/renderers';
+import { breadcrumbSchema } from '@lib/schema';
+import { assertSameOrigin } from '@lib/seo';
+import { render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const groups = await Promise.all(
+    registry.map(async (type) => {
+      const entries = await getEntries(type);
+      return entries.map((entry) => ({
+        params: { type: type.route, slug: entry.data.slug },
+      }));
+    }),
+  );
+  return groups.flat();
+}
+
+const { type: route, slug } = Astro.params;
+const type = getContentTypeByRoute(route!);
+if (!type) throw new Error(`No content type registered for route "${route}"`);
+
+const entries = await getEntries(type);
+const entry = bySlug(entries, slug!);
+if (!entry) throw new Error(`No ${type.name} entry with slug "${slug}"`);
+
+const Detail = detailFor(type.detail);
+
+const { Content, headings } = await render(entry as never);
+
+const seo = type.seo?.(entry as never) ?? {};
+// A canonical override must stay on this origin, or the page donates its
+// ranking to another site (rule C-07).
+const canonical = assertSameOrigin(seo.canonical, entryPath(type, entry.data.slug), `${type.name}/${entry.data.slug}`);
+
+const jsonLd = [
+  ...(type.jsonLd?.(entry as never, { canonical }) ?? []),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: type.listTitle, url: listPath(type) },
+    { name: entry.data.title as string, url: canonical },
+  ]),
+];
+---
+
+<BaseLayout
+  title={entry.data.title as string}
+  description={entry.data.description as string}
+  canonical={canonical}
+  image={seo.image}
+  type={seo.type ?? 'website'}
+  jsonLd={jsonLd}
+  publishedTime={seo.publishedTime}
+  modifiedTime={seo.modifiedTime}
+  tags={seo.tags}
+>
+  <Detail entry={entry} type={type} Content={Content} headings={headings} canonical={canonical} />
+</BaseLayout>

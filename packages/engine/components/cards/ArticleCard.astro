@@ -1,0 +1,35 @@
+---
+import { series, topics, type TopicSlug } from '@config/taxonomy';
+import { formatDate } from '@lib/dates';
+import type { CardProps } from './card-props';
+
+const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const data = entry.data as {
+  title: string;
+  description: string;
+  slug: string;
+  pubDate: Date;
+  category: string;
+  tags: string[];
+  series?: string;
+};
+const topic = topics[data.category as TopicSlug];
+const seriesItem = data.series ? series[data.series as keyof typeof series] : undefined;
+const href = `/${type.route}/${data.slug}/`;
+---
+
+<article class="card article-card">
+  <div class="eyebrow">{topic?.title ?? data.category}</div>
+  <Heading><a href={href}>{data.title}</a></Heading>
+  <p>{data.description}</p>
+  <div class="meta">
+    <time datetime={data.pubDate.toISOString()}>{formatDate(data.pubDate)}</time>
+    {seriesItem && <span>{seriesItem.title}</span>}
+  </div>
+  {data.tags.length > 0 && (
+    <div class="tags">
+      {data.tags.slice(0, 4).map((tag) => <span>{tag}</span>)}
+    </div>
+  )}
+</article>

@@ -1,0 +1,27 @@
+---
+import { t } from '@i18n/index';
+
+type Heading = {
+  depth: number;
+  slug: string;
+  text: string;
+};
+
+type Props = {
+  headings: Heading[];
+};
+
+const { headings } = Astro.props;
+const visibleHeadings = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3);
+---
+
+{visibleHeadings.length > 0 && (
+  <aside class="toc" aria-label={t('toc.title')}>
+    <strong>{t('toc.title')}</strong>
+    <nav>
+      {visibleHeadings.map((heading) => (
+        <a class={`depth-${heading.depth}`} href={`#${heading.slug}`}>{heading.text}</a>
+      ))}
+    </nav>
+  </aside>
+)}

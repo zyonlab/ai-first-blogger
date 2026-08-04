@@ -1,0 +1,106 @@
+---
+/**
+ * A single-column index in the terminal-plain style: name, one line of
+ * positioning, then the writing, with hairline rules between sections.
+ *
+ * The engine's home page is a multi-section grid of cards. That is a good
+ * default and the wrong shape for this site — which is the whole reason
+ * `site/templates/pages/` exists.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { site } from '@config/site';
+import { entryPath, getContentType, listPath } from '@content-types/index';
+import { getEntries } from '@lib/content';
+import { getActiveTopics } from '@lib/taxonomy';
+import { formatDate } from '@lib/dates';
+
+const posts = await getEntries(getContentType('posts')!);
+const projects = await getEntries(getContentType('projects')!);
+const topics = await getActiveTopics();
+const postsType = getContentType('posts')!;
+---
+
+<BaseLayout title={site.name} description={site.description}>
+  <main class="plain">
+    <header class="masthead">
+      <h1>{site.name}</h1>
+      <p class="handle">x: <a href={site.social.x}>@{site.author.name.toLowerCase().replace(' ', '')}</a></p>
+      <p class="lede">{site.hero.description}</p>
+    </header>
+
+    <section>
+      <h2>writing</h2>
+      {posts.map((entry) => (
+        <div class="row">
+          <a href={entryPath(postsType, entry.data.slug)}>{entry.data.title}</a>
+          <p>{formatDate(entry.data.pubDate)} · {entry.data.description}</p>
+        </div>
+      ))}
+      <p class="more"><a href={listPath(postsType)}>all writing →</a></p>
+    </section>
+
+    {topics.length > 0 && (
+      <section>
+        <h2>topics</h2>
+        {topics.map((topic) => (
+          <div class="row">
+            <a href={`/topics/${topic.slug}/`}>{topic.title}</a>
+            <p>{topic.description}</p>
+          </div>
+        ))}
+      </section>
+    )}
+
+    {projects.length > 0 && (
+      <section>
+        <h2>projects</h2>
+        {projects.map((entry) => (
+          <div class="row">
+            <a href={entryPath(getContentType('projects')!, entry.data.slug)}>{entry.data.title}</a>
+            <p>{entry.data.description}</p>
+          </div>
+        ))}
+      </section>
+    )}
+
+    <section>
+      <h2>contact</h2>
+      <p class="row-p">{site.services.contactText}</p>
+      <p class="row-p"><a href={`mailto:${site.author.email}`}>{site.author.email}</a></p>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .plain {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: var(--space-2xl) var(--space-md) var(--space-3xl);
+  }
+  .masthead { margin-bottom: var(--space-2xl); }
+  .masthead h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 var(--space-2xs);
+  }
+  .handle,
+  .lede { color: var(--muted); margin: 0 0 var(--space-xs); line-height: var(--prose-leading); }
+  section {
+    border-top: 1px solid var(--line);
+    padding-top: var(--space-lg);
+    margin-bottom: var(--space-xl);
+  }
+  section h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 var(--space-md);
+  }
+  .row { margin: 0 0 var(--space-md); padding-left: var(--space-md); }
+  .row a { color: var(--text); font-weight: 700; text-decoration: none; }
+  .row a:hover { text-decoration: underline; }
+  .row p,
+  .row-p { color: var(--muted); margin: var(--space-3xs) 0 0; line-height: var(--prose-leading); }
+  .row-p { padding-left: var(--space-md); }
+  .more { padding-left: var(--space-md); margin: var(--space-md) 0 0; }
+  .more a { color: var(--muted); font-weight: 400; }
+</style>

@@ -1,0 +1,76 @@
+---
+import Breadcrumbs from '@components/Breadcrumbs.astro';
+import NewsletterCTA from '@components/NewsletterCTA.astro';
+import { t } from '@i18n/index';
+import type { AnyComponent } from '@lib/renderers';
+import type { DetailProps } from './detail-props';
+
+const { entry, type, Content, canonical } = Astro.props as DetailProps;
+const Body = Content as AnyComponent;
+const data = entry.data as {
+  title: string;
+  description: string;
+  status: 'active' | 'archived' | 'planned';
+  role?: string;
+  techStack: string[];
+  repoUrl?: string;
+  demoUrl?: string;
+  highlights: string[];
+};
+const statusLabel = t(`project.status.${data.status}`);
+---
+
+<article class="project-page">
+  <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <header class="project-hero">
+    <div class="project-hero-copy">
+      <p class="eyebrow">{type.label} · {statusLabel}</p>
+      <h1>{data.title}</h1>
+      <p class="project-description">{data.description}</p>
+      {(data.demoUrl || data.repoUrl) && (
+        <div class="actions">
+          {data.demoUrl && <a class="button primary" href={data.demoUrl}>{t('project.viewDemo')}</a>}
+          {data.repoUrl && <a class="button" href={data.repoUrl}>{t('project.viewSource')}</a>}
+        </div>
+      )}
+    </div>
+
+    <aside class="project-summary-card" aria-label="Project summary">
+      <dl>
+        <div>
+          <dt>Status</dt>
+          <dd>{statusLabel}</dd>
+        </div>
+        {data.role && (
+          <div>
+            <dt>Role</dt>
+            <dd>{data.role}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Stack</dt>
+          <dd class="project-tech-list">
+            {data.techStack.map((tech) => <span>{tech}</span>)}
+          </dd>
+        </div>
+      </dl>
+    </aside>
+  </header>
+
+  <div class="project-content-grid">
+    <div class="prose project-prose">
+      <Body />
+    </div>
+
+    {data.highlights.length > 0 && (
+      <aside class="project-highlights" aria-label="Project highlights">
+        <h2>Highlights</h2>
+        <ul>
+          {data.highlights.map((item) => <li>{item}</li>)}
+        </ul>
+      </aside>
+    )}
+  </div>
+
+  <NewsletterCTA />
+</article>

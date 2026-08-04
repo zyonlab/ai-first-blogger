@@ -1,0 +1,53 @@
+# Copy for the static pages.
+#
+# Site-owner content, not UI chrome: a new owner rewrites this rather than
+# translating it. That is why it lives here and not in engine/i18n/.
+# The dividing line: docs/specs/site-config-contract.md
+#
+# Keep descriptions under the 160 display-column ceiling (rule C-06). There is a
+# floor too, but do not write toward it — padding a sentence to clear a
+# threshold is how an earlier version of this file ended up with trailing
+# clauses that said nothing.
+
+topics:
+  title: Topics
+  description: 按问题归档，而不是按时间。同一类问题的文章是能连着读的。
+
+series:
+  title: Series
+  description: 需要按顺序读的放这里。每个系列有明确起点，也说清楚读之前该会什么。
+
+about:
+  title: About
+  # `body` selects what the engine renders under each heading:
+  #   siteDescription · authorBio · keywords · services
+  sections:
+    - { heading: 这个站是干嘛的, body: siteDescription }
+    - { heading: 谁在写, body: authorBio }
+    - { heading: 主要写什么, body: keywords }
+    - { heading: 想合作的话, body: services }
+
+newsletter:
+  title: Newsletter
+  description: 有新的复盘时发一封，一个月最多一次。
+  body: 还没接订阅服务。想收到更新直接发邮件，我手动记一下。
+  action: 发邮件订阅
+
+uses:
+  title: Uses
+  description: 现在实际在用的东西，以及为什么是它。
+  items:
+    - name: 模型
+      body: 主力一个、备胎一个，都走自建网关统一打点。直连供应商 SDK 的那半年，账单出问题时查不出是谁花的。
+    - name: 评测
+      body: 三百条固定用例，跑一次六分钟。跑得快比覆盖全重要——跑得慢就没人跑。
+    - name: 部署
+      body: Cloudflare Pages。一个人维护，能少一个运维面就少一个。
+
+workWithMe:
+  action: 发邮件
+  services:
+    - name: 架构评审
+      body: 看现有实现，指出哪些失败模式没被处理，给改的优先级。半天到一天。
+    - name: 评测体系搭建
+      body: 从零建一个跑得动的评测集，重点是让它小到每次改动都会被跑。

@@ -1,0 +1,49 @@
+---
+/**
+ * The footer's social links are derived from `site.social`, not listed here.
+ *
+ * They used to be four hardcoded anchors — github, youtube, x, linkedin. A site
+ * that filled in two of them shipped `<a>YouTube</a>` and `<a>LinkedIn</a>`:
+ * anchors with no `href`, on every page. Nothing in the gate looks at that, and
+ * it took a Lighthouse run to find it (`crawlable-anchors` 0, SEO 0.92).
+ *
+ * The list was also in the wrong plane. Which networks a site is on is an intent
+ * fact; `site.social` is already an open map and `sameAs` already reads it as
+ * one. Only this component insisted on knowing the names in advance — so a site
+ * on Mastodon had nowhere to put it, and a site on none of the four got broken
+ * markup for its trouble.
+ */
+import { site } from '@config/site';
+import { t } from '@i18n/index';
+
+/** Casing the platforms use for themselves; anything else is title-cased. */
+const LABELS: Record<string, string> = {
+  github: 'GitHub',
+  x: 'X',
+  youtube: 'YouTube',
+  linkedin: 'LinkedIn',
+  mastodon: 'Mastodon',
+  bluesky: 'Bluesky',
+  threads: 'Threads',
+  instagram: 'Instagram',
+};
+
+const social = Object.entries(site.social)
+  .filter(([, href]) => typeof href === 'string' && href.trim() !== '')
+  .map(([key, href]) => ({ href, label: LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1) }));
+---
+
+<footer class="site-footer">
+  <div>
+    <strong>{site.name}</strong>
+    <p>{site.description}</p>
+  </div>
+  <nav aria-label={t('nav.footer')}>
+    {social.map(({ href, label }) => <a href={href}>{label}</a>)}
+    <a href={`mailto:${site.author.email}`}>Email</a>
+    <a href="/uses/">Uses</a>
+    <a href="/newsletter/">Newsletter</a>
+    <a href="/rss.xml">RSS</a>
+  </nav>
+  <small>© {new Date().getFullYear()} {site.name}. {t('footer.builtWith')}</small>
+</footer>
