@@ -1,0 +1,24 @@
+---
+import { categoryLabel } from '@config/taxonomy';
+import type { CardProps } from './card-props';
+
+const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const data = entry.data as {
+  title: string;
+  description: string;
+  slug: string;
+  category: string;
+  tags: string[];
+};
+const href = `/${type.route}/${data.slug}/`;
+---
+
+<article class="card case-study-card">
+  <p class="eyebrow">{categoryLabel(data.category)}</p>
+  <Heading><a href={href}>{data.title}</a></Heading>
+  <p>{data.description}</p>
+  <div class="tags">
+    {data.tags.slice(0, 4).map((tag) => <span>{tag}</span>)}
+  </div>
+</article>

@@ -1,0 +1,21 @@
+---
+type Props = {
+  topic: {
+    slug: string;
+    title: string;
+    description: string;
+  };
+  /** Card titles sit under an h2 on the home page and under the page h1 on a
+   * listing page — the level belongs to the caller, not the card. */
+  headingLevel?: 2 | 3;
+};
+
+const { topic, headingLevel = 3 } = Astro.props;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+<article class="card topic-card">
+  <div class="topic-orb" aria-hidden="true"></div>
+  <Heading><a href={`/topics/${topic.slug}/`}>{topic.title}</a></Heading>
+  <p>{topic.description}</p>
+</article>

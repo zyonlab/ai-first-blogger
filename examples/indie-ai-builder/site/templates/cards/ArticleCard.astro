@@ -1,0 +1,60 @@
+---
+/**
+ * A flat list row, not a card.
+ *
+ * The token layer can make this site monospace and white; it cannot stop the
+ * shipped card from being a bordered box in a grid. Structure is what
+ * `site/templates/` is for.
+ *
+ * Shape: title → `date · topic · tags` → description. No border, no radius,
+ * no background — the separation is whitespace.
+ */
+import { entryPath } from '@content-types/index';
+import { categoryLabel } from '@config/taxonomy';
+import { formatDate } from '@lib/dates';
+import type { CardProps } from '@components/cards/card-props';
+
+const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const { title, description, slug, pubDate, category, tags = [] } = entry.data;
+---
+
+<article class="row">
+  <Heading><a href={entryPath(type, slug)}>{title}</a></Heading>
+  <p class="meta">
+    {pubDate && <span>{formatDate(pubDate)}</span>}
+    {category && <span>· {categoryLabel(category)}</span>}
+    {tags.length > 0 && <span>· {tags.join(', ')}</span>}
+  </p>
+  <p class="excerpt">{description}</p>
+</article>
+
+<style>
+  .row {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0 0 var(--space-lg);
+  }
+  .row :is(h2, h3) {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 var(--space-3xs);
+    line-height: 1.5;
+  }
+  .row :is(h2, h3) a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .row :is(h2, h3) a:hover { text-decoration: underline; }
+  .meta,
+  .excerpt {
+    color: var(--muted);
+    margin: 0;
+    line-height: var(--prose-leading);
+  }
+  .meta { margin-bottom: var(--space-3xs); }
+  .meta span { margin-right: 0.25em; }
+</style>

@@ -1,0 +1,50 @@
+# Content plan. Four pillars mapped to what a reader actually comes for:
+# "is this model worth switching to", "how do I get this to work", "what did it
+# cost", and "what do you actually think".
+
+pillars:
+  reviews:
+    name: 模型评测
+    goal: 换代时给出「我实际改了什么」，而不是跑分表。
+  playbooks:
+    name: 实操
+    goal: 别人能照着做的流程，不是结论。
+  economics:
+    name: 账单与延迟
+    goal: 把感觉换成数字：一次对话到底花多少、慢在哪。
+  opinions:
+    name: 观点
+    goal: 同样的事实，说清楚我的结论为什么和主流不一样。
+
+topics:
+  model-reviews:
+    title: 模型评测
+    description: 新模型出来之后，我在自己的产品里换了什么、没换什么，以及为什么。
+    pillar: reviews
+  prompting:
+    title: 提示词与编排
+    description: 让模型稳定产出的那些做法，多数不优雅，但能跑。
+    pillar: playbooks
+  reliability:
+    title: 可靠性
+    description: demo 里看不见的失败模式，以及它们在生产里的样子。
+    pillar: playbooks
+  cost:
+    title: 成本与延迟
+    description: 一次对话背后有多少次调用，账单和 P99 是在哪一步失控的。
+    pillar: economics
+  shipping-solo:
+    title: 一个人做产品
+    description: 没有团队时，哪些工程实践值得留，哪些是给大团队准备的。
+    pillar: opinions
+  notes:
+    title: 随手记
+    description: 还没验证完就先记下来的，结论可能会变。
+    pillar: opinions
+    listed: false
+
+series:
+  gpt-migration:
+    title: 一次模型迁移
+    description: 从决定换模型到全量上线的完整过程，按时间顺序，包括中途回滚的那次。
+    topic: model-reviews

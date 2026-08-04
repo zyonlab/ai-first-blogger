@@ -1,0 +1,44 @@
+{
+  "name": "create-aifb",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Scaffold a new site: the skeleton, or a worked example to edit down.",
+  "bin": {
+    "create-aifb": "./dist/index.mjs"
+  },
+  "dependencies": {},
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zyonlab/ai-first-blogger.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/zyonlab/ai-first-blogger#readme",
+  "bugs": {
+    "url": "https://github.com/zyonlab/ai-first-blogger/issues"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "astro",
+    "blog",
+    "scaffold",
+    "create"
+  ],
+  "files": [
+    "dist",
+    "template"
+  ],
+  "author": "zyoncode",
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

@@ -1,0 +1,85 @@
+---
+import Breadcrumbs from '@components/Breadcrumbs.astro';
+import NewsletterCTA from '@components/NewsletterCTA.astro';
+import YouTubeEmbed from '@components/YouTubeEmbed.astro';
+import { formatDate } from '@lib/dates';
+import type { AnyComponent } from '@lib/renderers';
+import type { DetailProps } from './detail-props';
+
+const { entry, type, Content, canonical } = Astro.props as DetailProps;
+const Body = Content as AnyComponent;
+const data = entry.data as {
+  title: string;
+  description: string;
+  pubDate: Date;
+  youtubeId: string;
+  duration?: string;
+  topics: string[];
+  transcript: boolean;
+  chapters: { time: string; title: string }[];
+};
+const chapterCount = data.chapters.length;
+---
+
+<article class="video-page">
+  <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <header class="video-hero">
+    <div class="video-hero-copy">
+      <p class="eyebrow">{type.label}</p>
+      <h1>{data.title}</h1>
+      <p class="video-description">{data.description}</p>
+      <div class="tags">
+        {data.topics.map((topic) => <span>{topic}</span>)}
+      </div>
+    </div>
+
+    <aside class="video-meta-card" aria-label="Video summary">
+      <dl>
+        {data.duration && (
+          <div>
+            <dt>Duration</dt>
+            <dd>{data.duration}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Published</dt>
+          <dd>{formatDate(data.pubDate)}</dd>
+        </div>
+        <div>
+          <dt>Chapters</dt>
+          <dd>{chapterCount || 'TBD'}</dd>
+        </div>
+        <div>
+          <dt>Transcript</dt>
+          <dd>{data.transcript ? 'Available' : 'Planned'}</dd>
+        </div>
+      </dl>
+    </aside>
+  </header>
+
+  <section class="video-player-card" aria-label="Video player">
+    <YouTubeEmbed youtubeId={data.youtubeId} title={data.title} />
+  </section>
+
+  <div class="video-content-grid">
+    <div class="prose video-prose">
+      <Body />
+    </div>
+
+    {chapterCount > 0 && (
+      <aside class="video-chapters" aria-label="Video chapters">
+        <h2>Chapters</h2>
+        <ol>
+          {data.chapters.map((chapter) => (
+            <li>
+              <span>{chapter.time}</span>
+              <strong>{chapter.title}</strong>
+            </li>
+          ))}
+        </ol>
+      </aside>
+    )}
+  </div>
+
+  <NewsletterCTA />
+</article>

@@ -3,10 +3,24 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@components/*": ["src/components/*"],
-      "@data/*": ["src/data/*"],
-      "@layouts/*": ["src/layouts/*"],
-      "@lib/*": ["src/lib/*"]
+      "@components/*": [
+        "packages/engine/components/*"
+      ],
+      "@config/*": [
+        "packages/engine/config/*"
+      ],
+      "@content-types/*": [
+        "packages/engine/content-types/*"
+      ],
+      "@i18n/*": [
+        "packages/engine/i18n/*"
+      ],
+      "@layouts/*": [
+        "packages/engine/layouts/*"
+      ],
+      "@lib/*": [
+        "packages/engine/lib/*"
+      ]
     }
   }
 }

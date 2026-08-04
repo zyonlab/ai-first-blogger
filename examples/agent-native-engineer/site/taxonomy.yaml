@@ -1,0 +1,56 @@
+# What this site is about. Example: a full-stack engineer moving into Agent work.
+
+pillars:
+  foundations:
+    name: 基础认知
+    goal: 把 LLM 从「会说话的 API」重新理解成一个不确定的下游服务。
+  playbooks:
+    name: 可复用做法
+    goal: 给出别人能照着执行的工程流程，而不是结论。
+  cases:
+    name: 线上案例
+    goal: 用真实故障和真实账单证明判断，而不是罗列技术栈。
+  opinions:
+    name: 观点
+    goal: 同样的事实，说清楚我的结论为什么和主流不一样。
+
+topics:
+  agent-architecture:
+    title: Agent 架构
+    description: 单 Agent、多 Agent 还是一条工具链，取决于你能接受哪种失败方式。
+    pillar: foundations
+  llm-reliability:
+    title: 可靠性与降级
+    description: 模型会超时、会改主意、会编。这些在后端是异常，在这里是常态。
+    pillar: foundations
+  eval-and-testing:
+    title: 评测与测试
+    description: 没有评测集的 Agent 迭代等于盲改，但评测集本身也会过拟合。
+    pillar: playbooks
+  cost-and-latency:
+    title: 成本与延迟
+    description: 一次对话背后可能有十几次调用，账单和 P99 都是在这里失控的。
+    pillar: playbooks
+  from-backend:
+    title: 后端转型
+    description: 哪些后端直觉可以直接用，哪些必须先扔掉。
+    pillar: opinions
+  production-incidents:
+    title: 线上事故
+    description: 一次 Agent 相关故障从告警到根因的完整过程，含走错的那几步。
+    pillar: cases
+  notes:
+    title: 随手记
+    description: 还没验证完就先记下来的东西，结论可能会变。
+    pillar: opinions
+    listed: false
+
+series:
+  first-year-with-agents:
+    title: 转型第一年
+    description: 从第一个 demo 到第一次线上事故，按时间顺序记录认知是怎么被修正的。
+    topic: from-backend
+  agent-in-production:
+    title: Agent 上生产
+    description: 可靠性、评测、成本三条线各自的做法，以及它们互相冲突时怎么取舍。
+    topic: llm-reliability

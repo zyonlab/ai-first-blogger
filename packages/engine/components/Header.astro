@@ -1,0 +1,26 @@
+---
+import { navItems } from '@config/nav';
+import { site } from '@config/site';
+import { t } from '@i18n/index';
+import ThemeToggle from './ThemeToggle.astro';
+
+const currentPath = Astro.url.pathname;
+const isActiveHref = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+---
+
+<header class="site-header">
+  <a class="brand" href="/" aria-label={`${site.name} home`}>
+    <span class="brand-mark">{site.brand.initial}</span>
+    <span>{site.name}</span>
+  </a>
+  <nav class="desktop-nav" aria-label={t('nav.primary')}>
+    {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    <ThemeToggle />
+  </nav>
+  <details class="mobile-nav">
+    <summary aria-label={t('nav.menu')}>{t('nav.menu')}</summary>
+    <div>
+      {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    </div>
+  </details>
+</header>

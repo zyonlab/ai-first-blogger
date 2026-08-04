@@ -1,0 +1,78 @@
+# Example site — a full-stack engineer moving into AI agent work.
+#
+# Copy this directory over site/ to start from a site that is already planned:
+#   cp -r examples/agent-native-engineer/site/. site/
+# Then replace the values with yours. See examples/README.md.
+
+name: 三年后端，一年 Agent
+title: 三年后端，一年 Agent · 把 LLM 塞进生产系统之后
+description: 一个全栈工程师转做 AI Agent 的记录：哪些后端经验直接能用，哪些反而是包袱，以及线上跑起来之后才暴露的问题。
+
+url: https://agent-notes.example.dev
+
+# The site name is 9 CJK characters — 18 of the 60 columns a search result
+# shows. Article titles here are descriptive, so the suffix is dropped.
+titleTemplate: '{title}'
+
+locale: zh-CN
+
+theme:
+  name: terminal
+  defaultMode: dark
+  colorDark: '#0a0f0a'
+  colorLight: '#f4f6f4'
+  storageKey: agent-notes-theme
+
+og:
+  default: /og-default.png
+
+brand:
+  initial: A
+  tagline: 先让它跑起来，再让它别乱跑
+  keywords:
+    - AI Agent
+    - LLM 工程化
+    - 全栈转型
+    - 可观测性
+    - 评测
+
+author:
+  name: 陈迟
+  title: 全栈工程师 / Agent 开发
+  bio: 写了六年 Node 和 Go，去年开始全职做 Agent。踩过的坑大多来自「以为它是个 API，其实它是个会自己改主意的下游服务」。
+  email: chi@agent-notes.example.dev
+
+social:
+  github: https://github.com/chenchi-dev/agent-notes
+  x: https://x.com/chenchi_dev
+
+hero:
+  eyebrow: 后端视角 · 生产环境 · 一手踩坑
+  title: 三年后端，一年 Agent
+  description: 转过来之后最大的认知调整是：Agent 不是一个会返回 JSON 的函数。这个站记录我为此改掉的每一个默认做法。
+  actions:
+    - { label: 看文章, href: /writing/, variant: primary }
+    - { label: 成系列的, href: /series/ }
+    - { label: 做过的东西, href: /projects/ }
+    - { label: 找我聊聊, href: /work-with-me/ }
+  signals:
+    - 每篇从一次线上问题写起
+    - 只写自己跑过的
+    - 讲代价，不讲愿景
+
+services:
+  title: Work With Me
+  description: 如果你的团队正在把 Agent 从 demo 推向生产，卡在可靠性或者成本上，可以聊聊。
+  serviceName: Agent 生产化咨询
+  serviceTypes:
+    - Agent 架构评审
+    - 评测体系搭建
+    - LLM 成本与延迟优化
+    - 可观测性接入
+  contactText: 邮件说清楚你们卡在哪一步，我会先回一句判断，值得深聊再约时间。
+
+nav:
+  - { href: /series/, label: Series, order: 20 }
+  - { href: /topics/, label: Topics, order: 30 }
+  - { href: /about/, label: About, order: 80 }
+  - { href: /work-with-me/, label: Work With Me, order: 90 }

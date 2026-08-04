@@ -1,0 +1,60 @@
+# What kinds of content this site publishes, and where each kind shows up.
+#
+# This is the half of a content type you own: what it is called, what URL it
+# lives at, and which surfaces it appears on. The other half — its frontmatter
+# schema, JSON-LD and card/detail components — is mechanism and lives in
+# engine/content-types/<name>.ts.
+#
+# Both halves must exist: a key here with no engine file (or the reverse) fails
+# the build by name. That is deliberate — a content type that exists in only one
+# of the two places is exactly how case-studies once shipped as orphan pages.
+#
+# `surfaces`: omitting one means "not there".
+#   nav    sort weight in the main navigation; omit to stay out of the nav
+#   home   section on the home page — limit + sort weight between sections
+#   rss    include entries in /rss.xml
+#   llms   include entries in /llms.txt, capped at `limit`  ← the GEO surface
+#   sitemap  defaults to true
+#
+# Walkthrough: docs/recipes/add-content-type.md
+
+posts:
+  route: writing
+  # One entry per row — this site is a reading list, not a card wall.
+  listLayout: stack
+  # Tags already ride in each row's meta line; a cloud on top repeats them.
+  listTagCloud: false
+  label: Writing
+  listTitle: Writing
+  listDescription: 多数从一次线上问题写起：当时看到什么、排查走了哪些弯路、最后改了什么默认配置。
+  surfaces:
+    nav: 10
+    home: { limit: 6, order: 20 }
+    rss: true
+    llms: { limit: 12 }
+    sitemap: true
+
+
+projects:
+  route: projects
+  label: Project
+  listTitle: Projects
+  listDescription: 一个人能做完的小产品和小工具，写清楚它解决什么、以及没解决什么。
+  surfaces:
+    nav: 50
+    home: { limit: 3, order: 40 }
+    rss: false
+    llms: { limit: 6 }
+    sitemap: true
+
+case-studies:
+  route: case-studies
+  label: Case Study
+  listTitle: Case Studies
+  listDescription: 一次故障从告警到收尾的完整记录，含账单和走错的那几步。
+  surfaces:
+    nav: 60
+    home: { limit: 2, order: 50 }
+    rss: true
+    llms: { limit: 6 }
+    sitemap: true

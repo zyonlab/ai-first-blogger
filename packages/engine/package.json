@@ -1,0 +1,62 @@
+{
+  "name": "aifb-engine",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Rendering mechanism: components, layouts, routes, config loader, deploy integration.",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./integration.ts",
+    "./pages/*": "./pages/*",
+    "./content-config": "./content.config.ts",
+    "./config/*": "./config/*.ts",
+    "./lib/*": "./lib/*.ts",
+    "./content-types": "./content-types/index.ts",
+    "./content-types/*": "./content-types/*.ts",
+    "./deploy/cloudflare": "./deploy/cloudflare.ts",
+    "./i18n": "./i18n/index.ts",
+    "./styles/global.css": "./styles/global.css"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "yaml": "^2.9.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zyonlab/ai-first-blogger.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/zyonlab/ai-first-blogger#readme",
+  "bugs": {
+    "url": "https://github.com/zyonlab/ai-first-blogger/issues"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "astro",
+    "blog",
+    "static-site",
+    "seo",
+    "ai-first"
+  ],
+  "files": [
+    "components",
+    "config",
+    "content-types",
+    "content.config.ts",
+    "deploy",
+    "env.d.ts",
+    "i18n",
+    "integration.ts",
+    "layouts",
+    "lib",
+    "pages",
+    "styles",
+    "types"
+  ],
+  "author": "zyoncode"
+}

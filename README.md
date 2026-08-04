@@ -1,183 +1,290 @@
 # AI First Blogger
 
-AI First Blogger is a reusable Astro + MDX static blog framework designed for AI-assisted planning, writing, SEO/GEO optimization, deployment, and ongoing maintenance.
+A reusable Astro + MDX blog framework built to be operated by an AI agent: plan,
+write, audit, deploy, maintain.
 
-It is not a traditional CMS. The system is file-based, structured, and agent-friendly: AI can update site settings, generate content briefs, write MDX, audit SEO/GEO, validate builds, and deploy through GitHub Actions.
-
-## Stack
-
-- Astro
-- TypeScript
-- MDX
-- Astro Content Collections
-- Static output
-- GitHub Actions
-- Cloudflare Pages
-
-## Development
+It is not a CMS. Everything is file-based and structured, and — the part that makes it
+AI-first rather than AI-flavoured — **what counts as publishable is a set of rules a
+script can decide**, not a human read-through.
 
 ```bash
-pnpm install
+npm create aifb@latest my-blog
+cd my-blog && pnpm install
+pnpm validate     # lists every decision still marked TODO
 pnpm dev
 ```
 
-## Build
+Start from a worked example instead of a blank form:
 
 ```bash
-pnpm check
-pnpm build
-pnpm preview
+npm create aifb@latest my-blog --example agent-native-engineer
 ```
 
-## Configure a New Site
+New here? → **[docs/getting-started.md](docs/getting-started.md)** (blank to live site, ~30 min)
 
-Start with:
+| Package | |
+|---|---|
+| [`aifb-engine`](https://npmjs.com/package/aifb-engine) | Astro integration: injects the routes, resolves the theme, emits the deploy artefacts |
+| [`aifb-cli`](https://npmjs.com/package/aifb-cli) | The pipeline. The command is `aifb` |
+| [`create-aifb`](https://npmjs.com/package/create-aifb) | Scaffold |
 
-```txt
-prompts/site-intake.md
+This repository is the workspace that builds them, and its root is a site that
+uses them — every rule it ships is a claim about content it must satisfy itself.
+
+## Using the packages from an agent
+
+A scaffolded site is not a folder of files an agent has to reverse-engineer. It
+carries its own operating contract:
+
+```
+AGENTS.md                            the plane boundary, and what to run before claiming done
+.ai/skills/ai-first-blogger/SKILL.md the skill to load
+prompts/                             one per task: intake · plan · brief · audit · deploy
+site/README.md                       which file holds which decision
 ```
 
-Then update:
+Every command runs through `npx aifb`, so nothing depends on this repository's
+`pnpm` scripts:
 
-```txt
-src/data/site.ts
-content-plans/site-plan.yaml
+```bash
+npx aifb context write      # exactly what drafting an article needs — voice,
+                            # categories, and the pages that actually exist to link to
+npx aifb validate           # planning preflight, then 29 rules → validate-report.json
+npx aifb analyze            # writing style → content-report.json
+npx aifb context status     # both reports merged, stale ones flagged
+npx aifb env                # versions, for a bug report
 ```
 
-`src/data/site.ts` controls the brand name, domain, author, email, social links, hero copy, CTAs, and service/contact copy.
+Three habits matter more than the command list:
 
-## AI-first Workflow
+**Read the report file, not the console.** `validate-report.json` carries a `fix`
+field per violation, written as an instruction. The console is a summary for a
+human watching it scroll.
 
-Core instructions live in:
+**Do not read all of `site/`.** It costs ~9k tokens; one task needs one or two
+files. `npx aifb context <task>` prints that slice.
 
-```txt
-AGENTS.md
-docs/playbooks/ai-first-workflow.md
-docs/playbooks/template-customization.md
-.ai/skills/ai-first-blogger/SKILL.md
+**A refusal is information.** `validate` and `context write` both refuse to run
+until the site is planned — identity, domain, copy, taxonomy, template, voice.
+Writing into an unplanned site means writing into someone else's taxonomy and
+voice, and every rule that then passes is measuring the wrong thing. Plan it, or
+ask what to plan it as. Do not route around the refusal.
+
+## When the framework is in the way
+
+The rule the architecture rests on: **`site/` holds what a person decides, the
+engine holds how it is rendered.** So if a decision about *your site* requires
+editing the engine, copying its code, or patching `node_modules`, that is a
+defect here — not a limitation to work around quietly.
+
+[**Open an issue**](https://github.com/zyonlab/ai-first-blogger/issues/new/choose).
+Three forms, because three different things go wrong:
+
+| | When |
+|---|---|
+| **Boundary** | you had to touch engine code to decide something about your own site |
+| **Gate** | a `C-nn` rule blocked something correct, or let something broken through |
+| **Bug** | a command crashed, or the output is wrong |
+
+Both of the last release's boundary fixes started as this shape of report: the
+footer's social links were hardcoded to four platforms, and a list page could
+only be a grid. In both cases someone's workaround *was* the bug report — so
+paste it. **The workaround is the evidence.**
+
+Run `npx aifb env` and paste the output; it catches version mismatches between
+the three packages, which are a fault on their own.
+
+One thing worth checking first: most numbers live in `site/policy.yaml` and are
+yours to change. If a threshold is wrong for *your* site, change it there. File
+an issue when it is wrong for everyone, or when the setting you need has no name
+yet.
+
+## What makes it a framework
+
+| | Cost |
+|---|---|
+| Rebrand for a different subject and language | edit `site/*.yaml`, no code |
+| Add a content type | 1 yaml block + 1 engine file + 1 content directory |
+| Add a theme | 1 CSS file + 1 line |
+| Add a locale | 1 message file + 2 lines |
+| Change what counts as publishable | `site/policy.yaml` |
+| Change the writing voice | `site/voice.md` |
+| Change what the SEO gate enforces | `site/policy.yaml` |
+
+`pnpm metrics` measures each of these and fails when the guarantee breaks.
+
+## Stack
+
+Astro · TypeScript · MDX · Content Collections · static output · GitHub Actions ·
+Cloudflare Pages
+
+## Commands
+
+```bash
+pnpm context write        # what an agent needs to draft an article (voice, categories, link targets)
+pnpm exec aifb env        # versions + site shape, for an issue report
+pnpm context setup|type|status
+pnpm dev                  # dev server
+pnpm check                # types
+pnpm build                # static build to dist/
+pnpm validate             # planning preflight + content/SEO gate (29 rules)
+pnpm validate --strict    # warnings fail too
+pnpm validate:self-test   # prove every rule still catches its own violation
+pnpm test:scenarios       # drive the real pipeline: themes, voice, taxonomy, deploy
+pnpm metrics              # framework health → metrics.json
+pnpm analyze              # writing style, articles + every outward-facing string
+pnpm audit:seo            # Lighthouse over the built site (separate job, needs Chrome)
+pnpm og:default           # regenerate the fallback Open Graph image
+pnpm migrate:ghost        # import a Ghost export
 ```
 
-Reusable prompts live in:
+CI order is `check → build → validate → deploy`; errors block the deploy.
 
-```txt
-prompts/site-intake.md
-prompts/content-plan.md
-prompts/article-brief.md
-prompts/seo-geo-audit.md
-prompts/deploy.md
+## Configuration
+
+Three planes, split by who decides:
+
 ```
+site/       intent    — what the site is about (YAML + Markdown, no code)
+content/    material  — the articles
+packages/   mechanism — aifb-engine · aifb-cli · create-aifb
+examples/   reference — complete planned sites to copy from
+```
+
+A site's own repository contains only `site/`, `content/` and a config file —
+the framework is a dependency. See the top of this file to start one.
+
+The repository is a pnpm workspace: the root **is** the site, and the framework
+lives in `packages/`. A site's own repo therefore contains only `site/`,
+`content/` and a config file.
+
+`site/` ships as a **skeleton**: every decision a person must make is marked
+`TODO`, and `pnpm validate` refuses to run the content pipeline until they are
+gone. Publishing into an unplanned site is not a content defect — it is doing
+the steps out of order. Start from a worked example instead of a blank form:
+
+```bash
+cp -r examples/agent-native-engineer/site/. site/
+```
+
+| File | Holds |
+|---|---|
+| `site/site.yaml` | brand, URL, locale, author, social, hero, theme choice, static nav |
+| `site/taxonomy.yaml` | pillars, topics, series — the source of the category vocabulary |
+| `site/content-types.yaml` | each content type's route, labels and surfaces |
+| `site/policy.yaml` | thresholds and switches — what counts as publishable |
+| `site/pages.yaml` | About / Uses / Newsletter / Work-with-me copy |
+| `site/voice.md` | writing style: frontmatter for the analyser, prose for the agent |
+| `site/redirects.yaml` | URL history — emitted as `_redirects`, targets verified at build |
+| `site/themes/<name>.css` | the design token set |
+| `site/templates/**` | markup overrides — any engine component, layout, card or page |
+| `packages/engine/content-types/<name>.ts` | schema, JSON-LD and components for one type |
+| `packages/engine/i18n/<locale>.ts` | UI chrome strings |
+
+`site/README.md` indexes which file a task needs. Better still, `pnpm context <task>`
+prints just that slice — reading all of `site/` costs ~9k tokens, one task needs one
+or two.
+
+The intent plane is YAML and Markdown on purpose: those files cannot contain an
+import or a component, so the boundary cannot erode. The contract is
+[`docs/specs/site-config-contract.md`](docs/specs/site-config-contract.md); the
+reasoning is [`docs/adr/0002-three-planes.md`](docs/adr/0002-three-planes.md).
 
 ## Content
 
-Create posts in:
-
-```txt
-src/content/posts/*.mdx
 ```
-
-Required frontmatter:
+content/posts/*.mdx
+content/videos/*.mdx
+content/projects/*.mdx
+content/case-studies/*.mdx
+```
 
 ```yaml
 title: Article title
-description: SEO description
-slug: article-slug
-pubDate: 2026-07-07
-category: ai-engineering
-tags:
-  - AI
-  - Blogging
+description: 110-160 display columns
+slug: article-slug        # must equal the filename
+pubDate: 2026-07-29
+category: ai-engineering  # must exist in site/taxonomy.yaml
+tags: [AI, Blogging]
+draft: true               # optional — never built, and never gated
 ```
 
-Drafts are supported with:
-
-```yaml
-draft: true
-```
-
-Other collections:
-
-```txt
-src/content/videos/*.mdx
-src/content/projects/*.mdx
-src/content/case-studies/*.mdx
-```
+Add a new kind of content: [`docs/recipes/add-content-type.md`](docs/recipes/add-content-type.md).
 
 ## SEO / GEO
 
-Implemented:
+Sitemap · `/rss.xml` · `/robots.txt` · `/llms.txt` · canonical URLs · Open Graph ·
+Twitter Card · visible breadcrumbs · JSON-LD for Person, Article, VideoObject,
+CreativeWork, BreadcrumbList, CollectionPage and ItemList.
 
-- `sitemap`
-- `/rss.xml`
-- `/robots.txt`
-- `/llms.txt`
-- canonical URLs
-- Open Graph
-- Twitter Card
-- Person JSON-LD
-- Article JSON-LD
-- VideoObject JSON-LD
-- CollectionPage and ItemList JSON-LD
+Each of these is checked, not just implemented. The gate covers site-wide on-page
+SEO, not just per-page markup: title and description uniqueness, exactly one H1,
+image alt text, anchor-text quality, URL structure, noindex/sitemap agreement,
+thin listing pages, and structured data that matches what the page renders.
+Rule table: [`docs/specs/content-contract.md`](docs/specs/content-contract.md).
 
-Use `prompts/seo-geo-audit.md` before launch and after major content changes.
+`pnpm audit:seo` runs Lighthouse over the whole build as a separate CI job — it
+needs headless Chrome and takes minutes, so it reports rather than blocks.
 
-## Cloudflare Pages
+## AI-first workflow
 
-This repo includes a GitHub Actions workflow:
-
-```txt
-.github/workflows/cloudflare-pages.yml
+```
+generate → pnpm build → pnpm validate → read validate-report.json → fix → repeat until 0 errors
 ```
 
-Required GitHub Secrets:
+- Agent rules: [`AGENTS.md`](AGENTS.md)
+- Skill: [`.ai/skills/ai-first-blogger/SKILL.md`](.ai/skills/ai-first-blogger/SKILL.md)
+- Playbooks: [`docs/playbooks/`](docs/playbooks/)
+- Prompts: [`prompts/`](prompts/) — intake, content plan, article brief, SEO/GEO audit, deploy
 
-```txt
-CLOUDFLARE_API_TOKEN
-CLOUDFLARE_ACCOUNT_ID
-```
+## Deployment
 
-Set the Pages project name in the workflow:
+`.github/workflows/cloudflare-pages.yml` deploys on push to `main`.
 
-```yaml
-CLOUDFLARE_PAGES_PROJECT_NAME: your-pages-project
-```
+Set `CLOUDFLARE_PAGES_PROJECT_NAME` and `PUBLIC_SITE_URL` in the workflow — they ship
+as `REPLACE_ME` and the job fails fast until you do. Add `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` as GitHub Secrets.
 
-The workflow runs on push to `main`:
+Pull requests deploy to a preview URL built with `DEPLOY_CONTEXT=preview`: noindex,
+no sitemap, `robots.txt` disallowed — a copy of the site on a second hostname must
+not compete with production for the same queries.
 
-```txt
-pnpm install --frozen-lockfile
-pnpm check
-pnpm build
-wrangler pages deploy dist
-```
+The build emits `_redirects` (from `site/redirects.yaml`, targets verified against
+the pages actually built) and `_headers` (immutable for fingerprinted assets,
+revalidate for HTML). Full contract:
+[`docs/specs/deployment.md`](docs/specs/deployment.md).
 
-## Ghost Migration
+## Ghost migration
 
-Place the Ghost export at:
-
-```txt
-migration/ghost-export.json
-```
-
-Optionally place exported images at:
-
-```txt
-migration/images/
-```
-
-Run:
+Put the export at `migration/ghost-export.json` (images at `migration/images/`), then:
 
 ```bash
 LEGACY_CONTENT_DOMAIN=https://your-old-domain.com pnpm migrate:ghost
 ```
 
-The script writes MDX posts to `src/content/posts/` and generates `migration/report.md`.
+Writes MDX to `content/posts/` and a report to `migration/report.md`.
+Slug overrides: `packages/cli/src/slug-map.ts`. Category and series mapping:
+`packages/cli/src/category-map.ts`. Both ship empty — fill in the mapping with **your**
+categories. It is checked against `site/taxonomy.yaml` before anything is written,
+so a mismatch aborts the run instead of producing hundreds of files that fail the
+build. Posts matching no rule land in `fallbackCategory` and are listed in the report.
 
-Manual slug overrides live in `scripts/slug-map.ts`.
-Category and series mapping lives in `scripts/category-map.ts`.
+## Documentation
+
+```
+docs/getting-started.md      fork → live site
+docs/capabilities.md         capability map · boundaries · optimisation backlog
+docs/evaluation-2026-08.md   full-pipeline evaluation against a lookalike site
+docs/specs/                  content-contract · site-config-contract · taxonomy
+                             theming · i18n · validation-pipeline · metrics
+                             deployment · releasing · templates
+docs/recipes/                add-content-type · add-theme · add-locale
+docs/adr/                    decisions (0002 planes · 0003 workspace · 0004 template API)
+docs/playbooks/              AI-first workflow · template customization
+.github/ISSUE_TEMPLATE/      boundary · gate · bug — the three ways to report
+```
 
 ## Notes
 
 - Keep secrets out of the repository.
-- Keep brand-specific values in `src/data/site.ts`.
-- Keep content strategy in `content-plans/site-plan.yaml`.
 - Do not edit generated `dist/`, `.astro/`, or `node_modules/`.

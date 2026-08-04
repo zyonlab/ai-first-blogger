@@ -1,0 +1,49 @@
+---
+import { t } from '@i18n/index';
+
+type Props = {
+  title: string;
+  description: string;
+  url: string;
+};
+
+const { title, description, url } = Astro.props;
+const prompt = t('aiStudy.prompt', { url, title, description });
+
+const encodedPrompt = encodeURIComponent(prompt);
+const links = [
+  { label: 'ChatGPT', href: `https://chatgpt.com/?hints=search&q=${encodedPrompt}` },
+  { label: 'Claude Desktop', href: `claude://claude.ai/new?q=${encodedPrompt}` },
+  { label: 'Claude Web', href: `https://claude.ai/new?q=${encodedPrompt}` },
+  { label: 'Perplexity', href: `https://www.perplexity.ai/search?q=${encodedPrompt}` },
+];
+---
+
+<section class="ai-study" aria-label={t('aiStudy.label')}>
+  <div>
+    <strong>{t('aiStudy.title')}</strong>
+    <p>{t('aiStudy.description')}</p>
+  </div>
+  <div class="ai-study-links">
+    {links.map((link) => (
+      <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+    ))}
+    <button type="button" data-ai-copy data-prompt={prompt} data-copied-label={t('aiStudy.copied')}>
+      {t('aiStudy.copyPrompt')}
+    </button>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll('[data-ai-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const prompt = button.getAttribute('data-prompt') ?? '';
+      await navigator.clipboard.writeText(prompt);
+      const original = button.textContent;
+      button.textContent = button.getAttribute('data-copied-label') ?? 'Copied';
+      window.setTimeout(() => {
+        button.textContent = original;
+      }, 1400);
+    });
+  });
+</script>

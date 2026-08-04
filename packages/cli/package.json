@@ -1,0 +1,50 @@
+{
+  "name": "aifb-cli",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "The pipeline: planning preflight, content and SEO gate, style analyser, task context, metrics, migration.",
+  "bin": {
+    "aifb": "./dist/aifb.mjs"
+  },
+  "dependencies": {
+    "aifb-engine": "workspace:*",
+    "gray-matter": "^4.0.3",
+    "turndown": "^7.2.4",
+    "yaml": "^2.9.0",
+    "zhlint": "^0.8.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zyonlab/ai-first-blogger.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/zyonlab/ai-first-blogger#readme",
+  "bugs": {
+    "url": "https://github.com/zyonlab/ai-first-blogger/issues"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "astro",
+    "content",
+    "seo",
+    "linter",
+    "ai-first"
+  ],
+  "files": [
+    "dist"
+  ],
+  "author": "zyoncode",
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

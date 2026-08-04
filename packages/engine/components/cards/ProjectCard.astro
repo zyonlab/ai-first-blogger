@@ -1,0 +1,23 @@
+---
+import type { CardProps } from './card-props';
+
+const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const data = entry.data as {
+  title: string;
+  description: string;
+  slug: string;
+  status: string;
+  techStack: string[];
+};
+const href = `/${type.route}/${data.slug}/`;
+---
+
+<article class="card project-card">
+  <div class="eyebrow">{data.status}</div>
+  <Heading><a href={href}>{data.title}</a></Heading>
+  <p>{data.description}</p>
+  <div class="tags">
+    {data.techStack.slice(0, 5).map((tech) => <span>{tech}</span>)}
+  </div>
+</article>

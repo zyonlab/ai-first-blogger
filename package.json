@@ -1,5 +1,5 @@
 {
-  "name": "ai-first-blogger",
+  "name": "aifb-site",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,20 +9,37 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "migrate:ghost": "tsx scripts/convert-ghost-to-mdx.ts"
+    "context": "tsx packages/cli/src/context.ts",
+    "validate": "tsx packages/cli/src/validate/index.ts",
+    "validate:self-test": "tsx packages/cli/src/validate/self-test.ts",
+    "test:scenarios": "tsx packages/cli/src/test-scenarios.ts",
+    "metrics": "tsx packages/cli/src/metrics.ts",
+    "analyze": "tsx packages/cli/src/analyze-content.ts",
+    "audit:seo": "lhci autorun",
+    "og:default": "tsx packages/cli/src/generate-og-default.ts",
+    "migrate:ghost": "tsx packages/cli/src/convert-ghost-to-mdx.ts",
+    "build:packages": "pnpm -r --filter aifb-cli --filter create-aifb build",
+    "release:check": "node tools/check-release.mjs"
   },
   "dependencies": {
-    "@astrojs/mdx": "latest",
-    "@astrojs/rss": "latest",
-    "@astrojs/sitemap": "latest",
-    "astro": "latest",
-    "gray-matter": "latest",
+    "@astrojs/mdx": "^7.0.2",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
+    "aifb-cli": "workspace:*",
+    "aifb-engine": "workspace:*",
+    "astro": "^7.0.6",
     "mermaid": "^11.16.0",
-    "turndown": "latest"
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@astrojs/check": "latest",
-    "tsx": "latest",
-    "typescript": "latest"
-  }
+    "@astrojs/check": "^0.9.9",
+    "@lhci/cli": "^0.15.1",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "description": "The site: intent in site/, articles in content/. The framework lives in packages/."
 }

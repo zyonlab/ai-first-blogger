@@ -1,0 +1,65 @@
+---
+/**
+ * List page for every content type in the registry.
+ * Replaces the former per-type index.astro files. Do not add new ones —
+ * declare the content type in engine/content-types/ instead.
+ */
+import PageLayout from '@layouts/PageLayout.astro';
+import { site } from '@config/site';
+import { getContentTypeByRoute, listPath, registry } from '@content-types/index';
+import { getEntries } from '@lib/content';
+import { cardFor } from '@lib/renderers';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+export function getStaticPaths() {
+  return registry.map((type) => ({ params: { type: type.route } }));
+}
+
+const { type: route } = Astro.params;
+const type = getContentTypeByRoute(route!);
+if (!type) throw new Error(`No content type registered for route "${route}"`);
+
+const Card = cardFor(type.card);
+
+const entries = await getEntries(type);
+const canonical = listPath(type);
+
+const tags = type.listTagCloud
+  ? [...new Set(entries.flatMap((entry) => (entry.data.tags as string[] | undefined) ?? []))].sort()
+  : [];
+
+const jsonLd = [
+  collectionPageSchema(type.listTitle, type.listDescription, canonical),
+  itemListSchema(
+    `${site.name} ${type.listTitle}`,
+    entries.map((entry) => ({
+      name: entry.data.title as string,
+      description: entry.data.description as string,
+      url: `${canonical}${entry.data.slug}/`,
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: type.listTitle, url: canonical },
+  ]),
+];
+---
+
+<PageLayout
+  title={type.listTitle}
+  description={type.listDescription}
+  canonical={canonical}
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: canonical, label: type.listTitle }]}
+>
+  {tags.length > 0 && (
+    <section class="section">
+      <div class="tags">
+        {tags.map((tag) => <span>{tag}</span>)}
+      </div>
+    </section>
+  )}
+  <section data-item-list class={`section ${type.listLayout ?? 'grid'}`}>
+    {entries.map((entry) => <Card entry={entry} type={type} headingLevel={2} />)}
+  </section>
+</PageLayout>

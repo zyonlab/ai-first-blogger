@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Which file does this value belong in?
+    url: https://github.com/zyonlab/ai-first-blogger/blob/main/docs/specs/site-config-contract.md
+    about: The contract for every key in site/ — check here before reporting a missing setting.
+  - name: What "publishable" means
+    url: https://github.com/zyonlab/ai-first-blogger/blob/main/docs/specs/content-contract.md
+    about: All 29 rules, what each expects, and which threshold in site/policy.yaml moves it.
+  - name: Overriding markup without losing the gate
+    url: https://github.com/zyonlab/ai-first-blogger/blob/main/docs/specs/templates.md
+    about: The template hierarchy, what an override must still satisfy, and which imports are public API.

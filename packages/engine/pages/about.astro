@@ -1,0 +1,40 @@
+---
+import { site } from '@config/site';
+import { pages } from '@config/pages';
+import PageLayout from '@layouts/PageLayout.astro';
+import { breadcrumbSchema, personSchema } from '@lib/schema';
+
+const { title, sections } = pages.about;
+const description = site.author.bio;
+const jsonLd = [
+  personSchema(),
+  breadcrumbSchema([
+    { name: 'Home', url: '/' },
+    { name: title, url: '/about/' },
+  ]),
+];
+---
+
+<PageLayout
+  title={title}
+  description={description}
+  canonical="/about/"
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: '/about/', label: title }]}
+>
+  <section class="section prose narrow">
+    {sections.map((section) => (
+      <>
+        <h2>{section.heading}</h2>
+        {section.body === 'siteDescription' && <p>{site.description}</p>}
+        {section.body === 'authorBio' && <p>{site.author.name} — {site.author.title}. {site.author.bio}</p>}
+        {section.body === 'keywords' && (
+          <ul>
+            {site.brand.keywords.map((keyword) => <li>{keyword}</li>)}
+          </ul>
+        )}
+        {section.body === 'services' && <p>{site.services.description}</p>}
+      </>
+    ))}
+  </section>
+</PageLayout>

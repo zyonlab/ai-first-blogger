@@ -1,0 +1,63 @@
+# Copy for the static pages.
+#
+# Site-owner content, not UI chrome: a new owner rewrites this rather than
+# translating it. That is why it lives here and not in engine/i18n/.
+# The dividing line: docs/specs/site-config-contract.md
+#
+# Keep descriptions under the 160 display-column ceiling (rule C-06). There is a
+# floor too, but do not write toward it — padding a sentence to clear a
+# threshold is how an earlier version of this file ended up with trailing
+# clauses that said nothing.
+
+topics:
+  title: Topics
+  description: 按问题归档，而不是按时间。同一类问题的文章是能连着读的。
+
+series:
+  title: Series
+  description: 需要按顺序读的放这里。每个系列有明确起点，也说清楚读之前该会什么。
+
+about:
+  title: About
+  # `body` selects what the engine renders under each heading:
+  #   siteDescription · authorBio · keywords · services
+  sections:
+    - { heading: 这个站是干嘛的, body: siteDescription }
+    - { heading: 谁在写, body: authorBio }
+    - { heading: 主要写什么, body: keywords }
+    - { heading: 想合作的话, body: services }
+
+newsletter:
+  title: Newsletter
+  description: 有新的复盘或者踩坑记录时发一封，一个月最多两次。
+  body: 还没接订阅服务。想收到更新直接发邮件给我，我手动记一下；人数值得折腾了再上工具。
+  action: 发邮件订阅
+
+uses:
+  title: Uses
+  description: 现在实际在用的工具链，以及为什么是它。换了会更新，没换说明还行。
+  items:
+    - name: 编辑器
+      body: VS Code 写代码，Cursor 改大段重复的东西。JetBrains 只在读陌生的 Java/Kotlin 项目时开。
+    - name: 终端
+      body: zsh + pnpm。包管理器换过几次，pnpm 的硬链接在多项目下省的磁盘和时间最明显。
+    - name: AI
+      body: 写作草稿、代码审查、重构辅助。判断类的活不交出去，生成类的基本都交。
+    - name: 部署
+      body: Cloudflare Pages。免费额度够个人站，构建 1.5 秒，没有冷启动。
+    - name: Web3
+      body: 自建节点服务加区块浏览器。公共 RPC 在批量查历史数据时会限流，绕不过去。
+    - name: 写作
+      body: Markdown + Mermaid。图跟着文字一起进 Git，改图不用开别的软件。
+
+workWithMe:
+  action: 发邮件
+  services:
+    - name: 把现有博客搬过来
+      body: Ghost / WordPress 导出转 MDX，保留原 URL 做重定向。搬完先跑一遍校验，把历史内容的问题列清楚。
+    - name: 内容结构梳理
+      body: 定主题和系列怎么划分。这一步定错了后面每篇文章都要跟着别扭，所以值得慢慢来。
+    - name: SEO / GEO 检查
+      body: 结构化数据、内链、llms.txt 这些能写成规则的部分直接接进 CI；剩下的靠人看。
+    - name: 部署和后续维护
+      body: GitHub Actions 推送即上线。之后加内容类型、换主题、加语言都不用改代码。

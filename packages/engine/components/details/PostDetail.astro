@@ -1,0 +1,57 @@
+---
+import ArticleBrief from '@components/ArticleBrief.astro';
+import ArticleHeader from '@components/ArticleHeader.astro';
+import Breadcrumbs from '@components/Breadcrumbs.astro';
+import MermaidRenderer from '@components/MermaidRenderer.astro';
+import NewsletterCTA from '@components/NewsletterCTA.astro';
+import ReadingProgress from '@components/ReadingProgress.astro';
+import Toc from '@components/Toc.astro';
+import { absoluteUrl } from '@lib/seo';
+import { readingTime } from '@lib/reading-time';
+import type { AnyComponent } from '@lib/renderers';
+import type { DetailProps } from './detail-props';
+
+const { entry, type, Content, headings, canonical } = Astro.props as DetailProps;
+const Body = Content as AnyComponent;
+const data = entry.data as {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  category: string;
+  tags: string[];
+  series?: string;
+};
+const readingMinutes = readingTime(entry.body ?? '');
+---
+
+<ReadingProgress />
+<article class="article-shell">
+  <div class="article-grid">
+    <Breadcrumbs items={[{ href: `/${type.route}/`, label: type.listTitle }, { href: canonical, label: data.title }]} />
+    <ArticleHeader
+      title={data.title}
+      description={data.description}
+      pubDate={data.pubDate}
+      updatedDate={data.updatedDate}
+      category={data.category}
+      tags={data.tags}
+      seriesSlug={data.series}
+      readingMinutes={readingMinutes}
+    />
+    <Toc headings={headings} />
+    <div class="prose">
+      <Body />
+    </div>
+    <ArticleBrief
+      title={data.title}
+      description={data.description}
+      category={data.category}
+      seriesSlug={data.series}
+      readingMinutes={readingMinutes}
+      articleUrl={absoluteUrl(canonical)}
+    />
+  </div>
+  <NewsletterCTA />
+</article>
+<MermaidRenderer />
