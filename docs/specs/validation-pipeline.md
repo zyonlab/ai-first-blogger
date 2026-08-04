@@ -98,8 +98,10 @@ For each rule, a synthetic context that **must** trip it and one that **must not
 Both directions are asserted — a rule that fires on everything is as broken as one
 that never fires.
 
-C-12 and C-13 read the real `site/themes/` and `packages/engine/styles/` trees instead of a
-fixture, so they are verified against the repository itself.
+C-12 and C-13 read real trees instead of a fixture — `site/themes/`, `site/templates/`, and
+the installed `aifb-engine`, located by module resolution so it is found whether it sits
+in `packages/` or `node_modules/`. Finding no violations there proves nothing on its own,
+so each also reports how many files it read and answers a planted violation.
 
 ## CI wiring
 

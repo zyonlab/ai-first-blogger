@@ -17,8 +17,9 @@ site/site.yaml          theme.name selects it; theme.defaultMode picks the mode
 ```
 
 Switching themes is a one-line change. Adding a theme is one file. No component,
-layout or page is touched — enforced by rule C-13 (`pnpm validate`), which fails if
-`packages/engine/styles/global.css` contains any literal colour.
+layout or page is touched — enforced by rule C-13 (`pnpm validate`), which fails if the
+engine's `styles/global.css`, any of its components or layouts, or any override under
+`site/templates/` contains a literal colour.
 
 `site/themes/paper.css` ships as a working example: light-first, serif, warm palette.
 
@@ -112,7 +113,8 @@ not see them.
 The component now reads the tokens off `:root` at render time, so diagrams
 follow whatever theme and mode are active with no second source of truth. C-13
 scans components as well as `global.css`, which is what would have caught the
-original.
+original — and the site's own template overrides, where a copied component is
+edited by hand and the same literals are likeliest to reappear.
 
 ### Why syntax colours are tokens
 

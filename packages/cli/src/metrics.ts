@@ -15,6 +15,7 @@ import path from 'node:path';
 import { siteContentTypes } from 'aifb-engine/config/content-types';
 import { policy } from 'aifb-engine/config/policy';
 import { site } from 'aifb-engine/config/site';
+import { displayPath, enginePath } from './paths';
 import { collectEntries } from './validate/collect';
 
 const root = process.cwd();
@@ -24,8 +25,12 @@ const root = process.cwd();
  * plane. Everything a site owner is expected to edit lives in site/, which is
  * YAML and Markdown and therefore cannot appear here at all — the three-plane
  * split is what makes this metric cheap to define.
+ *
+ * Located through the engine package rather than by joining `packages/engine`
+ * onto the cwd: in a site that installed the framework those paths are empty,
+ * and this metric would have reported a perfect score off zero files read.
  */
-const NEUTRAL_DIRS = ['packages/engine/components', 'packages/engine/pages', 'packages/engine/layouts', 'packages/engine/lib', 'packages/engine/config'];
+const NEUTRAL_DIRS = ['components', 'pages', 'layouts', 'lib', 'config'].map((dir) => enginePath(dir));
 
 async function walk(dir: string, match: (file: string) => boolean): Promise<string[]> {
   let out: string[] = [];
@@ -95,8 +100,8 @@ async function measureNeutrality() {
   const offenders: { file: string; reasons: string[] }[] = [];
 
   for (const dir of NEUTRAL_DIRS) {
-    for (const file of await walk(path.join(root, dir), isSource)) {
-      const rel = path.relative(root, file);
+    for (const file of await walk(dir, isSource)) {
+      const rel = displayPath(file);
       const text = await fs.readFile(file, 'utf8');
       // Strip comments — documentation may legitimately mention these strings.
       const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -118,8 +123,8 @@ async function measureTypeCoupling(typeNames: string[]) {
   const offenders: { file: string; type: string }[] = [];
 
   for (const dir of NEUTRAL_DIRS) {
-    for (const file of await walk(path.join(root, dir), isSource)) {
-      const rel = path.relative(root, file);
+    for (const file of await walk(dir, isSource)) {
+      const rel = displayPath(file);
       const text = (await fs.readFile(file, 'utf8'))
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');

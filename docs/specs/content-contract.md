@@ -99,7 +99,7 @@ anyone reading the report.
 | C-10 | Breadcrumb schema matches the page | `BreadcrumbList` ⇒ visible breadcrumb | error | `dist/` | `rules/seo.ts` |
 | C-11 | Required base fields | `title`, `description`, `slug` present | error | `content/` | `rules/content.ts` |
 | C-12 | Theme token completeness | every theme defines the full token set | error | `site/themes/` | `rules/theme.ts` |
-| C-13 | No hardcoded colours outside themes | zero literal colours in `global.css` | error | `packages/engine/styles/` | `rules/theme.ts` |
+| C-13 | No hardcoded colours outside themes | zero literal colours in engine CSS, components, layouts or site overrides | error | the installed `aifb-engine`, `site/templates/` | `rules/theme.ts` |
 | C-14 | Title uniqueness | no two pages share a `<title>` | error | `dist/` | `rules/onpage.ts` |
 | C-15 | Description uniqueness | no two pages share a meta description | error | `dist/` | `rules/onpage.ts` |
 | C-16 | Exactly one H1 | every page has one, and only one | error | `dist/` | `rules/onpage.ts` |

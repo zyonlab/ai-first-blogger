@@ -67,7 +67,7 @@ export const linkRules: Rule[] = [
           severity: 'error',
           file: url,
           message: 'No inbound internal links — the page is reachable only via the sitemap.',
-          fix: 'Declare a `surfaces` entry for the content type in packages/engine/content-types/, or link the page from a list, topic or series page.',
+          fix: 'Declare a `surfaces` entry for this content type so its pages are listed somewhere, or link the page from a list, topic or series page.',
         });
       }
       return out;
