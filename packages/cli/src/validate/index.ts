@@ -14,7 +14,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { site } from 'aifb-engine/config/site';
 import { acknowledgedAreas, blockingIssues, checkReadiness } from '../readiness';
-import { collectEntries, collectPages, hasBuild } from './collect';
+import { collectEntries, collectPages, hasBuild, readBuildInfo } from './collect';
 import { contentRules } from './rules/content';
 import { linkRules } from './rules/links';
 import { sourceLinkRules } from './rules/links-source';
@@ -112,11 +112,16 @@ const allEntries = await collectEntries({ includeDrafts: true });
 const entries = allEntries.filter((entry) => entry.data.draft !== true);
 const drafts = allEntries.length - entries.length;
 
+// Where the engine sat in this build's URL space. The rules that read meaning
+// out of URL segments subtract it; see validate/url.ts.
+const { mount } = await readBuildInfo();
+
 const ctx: RuleContext = {
   entries,
   pages: built ? await collectPages() : [],
   hasBuild: built,
   siteOrigin,
+  mount,
 };
 
 const violations: Violation[] = [];
@@ -179,11 +184,15 @@ const checkedRules = rules.length - skipped.length;
 console.log(
   `Checked ${ctx.entries.length} content file(s) and ${ctx.pages.length} built page(s) against ${checkedRules}/${rules.length} rules.`,
 );
+// A mounted build is a different URL space, and a report that does not say so
+// is a report nobody can reconcile with the site they are looking at.
+if (mount !== '') console.log(`${DIM}Engine mounted at ${mount}/ — URL rules measured from there.${RESET}`);
 console.log(`${errors.length} error(s), ${warnings.length} warning(s).`);
 
 const report = {
   generatedAt: new Date().toISOString(),
   siteOrigin,
+  mount,
   planned: true,
   readiness: readiness.filter((issue) => issue.severity === 'warn' || acknowledged.has(issue.area)),
   acknowledged: [...acknowledged],

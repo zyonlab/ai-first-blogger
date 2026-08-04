@@ -1,6 +1,7 @@
 import { policy } from 'aifb-engine/config/policy';
 import { canonicalHref, displayWidth, hasVisibleBreadcrumb, jsonLdBlocks, metaContent, titleText } from '../html';
 import type { Rule, Violation } from '../types';
+import { engineSegments } from '../url';
 
 /**
  * SERP truncation limits, measured in display columns (CJK counts as 2).
@@ -176,7 +177,7 @@ export const seoRules: Rule[] = [
     title: 'Breadcrumb schema matches the page',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages }) => {
+    run: ({ pages, mount }) => {
       const out: Violation[] = [];
       for (const page of pages) {
         const hasSchema = jsonLdBlocks(page.html).some(
@@ -186,7 +187,10 @@ export const seoRules: Rule[] = [
 
         // Listing and root pages carry breadcrumb schema without rendering a
         // trail; only flag detail pages, which is where the mismatch misleads.
-        const isDetail = page.url.split('/').filter(Boolean).length >= 2;
+        // Depth is counted from the engine's root: a mounted `/zh/blog/writing/`
+        // is still a listing page, and counting from the origin would report
+        // every one of them.
+        const isDetail = engineSegments(page.url, mount).length >= 2;
         if (hasSchema && !hasMarkup && isDetail) {
           out.push({
             rule: 'C-10',

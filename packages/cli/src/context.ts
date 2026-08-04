@@ -204,7 +204,12 @@ async function setupContext() {
   say();
 
   say('STATIC PAGE COPY — site/pages.yaml');
-  say(`  about ${pages.about.sections.length} sections · uses ${pages.uses.items.length} items · work-with-me ${pages.workWithMe.services.length} services`);
+  // A section may be absent: a site that declined the page in engine({ pages })
+  // has no reason to carry its copy.
+  say(
+    `  about ${pages.about?.sections.length ?? 0} sections · uses ${pages.uses?.items.length ?? 0} items · ` +
+      `work-with-me ${pages.workWithMe?.services.length ?? 0} services`,
+  );
   say();
 
   const acknowledged = acknowledgedAreas();

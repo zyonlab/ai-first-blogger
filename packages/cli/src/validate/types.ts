@@ -39,6 +39,18 @@ export type RuleContext = {
   /** True when dist/ was present; dist-dependent rules skip otherwise. */
   hasBuild: boolean;
   siteOrigin: string;
+  /**
+   * Where the engine was mounted for this build: `''` at the origin root,
+   * otherwise e.g. `/zh/blog`.
+   *
+   * Several rules read meaning out of the shape of a URL — one segment is a
+   * listing page, two is a detail page, `/` is the home page. Under a mount
+   * every one of those counts is off by the depth of the prefix, so a rule that
+   * does not subtract it stops matching what it was written to match and
+   * reports nothing. Use `enginePath()` from ./url rather than `page.url`
+   * wherever the segments are what the rule is about.
+   */
+  mount: string;
 };
 
 export type Rule = {
