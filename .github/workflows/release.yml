@@ -49,8 +49,12 @@ jobs:
       - name: The pipeline still behaves across layers
         run: pnpm test:scenarios
 
+      # The tag argument is what makes the check assert "this tag matches these
+      # packages". On a workflow_dispatch from a branch, `ref_name` is the
+      # branch, so passing it unconditionally made the only manual trigger this
+      # workflow declares fail every time it was used.
       - name: Release preconditions
-        run: node tools/check-release.mjs "${{ github.ref_name }}"
+        run: node tools/check-release.mjs "${{ github.ref_type == 'tag' && github.ref_name || '' }}"
 
       # `pnpm publish -r` walks the workspace in dependency order and skips any
       # package whose version is already on npm, so a re-run is harmless.
