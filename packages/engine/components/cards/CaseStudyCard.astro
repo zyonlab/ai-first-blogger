@@ -1,6 +1,7 @@
 ---
 import { categoryLabel } from '@config/taxonomy';
 import { entryPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import type { CardProps } from './card-props';
 
 const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
@@ -12,11 +13,12 @@ const data = entry.data as {
   category: string;
   tags: string[];
 };
-const href = entryPath(type, data.slug);
+const locale = localeOf(entry);
+const href = entryPath(type, data.slug, locale);
 ---
 
 <article class="card case-study-card">
-  <p class="eyebrow">{categoryLabel(data.category)}</p>
+  <p class="eyebrow">{categoryLabel(data.category, locale)}</p>
   <Heading><a href={href}>{data.title}</a></Heading>
   <p>{data.description}</p>
   <div class="tags">

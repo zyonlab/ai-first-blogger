@@ -1,5 +1,9 @@
 ---
-import { t } from '@i18n/index';
+import { localeOfPath } from '@config/routes';
+import { messages } from '@i18n/index';
+
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
 
 type Props = {
   title: string;

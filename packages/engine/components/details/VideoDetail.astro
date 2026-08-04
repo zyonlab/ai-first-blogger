@@ -5,6 +5,7 @@ import YouTubeEmbed from '@components/YouTubeEmbed.astro';
 import { formatDate } from '@lib/dates';
 import type { AnyComponent } from '@lib/renderers';
 import { listPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -23,7 +24,7 @@ const chapterCount = data.chapters.length;
 ---
 
 <article class="video-page">
-  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type, localeOf(entry)), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="video-hero">
     <div class="video-hero-copy">
       <p class="eyebrow">{type.label}</p>
@@ -44,7 +45,7 @@ const chapterCount = data.chapters.length;
         )}
         <div>
           <dt>Published</dt>
-          <dd>{formatDate(data.pubDate)}</dd>
+          <dd>{formatDate(data.pubDate, localeOf(entry))}</dd>
         </div>
         <div>
           <dt>Chapters</dt>

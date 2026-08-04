@@ -7,8 +7,11 @@
  * with no action left in it is not a smaller CTA — it is a paragraph asking
  * the reader to do something and no way to do it.
  */
-import { hasPage, pagePath } from '@config/routes';
-import { t } from '@i18n/index';
+import { hasPage, localeOfPath, pagePath } from '@config/routes';
+import { messages } from '@i18n/index';
+
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
 
 const primary = hasPage('work-with-me');
 const secondary = hasPage('newsletter');
@@ -18,8 +21,8 @@ const secondary = hasPage('newsletter');
 <section class="cta-panel">
   <p>{t('cta.text')}</p>
   <div class="actions">
-    {primary && <a class="button primary" href={pagePath('work-with-me')}>{t('cta.primary')}</a>}
-    {secondary && <a class="button" href={pagePath('newsletter')}>{t('cta.secondary')}</a>}
+    {primary && <a class="button primary" href={pagePath('work-with-me', locale)}>{t('cta.primary')}</a>}
+    {secondary && <a class="button" href={pagePath('newsletter', locale)}>{t('cta.secondary')}</a>}
   </div>
 </section>
 )}

@@ -1,7 +1,7 @@
 ---
-import { hasPage, seriesPath } from '@config/routes';
-import { series, topics } from '@config/taxonomy';
-import { t } from '@i18n/index';
+import { hasPage, localeOfPath, seriesPath } from '@config/routes';
+import { seriesFor, topicsFor } from '@config/taxonomy';
+import { messages } from '@i18n/index';
 import { formatDate } from '@lib/dates';
 
 type Props = {
@@ -16,8 +16,10 @@ type Props = {
 };
 
 const { title, description, pubDate, updatedDate, category, tags, seriesSlug, readingMinutes } = Astro.props;
-const topic = topics[category as keyof typeof topics];
-const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : undefined;
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
+const topic = topicsFor(locale)[category];
+const seriesItem = seriesSlug ? seriesFor(locale)[seriesSlug] : undefined;
 ---
 
 <header class="article-header">
@@ -26,11 +28,11 @@ const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : unde
     <h1>{title}</h1>
     <p>{description}</p>
     <div class="meta">
-      <time datetime={pubDate.toISOString()}>{t('article.publishedOn', { date: formatDate(pubDate) })}</time>
-      {updatedDate && <time datetime={updatedDate.toISOString()}>{t('article.updatedOn', { date: formatDate(updatedDate) })}</time>}
+      <time datetime={pubDate.toISOString()}>{t('article.publishedOn', { date: formatDate(pubDate, locale) })}</time>
+      {updatedDate && <time datetime={updatedDate.toISOString()}>{t('article.updatedOn', { date: formatDate(updatedDate, locale) })}</time>}
       {readingMinutes && <span>{t('article.readingTime', { minutes: readingMinutes })}</span>}
       {seriesSlug && seriesItem && (hasPage('series')
-        ? <a href={seriesPath(seriesSlug)}>{seriesItem.title}</a>
+        ? <a href={seriesPath(seriesSlug, locale)}>{seriesItem.title}</a>
         : <span>{seriesItem.title}</span>)}
     </div>
     {tags.length > 0 && (

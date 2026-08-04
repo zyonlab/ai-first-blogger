@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import Breadcrumbs from '@components/Breadcrumbs.astro';
+import type { Alternate } from '@lib/alternates';
 
 type Props = {
   title: string;
@@ -13,12 +14,14 @@ type Props = {
    * JSON-LD — structured data must describe what is actually rendered (C-10).
    */
   breadcrumbs?: { href: string; label: string }[];
+  /** The same page in other languages. See @lib/alternates. */
+  alternates?: Alternate[];
 };
 
-const { title, description, eyebrow, canonical, jsonLd, breadcrumbs } = Astro.props;
+const { title, description, eyebrow, canonical, jsonLd, breadcrumbs, alternates } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd}>
+<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd} alternates={alternates}>
   {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
   <section class="page-hero narrow">
     {eyebrow && <p class="eyebrow">{eyebrow}</p>}

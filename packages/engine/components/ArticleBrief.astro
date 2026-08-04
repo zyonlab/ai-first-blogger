@@ -5,9 +5,9 @@
  * Lives in the content grid rather than the header so that on wide screens it
  * becomes a third column beside the prose instead of leaving dead space there.
  */
-import { hasPage, seriesPath } from '@config/routes';
-import { series, topics } from '@config/taxonomy';
-import { t } from '@i18n/index';
+import { hasPage, localeOfPath, seriesPath } from '@config/routes';
+import { seriesFor, topicsFor } from '@config/taxonomy';
+import { messages } from '@i18n/index';
 import AIStudyLinks from './AIStudyLinks.astro';
 
 type Props = {
@@ -20,8 +20,10 @@ type Props = {
 };
 
 const { title, description, category, seriesSlug, readingMinutes, articleUrl } = Astro.props;
-const topic = topics[category as keyof typeof topics];
-const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : undefined;
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
+const topic = topicsFor(locale)[category];
+const seriesItem = seriesSlug ? seriesFor(locale)[seriesSlug] : undefined;
 ---
 
 <aside class="article-brief" aria-label={t('article.overview')}>
@@ -43,7 +45,7 @@ const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : unde
         <div>
           <dt>Series</dt>
           <dd>{hasPage('series') && seriesSlug
-            ? <a href={seriesPath(seriesSlug)}>{seriesItem.title}</a>
+            ? <a href={seriesPath(seriesSlug, locale)}>{seriesItem.title}</a>
             : seriesItem.title}</dd>
         </div>
       )}

@@ -1,7 +1,10 @@
 ---
-import { site } from '@config/site';
+import { localeOfPath } from '@config/routes';
+import { siteFor } from '@config/site';
+import type { Alternate } from '@lib/alternates';
+import { xDefault } from '@lib/alternates';
 import { absoluteUrl } from '@lib/seo';
-import { ogLocale } from '@i18n/index';
+import { ogLocaleOf } from '@i18n/index';
 
 type Props = {
   title: string;
@@ -13,7 +16,16 @@ type Props = {
   publishedTime?: Date | string;
   modifiedTime?: Date | string;
   tags?: string[];
+  /**
+   * The same page in other languages, including this one. Empty on a
+   * single-language site and on a page that exists in one language only —
+   * see @lib/alternates for why nothing here infers the set.
+   */
+  alternates?: Alternate[];
 };
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
 
 const {
   title,
@@ -25,7 +37,10 @@ const {
   publishedTime,
   modifiedTime,
   tags = [],
+  alternates = [],
 } = Astro.props;
+
+const defaultHref = xDefault(alternates);
 
 // The home page uses site.title verbatim; every other page goes through the
 // site's own title template (site/site.yaml → titleTemplate).
@@ -46,13 +61,20 @@ const imageUrl = absoluteUrl(image);
 <meta name="author" content={site.author.name} />
 <meta name="robots" content={noindex || isPreview ? 'noindex,nofollow' : 'index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1'} />
 <link rel="canonical" href={canonicalUrl} />
+{alternates.map((alternate) => (
+  <link rel="alternate" hreflang={alternate.locale} href={absoluteUrl(alternate.href)} />
+))}
+{defaultHref && <link rel="alternate" hreflang="x-default" href={absoluteUrl(defaultHref)} />}
 <meta property="og:title" content={pageTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:image" content={imageUrl} />
 <meta property="og:site_name" content={site.name} />
-<meta property="og:locale" content={ogLocale} />
+<meta property="og:locale" content={ogLocaleOf(locale)} />
+{alternates
+  .filter((alternate) => alternate.locale !== locale)
+  .map((alternate) => <meta property="og:locale:alternate" content={ogLocaleOf(alternate.locale)} />)}
 {type === 'article' && publishedTime && <meta property="article:published_time" content={new Date(publishedTime).toISOString()} />}
 {type === 'article' && modifiedTime && <meta property="article:modified_time" content={new Date(modifiedTime).toISOString()} />}
 {type === 'article' && <meta property="article:author" content={site.author.name} />}

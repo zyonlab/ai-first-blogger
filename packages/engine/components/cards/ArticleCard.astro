@@ -1,6 +1,8 @@
 ---
-import { series, topics, type TopicSlug } from '@config/taxonomy';
+import { localeOfPath } from '@config/routes';
+import { seriesFor, topicsFor } from '@config/taxonomy';
 import { entryPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import { formatDate } from '@lib/dates';
 import type { CardProps } from './card-props';
 
@@ -15,9 +17,14 @@ const data = entry.data as {
   tags: string[];
   series?: string;
 };
-const topic = topics[data.category as TopicSlug];
-const seriesItem = data.series ? series[data.series as keyof typeof series] : undefined;
-const href = entryPath(type, data.slug);
+// The card's own locale is the *entry's*, not the page's. They are the same on
+// every surface the engine renders today, and taking it from the entry is what
+// keeps that true if a page ever lists across languages: a link to an article
+// must point at the URL that article was built at.
+const locale = localeOf(entry);
+const topic = topicsFor(locale)[data.category];
+const seriesItem = data.series ? seriesFor(locale)[data.series] : undefined;
+const href = entryPath(type, data.slug, locale);
 ---
 
 <article class="card article-card">
@@ -25,7 +32,7 @@ const href = entryPath(type, data.slug);
   <Heading><a href={href}>{data.title}</a></Heading>
   <p>{data.description}</p>
   <div class="meta">
-    <time datetime={data.pubDate.toISOString()}>{formatDate(data.pubDate)}</time>
+    <time datetime={data.pubDate.toISOString()}>{formatDate(data.pubDate, locale)}</time>
     {seriesItem && <span>{seriesItem.title}</span>}
   </div>
   {data.tags.length > 0 && (

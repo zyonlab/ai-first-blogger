@@ -4,6 +4,7 @@ import NewsletterCTA from '@components/NewsletterCTA.astro';
 import { categoryLabel } from '@config/taxonomy';
 import type { AnyComponent } from '@lib/renderers';
 import { listPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -17,9 +18,9 @@ const data = entry.data as {
 ---
 
 <article class="article-shell">
-  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type, localeOf(entry)), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="article-header">
-    <p class="eyebrow">{type.label} · {categoryLabel(data.category)}</p>
+    <p class="eyebrow">{type.label} · {categoryLabel(data.category, localeOf(entry))}</p>
     <h1>{data.title}</h1>
     <p>{data.description}</p>
     <div class="tags">

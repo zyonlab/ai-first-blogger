@@ -1,5 +1,5 @@
 ---
-import { topicPath } from '@config/routes';
+import { localeOfPath, topicPath } from '@config/routes';
 
 type Props = {
   topic: {
@@ -18,6 +18,6 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
 
 <article class="card topic-card">
   <div class="topic-orb" aria-hidden="true"></div>
-  <Heading><a href={topicPath(topic.slug)}>{topic.title}</a></Heading>
+  <Heading><a href={topicPath(topic.slug, localeOfPath(Astro.url.pathname))}>{topic.title}</a></Heading>
   <p>{topic.description}</p>
 </article>

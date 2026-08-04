@@ -3,12 +3,26 @@ import Footer from '@components/Footer.astro';
 import Header from '@components/Header.astro';
 import JsonLd from '@components/JsonLd.astro';
 import SEO from '@components/SEO.astro';
-import { site } from '@config/site';
-import { activeLocale } from '@i18n/index';
-import { t } from '@i18n/index';
+import { localeOfPath } from '@config/routes';
+import { siteFor } from '@config/site';
+import { messages } from '@i18n/index';
+import type { Alternate } from '@lib/alternates';
 import { personSchema, websiteSchema } from '@lib/schema';
 import { themeNames, themes, themesDir } from 'virtual:aifb/themes';
 import '../styles/global.css';
+
+/**
+ * The locale of the page being rendered, read from its own URL.
+ *
+ * Not a prop and not a module-level constant. A prop would have to be threaded
+ * through every page and every override, and the one that forgot would render a
+ * correct-looking page with the wrong `lang` on it; a module-level constant is
+ * shared mutable state across a concurrent static build. The URL is neither —
+ * it is already per-render and already correct.
+ */
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const t = messages(locale);
 
 /**
  * Theme tokens, handed over by the integration rather than reached for. The
@@ -37,6 +51,8 @@ type Props = {
   publishedTime?: Date | string;
   modifiedTime?: Date | string;
   tags?: string[];
+  /** The same page in other languages. See @lib/alternates. */
+  alternates?: Alternate[];
 };
 
 const {
@@ -50,13 +66,14 @@ const {
   publishedTime,
   modifiedTime,
   tags,
+  alternates,
 } = Astro.props;
 
-const defaultJsonLd = [websiteSchema(), personSchema()];
+const defaultJsonLd = [websiteSchema(locale), personSchema(true, locale)];
 ---
 
 <!doctype html>
-<html lang={activeLocale} data-theme={site.theme.defaultMode} data-theme-key={site.themeStorageKey}>
+<html lang={locale} data-theme={site.theme.defaultMode} data-theme-key={site.themeStorageKey}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -80,6 +97,7 @@ const defaultJsonLd = [websiteSchema(), personSchema()];
       publishedTime={publishedTime}
       modifiedTime={modifiedTime}
       tags={tags}
+      alternates={alternates}
     />
     <JsonLd data={jsonLd ?? defaultJsonLd} />
     <script is:inline>
