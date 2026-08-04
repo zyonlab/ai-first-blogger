@@ -42,7 +42,36 @@
  * config — `pnpm context`, `pnpm surfaces` — sees the default, an unmounted
  * engine; the gate does not guess, it reads the mount the build recorded (see
  * `.aifb/build.json`).
+ *
+ * ## Locale composes *inside* the mount
+ *
+ * `site/site.yaml` can declare more than one locale (see `siteLocales` in
+ * ./site.ts). The default locale is served at the engine's root and every other
+ * one behind its prefix, and the prefix goes **after** the mount:
+ *
+ *     mount '/blog', default zh-CN, also en-US at 'en'
+ *
+ *     /blog/            /blog/writing/       zh-CN
+ *     /blog/en/         /blog/en/writing/    en-US
+ *
+ * That order is forced, not chosen. The mount is a fact about the host site's
+ * URL space — the host decided the engine lives at `/blog`, and it may already
+ * serve `/en/` for pages of its own that this engine will never see. Putting the
+ * engine's locale prefix outside the mount would mean the engine claiming
+ * `/en/blog/`: inventing a URL in a namespace it was given no authority over,
+ * and colliding with the host's own translation of everything else.
+ *
+ * The other direction of the same rule: a site whose *host* is bilingual and
+ * mounts a single-language engine under `/zh/blog/` is doing exactly what it did
+ * in 0.3.0 and should not also declare `locales` — the language is already in
+ * the mount, and declaring it again is how you get `/zh/blog/zh/`.
+ *
+ * `withLocale()` is the composition, and it is the only function that knows the
+ * order. Everything with a locale in it — every path helper below, `listPath()`
+ * and `entryPath()` in the registry — is built from it, for the same reason
+ * everything with a mount in it is built from `withMount()`.
  */
+import { defaultLocale, isMultiLocale, siteLocales } from './site';
 
 /** Fixed pages a site can decline via `engine({ pages })`. Names are the URL segment. */
 export const OPTIONAL_PAGES = ['about', 'newsletter', 'series', 'topics', 'uses', 'work-with-me'] as const;
@@ -140,27 +169,176 @@ export function configureRoutes(options: { mount?: string; pages?: readonly stri
 }
 
 /* ------------------------------------------------------------------ *
- * The engine's own routes, as paths. Every one of these goes through
- * `withMount`; nothing outside this file and the content type registry
- * builds an engine path by hand.
+ * Locale.
+ *
+ * The list comes from site/site.yaml — it is an intent fact, not an
+ * installation fact, so unlike `mount` it needs no environment channel:
+ * the same YAML is readable from both module graphs and from a plain
+ * node script.
  * ------------------------------------------------------------------ */
 
-/** The engine's root — the home page, or the blog index of a mounted engine. */
-export const homePath = withMount('/');
+export type Locale = string;
 
-export const rssPath = withMount('/rss.xml');
+export { defaultLocale, isMultiLocale, siteLocales };
 
-export const llmsPath = withMount('/llms.txt');
+/** Every locale this site publishes, default first. */
+export const locales: Locale[] = siteLocales.map((locale) => locale.tag);
+
+const prefixByLocale = new Map(siteLocales.map((locale) => [locale.tag, locale.prefix]));
+const localeByPrefix = new Map(siteLocales.map((locale) => [locale.prefix, locale.tag]));
+
+export function isDeclaredLocale(locale: string): boolean {
+  return prefixByLocale.has(locale);
+}
+
+/**
+ * The URL segment a locale is served under: `''` for the default locale,
+ * `/en` for the rest.
+ *
+ * The default locale's own prefix is deliberately dropped here rather than
+ * never declared. `hreflang` and the sitemap both need to name it, and a value
+ * that exists in two shapes — declared for one purpose, invented for another —
+ * is the shape of a disagreement nobody can see. It is declared once, and this
+ * is the one function that decides it does not appear in a path.
+ */
+export function localePrefix(locale: Locale = defaultLocale): string {
+  if (locale === defaultLocale) return '';
+  const prefix = prefixByLocale.get(locale);
+  if (prefix === undefined) {
+    throw new Error(
+      `Unknown locale "${locale}". Declared in site/site.yaml: ${locales.join(', ')}. ` +
+        'A page cannot be rendered in a language the site does not publish.',
+    );
+  }
+  return `/${prefix}`;
+}
+
+/**
+ * The composition: an engine-owned path, in one locale, under this mount.
+ *
+ *   withLocale('/writing/', 'en-US')   // '/blog/en/writing/'
+ *
+ * Mount outside, locale inside — see the header comment for why that order is
+ * forced. At one locale this is `withMount` exactly, which is why a
+ * single-language site's output is byte-identical to 0.3.0 rather than merely
+ * equivalent to it.
+ */
+export function withLocale(path: string, locale: Locale = defaultLocale): string {
+  if (!path.startsWith('/')) return path;
+  return withMount(`${localePrefix(locale)}${path}`);
+}
+
+/**
+ * Which locale a URL on this site is in.
+ *
+ * The read side of `withLocale`, and the reason no component has to be handed
+ * its locale through thirty props: a rendering component knows `Astro.url`, and
+ * `Astro.url` already says which locale's page it is inside. A module-level
+ * "current locale" would be the obvious alternative and is not safe — a static
+ * build renders pages concurrently through one module registry, so a mutable
+ * global is a page rendering in whichever language finished last.
+ */
+export function localeOfPath(pathname: string): Locale {
+  if (!isMultiLocale) return defaultLocale;
+  const own = mount !== '' && pathname.startsWith(mount) ? pathname.slice(mount.length) : pathname;
+  const first = own.split('/').filter(Boolean)[0];
+  return (first !== undefined && localeByPrefix.get(first)) || defaultLocale;
+}
+
+/**
+ * The `[...locale]` segment of an injected route, one row per locale.
+ *
+ * Every route the engine injects for content carries an optional rest
+ * parameter in front of it (see `LOCALE_SEGMENT` and the integration). A rest
+ * parameter that is `undefined` collapses, so the default locale's paths come
+ * out at the engine root exactly as they always did, and every other locale's
+ * come out under its prefix. `getStaticPaths` iterates this.
+ *
+ * The single-locale site returns one row with `param: undefined`, which is the
+ * same list of pages 0.3.0 built, from the same code path.
+ */
+export function localeParams(): { locale: Locale; param: string | undefined }[] {
+  return siteLocales.map(({ tag, prefix }) => ({
+    locale: tag,
+    param: tag === defaultLocale ? undefined : prefix,
+  }));
+}
+
+/**
+ * The `locale` entry of a `params` object, or nothing.
+ *
+ * Nothing on a single-language site: the route has no such segment there, and a
+ * `getStaticPaths` naming a parameter its route does not have is a parameter
+ * Astro has no home for.
+ */
+export function localeParam(param: string | undefined): { locale?: string } {
+  return isMultiLocale ? { locale: param as string } : {};
+}
+
+/**
+ * `getStaticPaths` for a fixed page: one per locale, and nothing else.
+ *
+ * A fixed page is copy, and a site that declares a language is claiming to
+ * serve its About page in it. If the copy is not translated the page renders
+ * the default language's words — visible to anyone who opens it, and reported
+ * by C-31 — which is a better failure than a URL the nav links to and the build
+ * never produced.
+ *
+ * `undefined` on a single-language site, because there the route has no
+ * `[...locale]` segment to fill and is not dynamic at all. Astro warns about a
+ * `getStaticPaths` on a static route, and a warning on every build of every
+ * site that never asked for a second language is a warning people learn to
+ * scroll past.
+ */
+export const localeStaticPaths = isMultiLocale
+  ? () => localeParams().map(({ param }) => ({ params: { locale: param } }))
+  : undefined;
+
+/**
+ * The rest-parameter segment injected in front of every localisable route.
+ *
+ * Kept here beside `withLocale` because the two have to agree: the segment
+ * decides where a page is *built* and `withLocale` decides what every link to
+ * it says. Two files disagreeing about that is a site whose every internal link
+ * is one directory off.
+ */
+export const LOCALE_SEGMENT = '/[...locale]';
+
+/* ------------------------------------------------------------------ *
+ * The engine's own routes, as paths. Every one of these goes through
+ * `withLocale`, and so through `withMount`; nothing outside this file and
+ * the content type registry builds an engine path by hand.
+ *
+ * They take a locale rather than reading one, and they are functions
+ * rather than constants because of it. `homePath` was a constant until
+ * 0.4.0; an override still using it as a value is a type error naming the
+ * line, which is the loud version of the failure. The quiet version —
+ * keeping the constant beside the function — is an override that renders
+ * a Chinese link on every English page and builds green.
+ * ------------------------------------------------------------------ */
+
+/** The engine's root in one locale — the home page, or a mounted engine's index. */
+export function homePath(locale: Locale = defaultLocale) {
+  return withLocale('/', locale);
+}
+
+export function rssPath(locale: Locale = defaultLocale) {
+  return withLocale('/rss.xml', locale);
+}
+
+export function llmsPath(locale: Locale = defaultLocale) {
+  return withLocale('/llms.txt', locale);
+}
 
 /** The path of a fixed page, e.g. `/topics/` or `/work-with-me/`. */
-export function pagePath(name: OptionalPage) {
-  return withMount(`/${name}/`);
+export function pagePath(name: OptionalPage, locale: Locale = defaultLocale) {
+  return withLocale(`/${name}/`, locale);
 }
 
-export function topicPath(slug: string) {
-  return withMount(`/topics/${slug}/`);
+export function topicPath(slug: string, locale: Locale = defaultLocale) {
+  return withLocale(`/topics/${slug}/`, locale);
 }
 
-export function seriesPath(slug: string) {
-  return withMount(`/series/${slug}/`);
+export function seriesPath(slug: string, locale: Locale = defaultLocale) {
+  return withLocale(`/series/${slug}/`, locale);
 }
