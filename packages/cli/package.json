@@ -1,6 +1,6 @@
 {
   "name": "aifb-cli",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "The pipeline: planning preflight, content and SEO gate, style analyser, task context, metrics, migration.",
   "bin": {
