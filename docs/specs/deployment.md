@@ -97,6 +97,36 @@ Both non-secret values ship as `REPLACE_ME`, and the workflow fails fast while
 they are — it will not deploy to someone else's project. Missing secrets fail
 with a pointer to where to add them, rather than a wrangler stack trace.
 
+### Who sets Astro's `site`
+
+By default the engine does, from `site/site.yaml` (`PUBLIC_SITE_URL` first). The
+origin is stated once, in the intent layer, and a site's `astro.config.mjs` needs
+no YAML parser to restate a fact it has already stated.
+
+A site that owns its own environment plumbing wants the opposite, and the reason
+is not that the two values would disagree — they almost never do. It is that an
+`astro.config.mjs` can make supplying the origin a **precondition**: `throw` when
+`PUBLIC_SITE_URL` is unset, so a misconfigured pipeline cannot ship a sitemap
+pointing at the wrong domain. The engine answering the question turns that guard
+into a no-op — `site.url` falls back to `site.yaml`'s `url`, which is exactly the
+value the build meant to refuse.
+
+```js
+// astro.config.mjs — the site keeps its own fail-closed origin
+if (!process.env.PUBLIC_SITE_URL) throw new Error('PUBLIC_SITE_URL is required');
+
+export default defineConfig({
+  site: process.env.PUBLIC_SITE_URL,
+  integrations: [engine({ site: false })],
+});
+```
+
+`site: false` only hands back Astro's `site`, which in practice means the
+sitemap. Canonical tags, RSS, `llms.txt` and rule C-07 keep reading `site.url`
+either way. If the two disagree the build warns and continues — a preview or
+branch domain serving a production canonical is that disagreement working as
+designed, and it is the same shape as the mistake.
+
 ## Rollback
 
 Cloudflare Pages keeps every deployment. Roll back from the dashboard —

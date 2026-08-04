@@ -235,12 +235,42 @@ function themesPlugin(root: string, themesDir: string) {
   };
 }
 
+/**
+ * `https://example.com` and `https://example.com/` are one origin written two
+ * ways — Astro normalises what it is given, site.yaml is typed by a person.
+ * Comparing the raw strings would warn about punctuation. A value neither
+ * parser accepts is left alone: whichever loader owns it reports it better.
+ */
+function normalized(value: string) {
+  try {
+    return new URL(value).href.replace(/\/$/, '');
+  } catch {
+    return value;
+  }
+}
+
 export type EngineOptions = {
   /**
    * Emit Cloudflare Pages `_redirects` and `_headers` at the end of the build.
    * Turn it off for a host that reads neither.
    */
   cloudflare?: boolean;
+  /**
+   * Let the engine set Astro's `site` from the intent layer. Turn it off for a
+   * site whose `astro.config.mjs` already owns its canonical origin.
+   *
+   * The reason to turn it off is not that the two values might disagree — they
+   * usually will not. It is that a host can make supplying the origin a
+   * *precondition* of building: `throw` when `PUBLIC_SITE_URL` is missing, so a
+   * misconfigured pipeline can never quietly ship a sitemap pointing at the
+   * wrong domain. `config/site.ts` falls back to `site.yaml`'s `url` when the
+   * variable is absent, so the engine setting `site` supplies exactly the value
+   * that guard exists to refuse. Deferring is the only way to keep it closed.
+   *
+   * The engine's own output — canonical tags, RSS, `llms.txt` — keeps using
+   * `site.url` either way. A disagreement is reported at `astro:config:done`.
+   */
+  site?: boolean;
   /** Where the site keeps its theme token files, relative to the project root. */
   themesDir?: string;
   /**
@@ -256,7 +286,8 @@ export type EngineOptions = {
 };
 
 export function engine(options: EngineOptions = {}): AstroIntegration[] {
-  const { cloudflare = true, themesDir = 'site/themes', templatesDir = 'site/templates' } = options;
+  // `site` here is the option, not the loaded config of the same name.
+  const { cloudflare = true, site: setSite = true, themesDir = 'site/themes', templatesDir = 'site/templates' } = options;
 
   const main: AstroIntegration = {
     name: 'aifb-engine',
@@ -268,7 +299,12 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
           // parse site.yaml itself to supply this — which meant every site
           // needed a YAML parser as a dependency to state a fact it had
           // already stated.
-          site: site.url,
+          //
+          // Not every site wants that: one whose astro.config refuses to build
+          // without an explicit origin has made supplying it a precondition,
+          // and answering the question for it turns that guard into a no-op.
+          // `site: false` leaves the key out and the site's own value stands.
+          ...(setSite ? { site: site.url } : {}),
           vite: {
             plugins: [
               themesPlugin(fileURLToPath(config.root), themesDir),
@@ -299,6 +335,25 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
         logger.info(
           `${routes.length} route(s) injected${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}`,
         );
+      },
+      'astro:config:done': ({ config, logger }) => {
+        // Under `site: false` the origin has two sources again — Astro's for
+        // the sitemap, the intent layer's for canonicals, RSS and llms.txt —
+        // and nothing else in the pipeline compares them. C-07 only checks
+        // canonicals against `site.url`, so a sitemap on the other origin
+        // passes the gate and is discovered by a crawler instead.
+        //
+        // Reported, not enforced: a preview or branch build legitimately serves
+        // a production canonical from another hostname, which is the same
+        // shape as the mistake. Failing here would break deploys that are
+        // working as designed.
+        if (config.site && normalized(config.site) !== normalized(site.url)) {
+          logger.warn(
+            `astro.config site is ${config.site}, site.yaml resolves to ${site.url}. ` +
+              'The sitemap follows the first, canonical/RSS/llms.txt the second. ' +
+              'Expected on a preview domain; otherwise set PUBLIC_SITE_URL or drop `site: false`.',
+          );
+        }
       },
     },
   };
