@@ -158,7 +158,7 @@ for (const file of ['AGENTS.md', '.ai/skills/ai-first-blogger/SKILL.md']) {
 // visitors at this repository's bug tracker from theirs. Neither errors at
 // scaffold time; both are wrong the first time they run, somewhere nobody here
 // can see.
-const FORBIDDEN_IN_TEMPLATE = ['.github/workflows/release.yml', '.github/ISSUE_TEMPLATE'];
+const FORBIDDEN_IN_TEMPLATE = ['.github/workflows/release.yml', '.github/workflows/ci.yml', '.github/ISSUE_TEMPLATE'];
 for (const entry of FORBIDDEN_IN_TEMPLATE) {
   const leaked = await fs.access(path.join(template, entry)).then(() => true).catch(() => false);
   if (leaked) {

@@ -1,0 +1,73 @@
+name: CI
+
+# The framework's own signal. Repo-only — this file is not in the allowlist
+# `packages/create/build.mjs` copies, so it never reaches a scaffolded site.
+#
+# It exists because the workflow this project *ships* cannot double as its CI.
+# That one builds and deploys a site, and this repository's `site/` is
+# deliberately the skeleton: `build.mjs` generates `create-aifb`'s template from
+# it, so every value a person must decide is still marked `TODO`. The planning
+# preflight then refuses to run the content pipeline — correctly. Using the
+# deploy workflow as the PR check therefore made every pull request red for a
+# reason that says nothing about the change, which is the same as having no
+# check at all.
+#
+# What is actually worth asserting here is that the *mechanism* still works.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  framework:
+    name: Framework tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # Full history: the release check compares packages/ against the
+        # previous tag, which a shallow clone cannot see.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Types
+        run: pnpm check
+
+      # Proves each rule still catches its own violation. Necessary, and not
+      # sufficient — a rule can pass this while being wired to nothing.
+      - name: Every rule still catches its own violation
+        run: pnpm validate:self-test
+
+      # Drives the real pipeline over real files, which is what catches a
+      # capability that was built and connected to nothing. This suite found
+      # the template override that never resolved while the build log still
+      # reported success.
+      - name: The pipeline still behaves across layers
+        run: pnpm test:scenarios
+
+      # Not a release, but the same invariants: one version across the three
+      # packages, no placeholders, and a scaffold template that carries the
+      # agent contract and none of this repository's own workflows.
+      - name: Release preconditions
+        run: node tools/check-release.mjs

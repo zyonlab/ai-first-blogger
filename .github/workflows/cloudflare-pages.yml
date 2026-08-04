@@ -28,6 +28,34 @@ env:
   PUBLIC_SITE_URL: https://REPLACE_ME.pages.dev
 
 jobs:
+  # Is there anywhere to deploy to yet?
+  #
+  # This used to be a step inside the deploy job that exited 1 on REPLACE_ME.
+  # A site that has not chosen its project name has not finished setting up, and
+  # a red run is the wrong way to say so — the loud version already exists in
+  # the right place: `aifb validate` refuses to run the content pipeline at all
+  # while the domain is a placeholder, and names the file and the line.
+  #
+  # So an unconfigured site *skips* the deploy instead of failing it. Nothing is
+  # published either way; the difference is whether the signal points at the
+  # decision you have not made or at a workflow you have not read.
+  configured:
+    name: Deploy target
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ "$CLOUDFLARE_PAGES_PROJECT_NAME" = "REPLACE_ME" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy skipped — CLOUDFLARE_PAGES_PROJECT_NAME is still REPLACE_ME."
+            echo "Set it and PUBLIC_SITE_URL in .github/workflows/cloudflare-pages.yml."
+            echo "See docs/getting-started.md step 4."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
   # The framework's own tests, and the reason they gate the deploy.
   #
   # `validate` proves the *content* is publishable. It cannot prove the checks
@@ -38,6 +66,8 @@ jobs:
   # happens a fourth time.
   framework:
     name: Framework tests
+    needs: configured
+    if: needs.configured.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -80,15 +110,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Check deploy configuration
-        run: |
-          if [ "$CLOUDFLARE_PAGES_PROJECT_NAME" = "REPLACE_ME" ]; then
-            echo "::error::CLOUDFLARE_PAGES_PROJECT_NAME is still REPLACE_ME."
-            echo "Set it and PUBLIC_SITE_URL in .github/workflows/cloudflare-pages.yml."
-            echo "See docs/getting-started.md step 4."
-            exit 1
-          fi
 
       - name: Type check
         run: pnpm check
