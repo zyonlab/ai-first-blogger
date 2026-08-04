@@ -56,8 +56,19 @@ const build = (env: Record<string, string> = {}) => sh('pnpm', ['build'], env);
 const validate = () => sh('pnpm', ['validate']);
 const analyze = (target?: string) => sh('pnpm', ['analyze', ...(target ? [target] : [])]);
 
+/**
+ * Copy, tolerating a source that is not there.
+ *
+ * `content/` is four directories that are empty in a fresh clone, and git does
+ * not track an empty directory — so the harness crashed with an ENOENT stack
+ * trace on CI while passing on every developer machine, where the directories
+ * happen to exist. The repository now carries `.gitkeep` files, and this no
+ * longer depends on that: a missing source means "nothing to restore", which is
+ * a state the harness has to survive anyway.
+ */
 async function cp(from: string, to: string) {
   await fs.rm(to, { recursive: true, force: true });
+  if (!(await fs.access(from).then(() => true).catch(() => false))) return;
   await fs.mkdir(path.dirname(to), { recursive: true });
   await fs.cp(from, to, { recursive: true });
 }
