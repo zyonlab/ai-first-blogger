@@ -145,10 +145,14 @@ reports it as **T2**.
 
 ## Removing a type
 
-Delete `packages/engine/content-types/<name>.ts`, its line in `index.ts`, its block in
-`site/content-types.yaml`, and `content/<name>/`. Removing only one half is a
-build error naming the half you left behind. Every surface drops it. Run `pnpm validate` afterwards —
-C-03 catches links to pages that no longer exist.
+Delete its block in `site/content-types.yaml`. That is enough: every surface drops it —
+routes, nav entry, `llms.txt` section — and the engine half needs no change, which is
+what lets a site that installed `aifb-engine` decline a type it cannot delete. If you
+own the engine and want the module gone too, also delete
+`packages/engine/content-types/<name>.ts`, its line in `index.ts`, and `content/<name>/`
+— but never the module alone: a key in `site/content-types.yaml` with no engine module
+is a build error naming it. Run `pnpm validate` afterwards — C-03 catches links to
+pages that no longer exist.
 
 ## Gotchas
 

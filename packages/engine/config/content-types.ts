@@ -1,13 +1,20 @@
 /**
  * site/content-types.yaml → the half of a content type the site owns.
  *
- * A content type has two halves and both must exist:
+ * A content type has two halves:
  *   site/content-types.yaml       what it is called, its URL, where it appears
  *   engine/content-types/<name>.ts  its schema, JSON-LD and components
  *
- * A key present in only one of them fails the build by name. That mismatch is
- * exactly how case-studies once shipped with no nav entry, no home section and
- * no llms.txt section — four orphan pages nobody linked to.
+ * The engine offers the second half; this file decides which types the site
+ * publishes. An engine type nobody declares here is simply not published — a
+ * site that installed the engine cannot delete a module inside node_modules,
+ * so declining a type has to be sayable from here alone.
+ *
+ * Only the other direction fails the build by name: a key here with no engine
+ * module means the site asked for something that does not exist, and dropping
+ * it silently would leave a section missing for reasons nobody can see.
+ *
+ * The merge, and the history behind the asymmetry: ../content-types/index.ts.
  */
 import { fail, KEBAB_CASE, readYaml } from './load';
 
