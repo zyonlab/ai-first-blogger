@@ -17,6 +17,7 @@ import { acknowledgedAreas, blockingIssues, checkReadiness } from '../readiness'
 import { collectEntries, collectPages, hasBuild, readBuildInfo } from './collect';
 import { contentRules } from './rules/content';
 import { linkRules } from './rules/links';
+import { localeRules } from './rules/locale';
 import { sourceLinkRules } from './rules/links-source';
 import { onPageRules } from './rules/onpage';
 import { qualityRules } from './rules/quality';
@@ -30,7 +31,7 @@ const RED = '\u001b[31m';
 const YELLOW = '\u001b[33m';
 const DIM = '\u001b[2m';
 
-const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules].sort((a, b) => a.id.localeCompare(b.id));
+const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules].sort((a, b) => a.id.localeCompare(b.id));
 
 const strict = process.argv.includes('--strict');
 // The origin comes from the site's own config, which already honours
@@ -112,9 +113,10 @@ const allEntries = await collectEntries({ includeDrafts: true });
 const entries = allEntries.filter((entry) => entry.data.draft !== true);
 const drafts = allEntries.length - entries.length;
 
-// Where the engine sat in this build's URL space. The rules that read meaning
-// out of URL segments subtract it; see validate/url.ts.
-const { mount } = await readBuildInfo();
+// Where the engine sat in this build's URL space, and which languages it
+// published there. The rules that read meaning out of URL segments subtract
+// both; see validate/url.ts.
+const { mount, defaultLocale, localePrefixes } = await readBuildInfo();
 
 const ctx: RuleContext = {
   entries,
@@ -122,6 +124,8 @@ const ctx: RuleContext = {
   hasBuild: built,
   siteOrigin,
   mount,
+  localePrefixes,
+  defaultLocale: defaultLocale || site.locale,
 };
 
 const violations: Violation[] = [];
@@ -187,12 +191,21 @@ console.log(
 // A mounted build is a different URL space, and a report that does not say so
 // is a report nobody can reconcile with the site they are looking at.
 if (mount !== '') console.log(`${DIM}Engine mounted at ${mount}/ — URL rules measured from there.${RESET}`);
+// Same reason: a report that does not say the site is bilingual cannot be
+// reconciled with a dist/ that has twice the pages the author expects.
+if (localePrefixes.length > 0) {
+  console.log(
+    `${DIM}Locales: ${ctx.defaultLocale} at the root, ${localePrefixes.map((prefix) => `/${prefix}/`).join(', ')} prefixed.${RESET}`,
+  );
+}
 console.log(`${errors.length} error(s), ${warnings.length} warning(s).`);
 
 const report = {
   generatedAt: new Date().toISOString(),
   siteOrigin,
   mount,
+  defaultLocale: ctx.defaultLocale,
+  localePrefixes,
   planned: true,
   readiness: readiness.filter((issue) => issue.severity === 'warn' || acknowledged.has(issue.area)),
   acknowledged: [...acknowledged],

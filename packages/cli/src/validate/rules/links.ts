@@ -16,7 +16,7 @@ export const linkRules: Rule[] = [
     title: 'No dead internal links',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages, mount }) => {
+    run: ({ pages, mount, localePrefixes }) => {
       const known = new Set(pages.map((page) => normalise(page.url)));
       const out: Violation[] = [];
 
@@ -37,16 +37,36 @@ export const linkRules: Rule[] = [
            */
           const mounted = mount !== '' && known.has(normalise(`${mount}${href}`));
 
+          /**
+           * The other one, and it arrives the first time a site adds a
+           * language: a link into `/en/projects/` because the site's own nav or
+           * hero names `/projects/`, on a site where nothing under Projects has
+           * been translated. The listing page for a language with nothing in it
+           * is deliberately not built (see pages/[type]/index.astro), so this is
+           * the engine reporting a link the *intent layer* asked for — and the
+           * fix is in the intent layer, not in the markup.
+           */
+          const withoutMount = mount === '' ? href : href.slice(mount.length);
+          const prefix = localePrefixes.find(
+            (item) => withoutMount === `/${item}` || withoutMount.startsWith(`/${item}/`),
+          );
+          const inDefault =
+            prefix !== undefined && known.has(normalise(`${mount}${withoutMount.slice(`/${prefix}`.length) || '/'}`));
+
           out.push({
             rule: 'C-03',
             severity: 'error',
             file: page.url,
             message: mounted
               ? `Links to "${href}", which is not a built page — but "${mount}${normalise(href)}" is.`
-              : `Links to "${href}", which is not a built page.`,
+              : inDefault
+                ? `Links to "${href}", which is not a built page — that section has nothing in /${prefix}/.`
+                : `Links to "${href}", which is not a built page.`,
             fix: mounted
               ? `This engine is mounted at ${mount}/. Links written in content are real paths and carry the prefix: use "${mount}${normalise(href)}".`
-              : 'Fix the href, or add the missing page. Trailing slashes matter — Astro builds directory-style URLs.',
+              : inDefault
+                ? `A listing page is only built for a language that has entries. Either publish one under content/**/${prefix}/, or give this href its own value for that locale with an i18n: block in site/site.yaml.`
+                : 'Fix the href, or add the missing page. Trailing slashes matter — Astro builds directory-style URLs.',
           });
         }
       }
@@ -59,7 +79,7 @@ export const linkRules: Rule[] = [
     title: 'No orphan pages',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages, mount }) => {
+    run: ({ pages, mount, localePrefixes }) => {
       const inbound = new Map<string, number>();
       for (const page of pages) inbound.set(normalise(page.url), 0);
 
@@ -77,8 +97,11 @@ export const linkRules: Rule[] = [
       for (const [url, count] of inbound) {
         // The home page and the 404 page have no inbound links by design. Under
         // a mount the home page is the mount root — `/zh/blog/` — and the 404
-        // belongs to the host, which this build does not contain.
-        const own = enginePath(url, mount);
+        // belongs to the host, which this build does not contain. Every locale
+        // has a root of its own and each one is exempt for the same reason;
+        // they are not unreachable either, since the header's language switch
+        // links them from every page.
+        const own = enginePath(url, mount, localePrefixes);
         if (own === '/' || own.startsWith('/404') || count > 0) continue;
         out.push({
           rule: 'C-04',

@@ -102,13 +102,35 @@ export async function hasBuild() {
  * every site had before the option existed, and a site that has not built yet
  * has no URL-shaped rules to run anyway.
  */
-export async function readBuildInfo(): Promise<{ mount: string; pages: string[] }> {
-  const fallback = { mount: process.env.AIFB_MOUNT?.replace(/\/+$/, '') ?? '', pages: [] as string[] };
+export type BuildInfo = {
+  mount: string;
+  pages: string[];
+  defaultLocale: string;
+  /** URL segments of the non-default locales. Empty for a single-language site. */
+  localePrefixes: string[];
+};
+
+export async function readBuildInfo(): Promise<BuildInfo> {
+  const fallback: BuildInfo = {
+    mount: process.env.AIFB_MOUNT?.replace(/\/+$/, '') ?? '',
+    pages: [],
+    defaultLocale: '',
+    localePrefixes: [],
+  };
   try {
     const raw = JSON.parse(await fs.readFile(path.join(root, '.aifb/build.json'), 'utf8'));
+    const locales: { tag?: unknown; prefix?: unknown }[] = Array.isArray(raw.locales) ? raw.locales : [];
+    const defaultLocale = typeof raw.defaultLocale === 'string' ? raw.defaultLocale : fallback.defaultLocale;
     return {
       mount: typeof raw.mount === 'string' ? raw.mount.replace(/\/+$/, '') : fallback.mount,
       pages: Array.isArray(raw.pages) ? raw.pages : [],
+      defaultLocale,
+      // The default locale declares a prefix for hreflang and the sitemap, and
+      // never uses it in a URL. Subtracting it from a path would eat a real
+      // section on any site whose default prefix happens to name one.
+      localePrefixes: locales
+        .filter((locale) => typeof locale.prefix === 'string' && locale.tag !== defaultLocale)
+        .map((locale) => locale.prefix as string),
     };
   } catch {
     return fallback;
