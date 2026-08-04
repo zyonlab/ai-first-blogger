@@ -344,6 +344,29 @@ try {
     expect(!html.includes('class="site-footer"'), "the engine's footer should be gone");
   });
 
+  /**
+   * A stylesheet override has a second half a component override does not: the
+   * engine's sheet must stop being *emitted*, not merely stop being authored.
+   * A redirect that half-works still builds and still renders — the site's
+   * rules arrive, and 1379 lines of the engine's reset arrive underneath them,
+   * which is the state a site installing into its own design system was trying
+   * to leave. So this asserts the absence as well as the presence, over every
+   * stylesheet the build produced, inlined ones included.
+   */
+  await scenario('a stylesheet override is the only sheet that ships', async () => {
+    await loadExample();
+    await fs.mkdir(path.join(root, 'site/templates/styles'), { recursive: true });
+    await fs.writeFile(path.join(root, 'site/templates/styles/global.css'), ':root { --site-own-sheet: 1; }\n');
+    expect((await build()).code === 0, 'an overridden stylesheet should build');
+
+    const dist = path.join(root, 'dist');
+    const files = (await fs.readdir(dist, { recursive: true })).filter((file) => /\.(css|html)$/.test(file));
+    const shipped = (await Promise.all(files.map((file) => fs.readFile(path.join(dist, file), 'utf8')))).join('\n');
+
+    expect(shipped.includes('--site-own-sheet'), "the site's stylesheet should reach the build");
+    expect(!shipped.includes('--header-height'), "the engine's global.css should not be emitted as well");
+  });
+
   await scenario('a page override replaces the route at the same URL', async () => {
     await loadExample();
     await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
