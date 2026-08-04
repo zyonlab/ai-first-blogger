@@ -1,4 +1,6 @@
 ---
+import { seriesPath } from '@config/routes';
+
 type Props = {
   item: {
     slug: string;
@@ -17,6 +19,6 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
 
 <article class="card series-card">
   <div class="eyebrow">{item.topic}</div>
-  <Heading><a href={`/series/${item.slug}/`}>{item.title}</a></Heading>
+  <Heading><a href={seriesPath(item.slug)}>{item.title}</a></Heading>
   <p>{item.description}</p>
 </article>

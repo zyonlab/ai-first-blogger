@@ -5,6 +5,7 @@
  * Lives in the content grid rather than the header so that on wide screens it
  * becomes a third column beside the prose instead of leaving dead space there.
  */
+import { hasPage, seriesPath } from '@config/routes';
 import { series, topics } from '@config/taxonomy';
 import { t } from '@i18n/index';
 import AIStudyLinks from './AIStudyLinks.astro';
@@ -41,7 +42,9 @@ const seriesItem = seriesSlug ? series[seriesSlug as keyof typeof series] : unde
       {seriesItem && (
         <div>
           <dt>Series</dt>
-          <dd><a href={`/series/${seriesSlug}/`}>{seriesItem.title}</a></dd>
+          <dd>{hasPage('series') && seriesSlug
+            ? <a href={seriesPath(seriesSlug)}>{seriesItem.title}</a>
+            : seriesItem.title}</dd>
         </div>
       )}
     </dl>

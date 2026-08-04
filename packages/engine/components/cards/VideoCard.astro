@@ -1,4 +1,5 @@
 ---
+import { entryPath } from '@content-types/index';
 import type { CardProps } from './card-props';
 
 const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
@@ -9,7 +10,7 @@ const data = entry.data as {
   slug: string;
   topics: string[];
 };
-const href = `/${type.route}/${data.slug}/`;
+const href = entryPath(type, data.slug);
 ---
 
 <article class="card video-card">

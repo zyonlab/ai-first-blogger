@@ -1,5 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
+import { homePath } from '@config/routes';
 import { site } from '@config/site';
 import { entryPath, rssTypes } from '@content-types/index';
 import { getAllEntries } from '@lib/content';
@@ -23,7 +24,11 @@ export async function GET(context: APIContext) {
   return rss({
     title: site.title,
     description: site.description,
-    site: context.site ?? site.url,
+    // The channel link is the feed's home, which is the engine's root rather
+    // than the origin's — on a mounted engine those are different pages, and
+    // the host's home page is not what this feed is a feed of. Item links are
+    // already absolute paths, so the base only decides the channel link.
+    site: new URL(homePath, context.site ?? site.url),
     items,
   });
 }

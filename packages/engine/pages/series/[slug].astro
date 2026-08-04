@@ -1,5 +1,6 @@
 ---
 import PageLayout from '@layouts/PageLayout.astro';
+import { homePath, pagePath, seriesPath } from '@config/routes';
 import { series } from '@config/taxonomy';
 import { getActiveSeries } from '@lib/taxonomy';
 import { entryPath, registry } from '@content-types/index';
@@ -18,7 +19,7 @@ const item = series[slug];
 const matches = (await findEntries(registry, (entry) => entry.data.series === slug)).sort(
   (a, b) => ((a.entry.data.seriesOrder as number) ?? 999) - ((b.entry.data.seriesOrder as number) ?? 999),
 );
-const canonical = `/series/${slug}/`;
+const canonical = seriesPath(slug);
 
 const jsonLd = [
   collectionPageSchema(item.title, item.description, canonical),
@@ -31,8 +32,8 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
-    { name: 'Series', url: '/series/' },
+    { name: 'Home', url: homePath },
+    { name: 'Series', url: pagePath('series') },
     { name: item.title, url: canonical },
   ]),
 ];
@@ -44,7 +45,7 @@ const jsonLd = [
   eyebrow="Series"
   canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: '/series/', label: 'Series' }, { href: canonical, label: item.title }]}
+  breadcrumbs={[{ href: pagePath('series'), label: 'Series' }, { href: canonical, label: item.title }]}
 >
   <section data-item-list class="section">
     <div class="section-head">

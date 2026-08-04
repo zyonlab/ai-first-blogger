@@ -21,6 +21,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 import { cloudflarePages } from './deploy/cloudflare';
+import { fail } from './config/load';
+import { pageCopyProblems } from './config/pages';
+import { OPTIONAL_PAGES, ROOT_ONLY_PAGES, configureRoutes, type OptionalPage } from './config/routes';
 import { site } from './config/site';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -57,6 +60,31 @@ function collectRoutes(dir: string, base = ''): { pattern: string; entrypoint: s
     ];
   });
 }
+
+/**
+ * The fixed page a route belongs to: `/topics/[slug]` → `topics`, `/` → `''`.
+ *
+ * Both halves of a page travel together — declining `topics` has to take
+ * `/topics/[slug]` with it, or the index disappears and the detail pages stay
+ * behind as orphans nothing links to.
+ */
+function pageGroup(pattern: string) {
+  return pattern.split('/')[1] ?? '';
+}
+
+/**
+ * Where the gate reads the mount from.
+ *
+ * `pnpm validate` runs in its own process, long after the build: it never loads
+ * astro.config, so nothing tells it that `/zh/blog/writing/` is a listing page
+ * one level deep rather than a detail page three levels deep. Several rules
+ * reason about URL shape that way, and a rule that quietly stops matching is
+ * worse than one that fails.
+ *
+ * It goes next to the project rather than into `dist/`, because it is a fact
+ * about the build and not a file anyone should deploy.
+ */
+const BUILD_INFO = path.join('.aifb', 'build.json');
 
 const THEMES_MODULE = 'virtual:aifb/themes';
 const RENDERERS_MODULE = 'virtual:aifb/renderers';
@@ -301,11 +329,54 @@ export type EngineOptions = {
    *   site/templates/pages/index.astro
    */
   templatesDir?: string;
+  /**
+   * Where the engine lives in the site's URL space. Defaults to `'/'`: the
+   * engine owns the origin root, which is what a site that is only a blog
+   * wants and what every version before 0.3.0 did.
+   *
+   *   engine({ mount: '/zh/blog' })
+   *
+   * moves every route the engine injects under that prefix — `/zh/blog/`,
+   * `/zh/blog/writing/my-post/`, `/zh/blog/rss.xml` — and stops it injecting
+   * `/404` and `/robots.txt` at all, because those are facts about the origin
+   * and belong to whoever owns it. Canonicals, breadcrumbs, JSON-LD, the
+   * sitemap and the feeds all carry the prefix; so do `/topics/`-style hrefs
+   * written in site/site.yaml, so the intent layer never spells the mount out.
+   */
+  mount?: string;
+  /**
+   * Which of the engine's fixed pages to publish. Defaults to all of them:
+   *
+   *   about · newsletter · series · topics · uses · work-with-me
+   *
+   * A host site that already has an About page, or simply does not want a
+   * Uses page, lists the ones it wants:
+   *
+   *   engine({ mount: '/zh/blog', pages: ['topics', 'series'] })
+   *
+   * A declined page is not injected, needs no copy in site/pages.yaml, and is
+   * dropped from the links the engine renders — a page the site does not
+   * publish must not be linked from its own footer.
+   *
+   * The root page, `/rss.xml`, `/llms.txt` and the content type routes are not
+   * governed here: the first three are what a mounted engine *is*, and a
+   * content type is declined by removing it from site/content-types.yaml.
+   */
+  pages?: OptionalPage[];
 };
 
 export function engine(options: EngineOptions = {}): AstroIntegration[] {
   // `site` here is the option, not the loaded config of the same name.
   const { cloudflare = true, site: setSite = true, themesDir = 'site/themes', templatesDir = 'site/templates' } = options;
+  // Resolved here rather than in the hook: `configureRoutes` publishes the
+  // result to the module graph the pages render in, and Astro loads this file
+  // before it loads anything that renders. See config/routes.ts.
+  const routing = configureRoutes({ mount: options.mount, pages: options.pages });
+  const mountPattern = (pattern: string) =>
+    routing.mount === '' ? pattern : `${routing.mount}${pattern === '/' ? '' : pattern}`;
+
+  /** Astro tells the integration where the project is; the build hook needs it too. */
+  let projectRoot = process.cwd();
 
   const main: AstroIntegration = {
     name: 'aifb-engine',
@@ -335,23 +406,94 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
           },
         });
 
-        const siteRoutes = path.resolve(fileURLToPath(config.root), templatesDir, 'pages');
+        projectRoot = fileURLToPath(config.root);
+
+        const siteRoutes = path.resolve(projectRoot, templatesDir, 'pages');
         const routes = collectRoutes(path.join(here, 'pages'));
+        /** The site's own file for a route, if it has one. */
+        const ownFile = (route: { entrypoint: string }) =>
+          path.join(siteRoutes, route.entrypoint.replace('aifb-engine/pages/', ''));
+
+        const publishes = (group: string) => {
+          if ((ROOT_ONLY_PAGES as readonly string[]).includes(group)) return routing.mount === '';
+          if ((OPTIONAL_PAGES as readonly string[]).includes(group)) return routing.pages.has(group as OptionalPage);
+          return true;
+        };
+
+        const selected = routes.filter((route) => publishes(pageGroup(route.pattern)));
+        const declined = routes.filter((route) => !publishes(pageGroup(route.pattern)));
+
+        /**
+         * Whitelist beats override, and says so.
+         *
+         * `pages` decides whether a URL exists; `templatesDir/pages` decides who
+         * renders one that does. So a site that declines `uses` does not get
+         * `/uses/` back by dropping a file into the override directory — that
+         * would make the whitelist advisory, and "I removed it from the list and
+         * it is still there" is not a state anyone should have to debug. A site
+         * that wants its own page at that URL puts it in its own `src/pages/`,
+         * where it is the site's route and not the engine's, and where the mount
+         * does not move it.
+         *
+         * The file is not silently ignored, though: an override that can never
+         * resolve is the exact shape of defect the scenario suite exists for.
+         */
+        for (const route of declined.filter((item) => fs.existsSync(ownFile(item)))) {
+          logger.warn(
+            `${path.relative(projectRoot, ownFile(route))} overrides "${pageGroup(route.pattern)}", which ` +
+              'engine({ pages }) does not publish — nothing is injected at that URL. Add the page to the ' +
+              'whitelist, or move the file to src/pages/ to serve it as the site\'s own route.',
+          );
+        }
+
+        /**
+         * The copy each injected page reads, checked before the build instead of
+         * at render time. A site that declines a page needs none of it; a site
+         * whose own template renders the page is not asked for it either, since
+         * it may not read pages.yaml at all.
+         */
+        const copyProblems = [...routing.pages].flatMap((name) => {
+          const copyRoute = selected.find((route) => route.pattern === `/${name}`);
+          if (!copyRoute || fs.existsSync(ownFile(copyRoute))) return [];
+          return pageCopyProblems(name);
+        });
+        if (copyProblems.length > 0) fail('site/pages.yaml', copyProblems);
+
         let overridden = 0;
 
-        for (const route of routes) {
+        for (const route of selected) {
+          const pattern = mountPattern(route.pattern);
           // A page the site provides replaces the engine's, at the same URL.
-          const own = path.join(siteRoutes, route.entrypoint.replace('aifb-engine/pages/', ''));
+          const own = ownFile(route);
           if (fs.existsSync(own)) {
-            injectRoute({ pattern: route.pattern, entrypoint: own, prerender: true });
+            injectRoute({ pattern, entrypoint: own, prerender: true });
             overridden += 1;
           } else {
-            injectRoute({ ...route, prerender: true });
+            injectRoute({ ...route, pattern, prerender: true });
           }
         }
 
         logger.info(
-          `${routes.length} route(s) injected${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}`,
+          `${selected.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
+            `${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}` +
+            `${declined.length > 0 ? `, ${declined.length} declined` : ''}`,
+        );
+      },
+
+      /**
+       * Record what this build was, for the tools that run after it. See
+       * BUILD_INFO above.
+       */
+      'astro:build:done': async () => {
+        const file = path.join(projectRoot, BUILD_INFO);
+        await fs.promises.mkdir(path.dirname(file), { recursive: true });
+        await fs.promises.writeFile(
+          file,
+          `${JSON.stringify(
+            { generatedAt: new Date().toISOString(), mount: routing.mount, pages: [...routing.pages].sort() },
+            null,
+            2,
+          )}\n`,
         );
       },
       'astro:config:done': ({ config, logger }) => {

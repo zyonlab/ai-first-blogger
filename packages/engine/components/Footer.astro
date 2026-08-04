@@ -12,7 +12,12 @@
  * one. Only this component insisted on knowing the names in advance — so a site
  * on Mastodon had nowhere to put it, and a site on none of the four got broken
  * markup for its trouble.
+ *
+ * The Uses and Newsletter links are conditional for the same class of reason:
+ * a site that declined those pages in `engine({ pages })` would otherwise link
+ * to two URLs its own build does not produce, on every page.
  */
+import { hasPage, pagePath, rssPath } from '@config/routes';
 import { site } from '@config/site';
 import { t } from '@i18n/index';
 
@@ -41,9 +46,9 @@ const social = Object.entries(site.social)
   <nav aria-label={t('nav.footer')}>
     {social.map(({ href, label }) => <a href={href}>{label}</a>)}
     <a href={`mailto:${site.author.email}`}>Email</a>
-    <a href="/uses/">Uses</a>
-    <a href="/newsletter/">Newsletter</a>
-    <a href="/rss.xml">RSS</a>
+    {hasPage('uses') && <a href={pagePath('uses')}>Uses</a>}
+    {hasPage('newsletter') && <a href={pagePath('newsletter')}>Newsletter</a>}
+    <a href={rssPath}>RSS</a>
   </nav>
   <small>© {new Date().getFullYear()} {site.name}. {t('footer.builtWith')}</small>
 </footer>

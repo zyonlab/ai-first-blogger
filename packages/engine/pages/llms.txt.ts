@@ -1,3 +1,4 @@
+import { hasPage, seriesPath, topicPath } from '@config/routes';
 import { site } from '@config/site';
 import { getActiveSeries, getActiveTopics } from '@lib/taxonomy';
 import { entryPath, listPath, llmsTypes } from '@content-types/index';
@@ -10,8 +11,10 @@ import type { APIRoute } from 'astro';
  * `surfaces.llms` is covered automatically — no per-type edits here.
  */
 export const GET: APIRoute = async () => {
-  const topicList = await getActiveTopics();
-  const seriesList = await getActiveSeries();
+  // Only the sections this site publishes: a summary that points an AI crawler
+  // at pages the build never produced is worse than a shorter summary.
+  const topicList = hasPage('topics') ? await getActiveTopics() : [];
+  const seriesList = hasPage('series') ? await getActiveSeries() : [];
   const sections = await Promise.all(
     llmsTypes.map(async (type) => {
       const entries = (await getEntries(type)).slice(0, type.surfaces.llms!.limit);
@@ -43,10 +46,10 @@ export const GET: APIRoute = async () => {
     '## Sections',
     ...llmsTypes.map((type) => `- [${type.listTitle}](${listPath(type)}): ${type.listDescription}`),
     ...(topicList.length > 0
-      ? ['', '## Topics', ...topicList.map((topic) => `- [${topic.title}](/topics/${topic.slug}/): ${topic.description}`)]
+      ? ['', '## Topics', ...topicList.map((topic) => `- [${topic.title}](${topicPath(topic.slug)}): ${topic.description}`)]
       : []),
     ...(seriesList.length > 0
-      ? ['', '## Series', ...seriesList.map((item) => `- [${item.title}](/series/${item.slug}/): ${item.description}`)]
+      ? ['', '## Series', ...seriesList.map((item) => `- [${item.title}](${seriesPath(item.slug)}): ${item.description}`)]
       : []),
     ...sections.flat(),
     '',

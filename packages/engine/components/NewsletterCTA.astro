@@ -1,11 +1,25 @@
 ---
+/**
+ * The end-of-article call to action.
+ *
+ * Both destinations are pages a site can decline in `engine({ pages })`, so
+ * both are conditional and the panel disappears when neither exists. A CTA
+ * with no action left in it is not a smaller CTA — it is a paragraph asking
+ * the reader to do something and no way to do it.
+ */
+import { hasPage, pagePath } from '@config/routes';
 import { t } from '@i18n/index';
+
+const primary = hasPage('work-with-me');
+const secondary = hasPage('newsletter');
 ---
 
+{(primary || secondary) && (
 <section class="cta-panel">
   <p>{t('cta.text')}</p>
   <div class="actions">
-    <a class="button primary" href="/work-with-me/">{t('cta.primary')}</a>
-    <a class="button" href="/newsletter/">{t('cta.secondary')}</a>
+    {primary && <a class="button primary" href={pagePath('work-with-me')}>{t('cta.primary')}</a>}
+    {secondary && <a class="button" href={pagePath('newsletter')}>{t('cta.secondary')}</a>}
   </div>
 </section>
+)}

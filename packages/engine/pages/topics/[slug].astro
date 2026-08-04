@@ -1,6 +1,7 @@
 ---
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
+import { hasPage, homePath, pagePath, topicPath } from '@config/routes';
 import { seriesList, topics, type TopicSlug } from '@config/taxonomy';
 import { getActiveTopics } from '@lib/taxonomy';
 import { entryPath, registry } from '@content-types/index';
@@ -20,8 +21,8 @@ const topic = topics[slug];
 
 // Collects from every content type that carries a `category`, not just posts.
 const matches = await findEntries(registry, (entry) => entry.data.category === slug);
-const matchedSeries = seriesList.filter((item) => item.topic === slug);
-const canonical = `/topics/${slug}/`;
+const matchedSeries = hasPage('series') ? seriesList.filter((item) => item.topic === slug) : [];
+const canonical = topicPath(slug);
 
 const jsonLd = [
   collectionPageSchema(topic.title, topic.description, canonical),
@@ -34,8 +35,8 @@ const jsonLd = [
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: '/' },
-    { name: 'Topics', url: '/topics/' },
+    { name: 'Home', url: homePath },
+    { name: 'Topics', url: pagePath('topics') },
     { name: topic.title, url: canonical },
   ]),
 ];
@@ -47,7 +48,7 @@ const jsonLd = [
   eyebrow="Topic"
   canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: '/topics/', label: 'Topics' }, { href: canonical, label: topic.title }]}
+  breadcrumbs={[{ href: pagePath('topics'), label: 'Topics' }, { href: canonical, label: topic.title }]}
 >
   {matchedSeries.length > 0 && (
     <section class="section">

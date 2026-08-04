@@ -1,5 +1,6 @@
 ---
 import { categoryLabel } from '@config/taxonomy';
+import { entryPath } from '@content-types/index';
 import type { CardProps } from './card-props';
 
 const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
@@ -11,7 +12,7 @@ const data = entry.data as {
   category: string;
   tags: string[];
 };
-const href = `/${type.route}/${data.slug}/`;
+const href = entryPath(type, data.slug);
 ---
 
 <article class="card case-study-card">

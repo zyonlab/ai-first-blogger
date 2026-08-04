@@ -1,6 +1,18 @@
 ---
 import BaseLayout from '@layouts/BaseLayout.astro';
+import { hasPage, pagePath } from '@config/routes';
+import { listPath, navTypes, registry } from '@content-types/index';
 import { t } from '@i18n/index';
+
+/**
+ * The two ways out are looked up, not written down.
+ *
+ * The first button used to point at `/writing/` literally — one site's route
+ * for one content type. A site that called its posts anything else shipped a
+ * 404 page whose own escape route 404s, which is a hard defect to notice
+ * because nobody visits their own 404 page.
+ */
+const listType = navTypes[0] ?? registry[0];
 ---
 
 <BaseLayout title={t('notFound.title')} description={t('notFound.description')} noindex>
@@ -9,8 +21,8 @@ import { t } from '@i18n/index';
     <h1>{t('notFound.title')}</h1>
     <p>{t('notFound.description')}</p>
     <div class="actions">
-      <a class="button primary" href="/writing/">{t('notFound.readArticles')}</a>
-      <a class="button" href="/topics/">{t('notFound.browseTopics')}</a>
+      {listType && <a class="button primary" href={listPath(listType)}>{t('notFound.readArticles')}</a>}
+      {hasPage('topics') && <a class="button" href={pagePath('topics')}>{t('notFound.browseTopics')}</a>}
     </div>
   </section>
 </BaseLayout>
