@@ -1,5 +1,6 @@
 ---
 import { entryPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import type { CardProps } from './card-props';
 
 const { entry, type, headingLevel = 3 } = Astro.props as CardProps;
@@ -10,7 +11,8 @@ const data = entry.data as {
   slug: string;
   topics: string[];
 };
-const href = entryPath(type, data.slug);
+const locale = localeOf(entry);
+const href = entryPath(type, data.slug, locale);
 ---
 
 <article class="card video-card">

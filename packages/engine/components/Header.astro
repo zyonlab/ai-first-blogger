@@ -1,29 +1,78 @@
 ---
-import { navItems } from '@config/nav';
-import { homePath } from '@config/routes';
-import { site } from '@config/site';
-import { t } from '@i18n/index';
+import { navItemsFor } from '@config/nav';
+import { defaultLocale, homePath, isMultiLocale, localeOfPath, siteLocales } from '@config/routes';
+import { siteFor } from '@config/site';
+import { navTypesFor } from '@content-types/index';
+import { messages } from '@i18n/index';
+import { typesWithEntries } from '@lib/content';
 import ThemeToggle from './ThemeToggle.astro';
 
 const currentPath = Astro.url.pathname;
+const locale = localeOfPath(currentPath);
+const site = siteFor(locale);
+const t = messages(locale);
+
+/**
+ * A section appears in a language's nav when that language has something in it.
+ *
+ * The listing page is built on the same condition (pages/[type]/index.astro), so
+ * a nav built from the whole registry would link every English page at an
+ * English Writing index the build declined to produce — a dead link in the
+ * header of every page, which is the worst place to have one.
+ *
+ * The default locale keeps every section, including empty ones, because that is
+ * what it has always done: a declared type with nothing in it yet is the site's
+ * own section standing ready, and its index page is built.
+ */
+const sections =
+  locale === defaultLocale
+    ? navTypesFor(locale)
+    : (await typesWithEntries(locale))
+        .filter((type) => type.surfaces.nav !== undefined)
+        .sort((a, b) => (a.surfaces.nav ?? 0) - (b.surfaces.nav ?? 0));
+
+const navItems = navItemsFor(locale, sections);
+
 // The engine's root is `/` unmounted and `/zh/blog/` mounted; either way it is
 // the one href that must match exactly, since every other route starts with it.
-const isActiveHref = (href: string) => (href === homePath ? currentPath === homePath : currentPath.startsWith(href));
+const home = homePath(locale);
+const isActiveHref = (href: string) => (href === home ? currentPath === home : currentPath.startsWith(href));
+
+/**
+ * The language switch points at each locale's root, not at this page's
+ * translation.
+ *
+ * The header does not know the page's alternates and should not: the page that
+ * does know computes them for `hreflang`, and the two answers would be
+ * different for an article nobody has translated — a switch offering an English
+ * URL that was never built. A root always exists in every declared language.
+ */
+const switchable = isMultiLocale ? siteLocales : [];
 ---
 
 <header class="site-header">
-  <a class="brand" href={homePath} aria-label={`${site.name} home`}>
+  <a class="brand" href={home} aria-label={`${site.name} home`}>
     <span class="brand-mark">{site.brand.initial}</span>
     <span>{site.name}</span>
   </a>
   <nav class="desktop-nav" aria-label={t('nav.primary')}>
     {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+    {switchable.map(({ tag }) => (
+      <a lang={tag} hreflang={tag} aria-current={tag === locale ? 'true' : undefined} href={homePath(tag)}>
+        {tag.split('-')[0]!.toUpperCase()}
+      </a>
+    ))}
     <ThemeToggle />
   </nav>
   <details class="mobile-nav">
     <summary aria-label={t('nav.menu')}>{t('nav.menu')}</summary>
     <div>
       {navItems.map((item) => <a class={isActiveHref(item.href) ? 'is-active' : undefined} href={item.href}>{item.label}</a>)}
+      {switchable.map(({ tag }) => (
+        <a lang={tag} hreflang={tag} aria-current={tag === locale ? 'true' : undefined} href={homePath(tag)}>
+          {tag.split('-')[0]!.toUpperCase()}
+        </a>
+      ))}
     </div>
   </details>
 </header>

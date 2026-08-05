@@ -14,6 +14,7 @@ Read the one file your task needs, not the directory. Reading all of it costs
 |---|---|
 | Write an article | `voice.md` (the prose half) + `taxonomy.yaml` (valid categories) |
 | Rebrand, change author/social/hero | `site.yaml` |
+| Publish in a second language | `locales:` in `site.yaml`, then an `i18n:` block wherever the copy is |
 | Rewrite About / Uses / Newsletter / Work-with-me | `pages.yaml` |
 | Change topics, series or strategy pillars | `taxonomy.yaml` |
 | Add or rename a content type, move it in the nav | `content-types.yaml` |
@@ -36,7 +37,7 @@ pnpm context status    # validate + analyze + metrics merged into one to-do list
 
 | File | Holds | Validated by |
 |---|---|---|
-| `site.yaml` | name, url, locale, author, social, hero, services, theme choice, static nav | build — key + fix named |
+| `site.yaml` | name, url, locale, `locales`, author, social, hero, services, theme choice, static nav | build — key + fix named |
 | `taxonomy.yaml` | pillars, topics, series; the category vocabulary is derived from the topic keys | build — unknown pillar, dangling series, unclaimed pillar |
 | `content-types.yaml` | route, label, list copy, surfaces per type | build — must pair with `engine/content-types/<name>.ts` |
 | `policy.yaml` | thresholds and switches; every value has an engine default | overrides reported in the run |

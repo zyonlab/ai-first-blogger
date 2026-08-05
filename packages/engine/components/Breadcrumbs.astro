@@ -1,5 +1,5 @@
 ---
-import { homePath } from '@config/routes';
+import { homePath, localeOfPath } from '@config/routes';
 
 type Crumb = {
   href: string;
@@ -14,7 +14,7 @@ const { items } = Astro.props;
 ---
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <a href={homePath}>Home</a>
+  <a href={homePath(localeOfPath(Astro.url.pathname))}>Home</a>
   {items.map((item) => (
     <>
       <span aria-hidden="true">/</span>

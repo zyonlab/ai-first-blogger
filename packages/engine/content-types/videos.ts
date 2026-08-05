@@ -37,7 +37,7 @@ export default defineContentType({
     return { image: youtubeThumbnail(data.youtubeId), publishedTime: data.pubDate };
   },
 
-  jsonLd: (entry, { canonical }) => {
+  jsonLd: (entry, { canonical, locale }) => {
     const data = entry.data as {
       title: string;
       description: string;
@@ -60,7 +60,7 @@ export default defineContentType({
         contentUrl: `https://www.youtube.com/watch?v=${data.youtubeId}`,
         url: absoluteUrl(canonical),
         author: { '@type': 'Person', name: site.author.name, url: site.url },
-        inLanguage: site.locale,
+        inLanguage: locale,
         keywords: data.topics,
       },
     ];

@@ -12,7 +12,8 @@
  * to inject, before the build starts, and names the file, the key and the two
  * ways out. A page nobody publishes needs no copy.
  */
-import { fail, readYaml } from './load';
+import { fail, localised, readYaml } from './load';
+import { defaultLocale } from './site';
 import type { OptionalPage } from './routes';
 
 type Titled = { title: string; description: string };
@@ -31,7 +32,29 @@ export type PagesConfig = {
   workWithMe?: { action: string; services: { name: string; body: string }[] };
 };
 
-export const pages = readYaml<PagesConfig>('pages.yaml');
+const document = readYaml<Record<string, any>>('pages.yaml');
+
+const byLocale = new Map<string, PagesConfig>();
+
+/**
+ * The static-page copy as one locale sees it.
+ *
+ * Whole sections merge key by key, so a locale that translates the About page's
+ * headings but keeps the same section *structure* states only the headings —
+ * and a locale that states nothing renders the default language's copy rather
+ * than an empty page. That fallback is deliberate and it is visible: an English
+ * About page reading in Chinese is obvious to anyone who opens it, and C-31
+ * reports it. An empty one would be a soft 404 nobody sees.
+ */
+export function pagesFor(locale: string = defaultLocale): PagesConfig {
+  const cached = byLocale.get(locale);
+  if (cached) return cached;
+  const merged = localised(document, locale) as PagesConfig;
+  byLocale.set(locale, merged);
+  return merged;
+}
+
+export const pages = pagesFor(defaultLocale);
 
 /** The key in pages.yaml that carries the copy for a page. */
 const COPY_KEY: Record<OptionalPage, keyof PagesConfig> = {
@@ -57,9 +80,9 @@ const REQUIRED: Record<keyof PagesConfig, { strings: string[]; lists: string[] }
  * Everything wrong with the copy for one page, written for whoever has to fix
  * it. Empty means the page can render.
  */
-export function pageCopyProblems(page: OptionalPage): string[] {
+export function pageCopyProblems(page: OptionalPage, locale: string = defaultLocale): string[] {
   const key = COPY_KEY[page];
-  const section = pages[key] as Record<string, unknown> | undefined;
+  const section = pagesFor(locale)[key] as Record<string, unknown> | undefined;
 
   if (section === undefined || section === null || typeof section !== 'object') {
     return [
@@ -88,9 +111,12 @@ export function pageCopyProblems(page: OptionalPage): string[] {
  * config time; this is the second line, for the case it cannot see — a site's
  * own template rendering an engine page it was never asked about.
  */
-export function requirePageCopy<K extends keyof PagesConfig>(key: K): NonNullable<PagesConfig[K]> {
+export function requirePageCopy<K extends keyof PagesConfig>(
+  key: K,
+  locale: string = defaultLocale,
+): NonNullable<PagesConfig[K]> {
   const page = (Object.keys(COPY_KEY) as OptionalPage[]).find((name) => COPY_KEY[name] === key)!;
-  const problems = pageCopyProblems(page);
+  const problems = pageCopyProblems(page, locale);
   if (problems.length > 0) fail('site/pages.yaml', problems);
-  return pages[key] as NonNullable<PagesConfig[K]>;
+  return pagesFor(locale)[key] as NonNullable<PagesConfig[K]>;
 }

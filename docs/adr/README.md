@@ -14,6 +14,7 @@ undo the decision without knowing what it cost.
 | [0003](./0003-workspace.md) | pnpm workspace: the framework becomes packages | accepted |
 | [0004](./0004-template-api.md) | What a template override may import | accepted |
 | [0005](./0005-mounting-the-engine.md) | Mounting the engine under a prefix | accepted |
+| [0006](./0006-i18n-routing.md) | Publishing one site in more than one language | accepted |
 
 ## Writing one
 
@@ -37,7 +38,5 @@ Recorded here so they are not made by accident:
 - **Video generation and YouTube publishing.** Introduces long-running jobs, third-party
   OAuth, and writing build artefacts back into the repository — none of which the
   current static pipeline does. Deferred.
-- **Multi-locale routing** (`/en/`, `/zh/` from one build). Needs per-locale content
-  collections, hreflang and route changes. Out of scope for the current i18n layer.
 - **Replacing regex HTML inspection in the validation pipeline with a real parser.**
   Required before any accessibility rule, or before validating third-party HTML.

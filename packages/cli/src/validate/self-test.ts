@@ -9,6 +9,7 @@
  */
 import { contentRules } from './rules/content';
 import { linkRules } from './rules/links';
+import { localeRules } from './rules/locale';
 import { sourceLinkRules } from './rules/links-source';
 import { seoRules } from './rules/seo';
 import { typographyRules } from './rules/typography';
@@ -17,7 +18,7 @@ import { qualityRules, styleFloorViolations } from './rules/quality';
 import { colourScanTargets, hardcodedColours, missingTokens, themeFiles, themeRules } from './rules/theme';
 import type { BuiltPage, Rule, RuleContext, SourceEntry } from './types';
 
-const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules];
+const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules];
 const ORIGIN = 'https://example.test';
 
 function entry(overrides: Partial<SourceEntry> = {}): SourceEntry {
@@ -31,7 +32,23 @@ function entry(overrides: Partial<SourceEntry> = {}): SourceEntry {
   };
 }
 
-function page(url: string, overrides: Partial<{ title: string; description: string; image: string; canonical: string; body: string; intro: string; breadcrumbSchema: boolean; breadcrumbMarkup: boolean }> = {}): BuiltPage {
+type PageOverrides = Partial<{
+  title: string;
+  description: string;
+  image: string;
+  canonical: string;
+  body: string;
+  intro: string;
+  breadcrumbSchema: boolean;
+  breadcrumbMarkup: boolean;
+  /** `<html lang>`, which is what tells the duplicate rules two pages differ. */
+  lang: string;
+  /** hreflang alternates, as paths. `x-default` is derived from `xDefault`. */
+  alternates: { hreflang: string; href: string }[];
+  xDefault: string;
+}>;
+
+function page(url: string, overrides: PageOverrides = {}): BuiltPage {
   const {
     title = 'A reasonable page title',
     description = 'x'.repeat(130),
@@ -41,6 +58,9 @@ function page(url: string, overrides: Partial<{ title: string; description: stri
     intro = 'An introduction long enough to clear the listing-intro threshold in policy.',
     breadcrumbSchema = false,
     breadcrumbMarkup = false,
+    lang = 'zh-CN',
+    alternates = [],
+    xDefault,
   } = overrides;
 
   const isDetail = url.split('/').filter(Boolean).length >= 2 && !url.startsWith('/topics/') && !url.startsWith('/series/');
@@ -48,12 +68,33 @@ function page(url: string, overrides: Partial<{ title: string; description: stri
     (breadcrumbSchema ? '<script type="application/ld+json">{"@type":"BreadcrumbList"}</script>' : '') +
     (isDetail ? '<script type="application/ld+json">{"@type":"Article"}</script>' : '');
   const markup = breadcrumbMarkup ? '<nav class="breadcrumbs"></nav>' : '';
+  const hreflang =
+    alternates
+      .map((item) => `<link rel="alternate" hreflang="${item.hreflang}" href="${ORIGIN}${item.href}">`)
+      .join('') +
+    (xDefault ? `<link rel="alternate" hreflang="x-default" href="${ORIGIN}${xDefault}">` : '');
 
   return {
     url,
     file: `dist${url}index.html`,
-    html: `<title>${title}</title><meta name="description" content="${description}"><meta property="og:image" content="${image}"><link rel="canonical" href="${canonical}">${schema}${markup}<main><h1>${title}</h1><p>${intro}</p>${body}</main>`,
+    html: `<html lang="${lang}"><title>${title}</title><meta name="description" content="${description}"><meta property="og:image" content="${image}"><link rel="canonical" href="${canonical}">${hreflang}${schema}${markup}<main><h1>${title}</h1><p>${intro}</p>${body}</main>`,
   };
+}
+
+/**
+ * A pair of pages that are each other's translation: same title and
+ * description, different `lang`, reciprocal hreflang. This is the shape C-14
+ * and C-15 must *not* report and C-31 must.
+ */
+function translationPair(path: string, prefix: string, overrides: PageOverrides = {}) {
+  const alternates = [
+    { hreflang: 'zh-CN', href: path },
+    { hreflang: 'en-US', href: `/${prefix}${path}` },
+  ];
+  return [
+    page(path, { ...overrides, lang: 'zh-CN', alternates, xDefault: path }),
+    page(`/${prefix}${path}`, { ...overrides, lang: 'en-US', alternates, xDefault: path }),
+  ];
 }
 
 function ctx(overrides: Partial<RuleContext> = {}): RuleContext {
@@ -63,6 +104,8 @@ function ctx(overrides: Partial<RuleContext> = {}): RuleContext {
     hasBuild: true,
     siteOrigin: ORIGIN,
     mount: '',
+    localePrefixes: [],
+    defaultLocale: 'zh-CN',
     ...overrides,
   };
 }
@@ -203,6 +246,34 @@ const cases: Record<string, { bad: RuleContext; good: RuleContext }> = {
   'C-23': {
     bad: ctx({ pages: [{ url: '/writing/post/', file: 'dist/writing/post/index.html', html: '<main><h1>t</h1></main>' }] }),
     good: ctx({ pages: [page('/writing/post/')] }),
+  },
+  'C-30': {
+    bad: ctx({
+      pages: [
+        page('/writing/post/', {
+          lang: 'zh-CN',
+          alternates: [
+            { hreflang: 'zh-CN', href: '/writing/post/' },
+            { hreflang: 'en-US', href: '/en/writing/post/' },
+          ],
+          xDefault: '/writing/post/',
+        }),
+      ],
+    }),
+    good: ctx({ pages: translationPair('/writing/post/', 'en') }),
+  },
+  'C-31': {
+    bad: ctx({ pages: translationPair('/writing/post/', 'en') }),
+    good: ctx({
+      pages: [
+        ...translationPair('/writing/post/', 'en'),
+        // Same pair, actually translated: the titles differ, so nothing to say.
+      ].map((item, index) =>
+        index === 1
+          ? { ...item, html: item.html.replace('<title>A reasonable page title</title>', '<title>Translated at last</title>') }
+          : item,
+      ),
+    }),
   },
 };
 
@@ -459,6 +530,249 @@ if (!mountedHint?.fix.includes(`${MOUNT}/writing/x/`)) {
   failures += 1;
 }
 
+/* ------------------------------------------------------------------ *
+ * Translated site.
+ *
+ * The same argument as the mounted block above, one segment further in.
+ * A site with `locales:` serves the default language at the root and
+ * every other behind a prefix, so `/en/writing/` is a listing page and
+ * `/en/` is a home page — and a rule that counts from the origin files
+ * both one level too deep and stops checking that language entirely.
+ *
+ * Two of these are not about URL shape at all. They are the pair of
+ * claims that make a translated site correct rather than merely built:
+ * the Chinese and English versions of one article are not duplicate
+ * content, and an article that exists in one language must not advertise
+ * a version that does not exist. Both build green either way.
+ * ------------------------------------------------------------------ */
+
+const PREFIXES = ['en'];
+
+type LocaleCase = { rule: string; what: string; expect: 'fires' | 'silent'; ctx: RuleContext };
+
+const localised = (overrides: Partial<RuleContext>) =>
+  ctx({ localePrefixes: PREFIXES, defaultLocale: 'zh-CN', ...overrides });
+
+const localeCases: LocaleCase[] = [
+  {
+    rule: 'C-04',
+    what: "a language's own root is a home page, not an orphan",
+    expect: 'silent',
+    ctx: localised({
+      pages: [page('/', { body: '<a href="/en/">EN</a>' }), page('/en/', { title: 'EN home', lang: 'en-US' })],
+    }),
+  },
+  {
+    rule: 'C-04',
+    what: 'a translated page nothing links to is still an orphan',
+    expect: 'fires',
+    ctx: localised({ pages: [page('/'), page('/en/lonely/', { title: 'Lonely', lang: 'en-US' })] }),
+  },
+  {
+    rule: 'C-10',
+    what: 'a translated listing page carries breadcrumb schema without a trail',
+    expect: 'silent',
+    ctx: localised({
+      pages: [page('/en/writing/', { title: 'Writing', lang: 'en-US', breadcrumbSchema: true, breadcrumbMarkup: false })],
+    }),
+  },
+  {
+    rule: 'C-10',
+    what: 'a translated detail page without the trail it declares',
+    expect: 'fires',
+    ctx: localised({
+      pages: [page('/en/writing/post/', { title: 'Post', lang: 'en-US', breadcrumbSchema: true, breadcrumbMarkup: false })],
+    }),
+  },
+  {
+    rule: 'C-19',
+    what: 'the locale prefix does not count toward the URL depth the site chose',
+    expect: 'silent',
+    ctx: localised({ pages: [page('/en/writing/post/', { title: 'Post', lang: 'en-US' })] }),
+  },
+  {
+    rule: 'C-19',
+    what: 'a translated URL segment that is not kebab-case',
+    expect: 'fires',
+    ctx: localised({ pages: [page('/en/Writing_Posts/', { title: 'Posts', lang: 'en-US' })] }),
+  },
+  {
+    rule: 'C-21',
+    what: 'a translated listing page is still asked to introduce its subject',
+    expect: 'fires',
+    ctx: localised({ pages: [page('/en/writing/', { title: 'Writing', lang: 'en-US', intro: 'too short' })] }),
+  },
+  {
+    rule: 'C-22',
+    what: 'a translated listing page whose ItemList does not match what it renders',
+    expect: 'fires',
+    ctx: localised({
+      pages: [
+        page('/en/writing/', {
+          title: 'Writing',
+          lang: 'en-US',
+          body: '<section data-item-list><article>one</article></section><script type="application/ld+json">{"@type":"ItemList","itemListElement":[1,2,3]}</script>',
+        }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-23',
+    what: 'a translated listing page is not mistaken for an untyped detail page',
+    expect: 'silent',
+    ctx: localised({
+      pages: [{ url: '/en/writing/', file: 'dist/en/writing/index.html', html: '<html lang="en-US"><main><h1>t</h1></main>' }],
+    }),
+  },
+  {
+    rule: 'C-14',
+    what: 'the two language versions of one page are not duplicate titles',
+    expect: 'silent',
+    ctx: localised({ pages: translationPair('/writing/post/', 'en') }),
+  },
+  {
+    rule: 'C-14',
+    what: 'two pages in the same language with one title are still duplicates',
+    expect: 'fires',
+    ctx: localised({ pages: [page('/en/a/', { lang: 'en-US' }), page('/en/b/', { lang: 'en-US' })] }),
+  },
+  {
+    rule: 'C-14',
+    what: 'two languages sharing a title without an hreflang pair are still duplicates',
+    expect: 'fires',
+    ctx: localised({ pages: [page('/a/', { lang: 'zh-CN' }), page('/en/b/', { lang: 'en-US' })] }),
+  },
+  {
+    rule: 'C-15',
+    what: 'the two language versions of one page are not duplicate descriptions',
+    expect: 'silent',
+    ctx: localised({ pages: translationPair('/writing/post/', 'en') }),
+  },
+  {
+    rule: 'C-08',
+    what: 'one slug in two languages is a translation, not a collision',
+    expect: 'silent',
+    ctx: localised({
+      entries: [entry(), entry({ file: 'content/posts/en/good-post.mdx' })],
+    }),
+  },
+  {
+    rule: 'C-08',
+    what: 'one slug twice in the same language is still a collision',
+    expect: 'fires',
+    ctx: localised({
+      entries: [entry({ file: 'content/posts/en/good-post.mdx' }), entry({ file: 'content/posts/en/good-post.mdx' })],
+    }),
+  },
+  {
+    rule: 'C-08',
+    what: 'two entries in one language claiming the same translationKey',
+    expect: 'fires',
+    ctx: localised({
+      entries: [
+        entry({ file: 'content/posts/en/one.mdx', data: { title: 'One', description: 'd', slug: 'one', translationKey: 'shared' } }),
+        entry({ file: 'content/posts/en/two.mdx', data: { title: 'Two', description: 'd', slug: 'two', translationKey: 'shared' } }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-25',
+    what: 'a link into a language that has no such entry',
+    expect: 'fires',
+    ctx: localised({
+      entries: [entry({ body: 'See [the English one](/en/writing/b/) here.\n' })],
+    }),
+  },
+  {
+    rule: 'C-25',
+    what: 'a cross-language link that does resolve',
+    expect: 'silent',
+    ctx: localised({
+      entries: [
+        entry({ body: 'See [the English one](/en/writing/b/) and [about](/about/).\n' }),
+        entry({ file: 'content/posts/en/b.mdx', data: { title: 'B', description: 'd', slug: 'b' }, body: 'x\n' }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-30',
+    what: 'an article advertising a translation that was never built',
+    expect: 'fires',
+    ctx: localised({
+      pages: [
+        page('/writing/post/', {
+          alternates: [
+            { hreflang: 'zh-CN', href: '/writing/post/' },
+            { hreflang: 'en-US', href: '/en/writing/post/' },
+          ],
+          xDefault: '/writing/post/',
+        }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-30',
+    what: 'an article that exists in one language only says nothing at all',
+    expect: 'silent',
+    ctx: localised({ pages: [page('/writing/post/')] }),
+  },
+  {
+    rule: 'C-30',
+    what: 'a pair where only one side claims the other',
+    expect: 'fires',
+    ctx: localised({
+      pages: [
+        page('/writing/post/', {
+          alternates: [
+            { hreflang: 'zh-CN', href: '/writing/post/' },
+            { hreflang: 'en-US', href: '/en/writing/post/' },
+          ],
+        }),
+        page('/en/writing/post/', { title: 'Post', lang: 'en-US' }),
+      ],
+    }),
+  },
+  {
+    rule: 'C-31',
+    what: 'a translated page that never had its copy translated',
+    expect: 'fires',
+    ctx: localised({ pages: translationPair('/about/', 'en') }),
+  },
+];
+
+console.log('');
+console.log('translated site (default zh-CN at the root, en-US under /en/)');
+
+for (const item of localeCases) {
+  const rule = byId.get(item.rule)!;
+  const found = (await rule.run(item.ctx)).filter((violation) => violation.rule === item.rule);
+  const ok = item.expect === 'fires' ? found.length > 0 : found.length === 0;
+  console.log(`${ok ? '✓' : '✗'} ${item.rule} ${item.what}`);
+  if (!ok) {
+    console.log(`    expected the rule to ${item.expect === 'fires' ? 'fire' : 'stay quiet'}${found[0] ? ` — got "${found[0].message}"` : ''}`);
+    failures += 1;
+  }
+}
+
+/**
+ * The mounted *and* translated case, which is where the composition order is
+ * either right or silently one directory off. `/zh/blog/en/writing/` is a
+ * listing page; measured from the origin it is four segments deep, and every
+ * rule that counts would file it as something else.
+ */
+const bothCtx = ctx({
+  mount: MOUNT,
+  localePrefixes: PREFIXES,
+  pages: [page(`${MOUNT}/en/writing/`, { title: 'Writing', lang: 'en-US', intro: 'too short' })],
+});
+const both = (await byId.get('C-21')!.run(bothCtx)).filter((violation) => violation.rule === 'C-21');
+if (both.length === 0) {
+  console.log('✗ C-21 a page that is both mounted and translated is not recognised as a listing page');
+  failures += 1;
+} else {
+  console.log('✓ C-21 mount and locale subtract in that order (/zh/blog/en/writing/ is a listing page)');
+}
+
 console.log('');
 if (failures > 0) {
   console.log(`${failures} check(s) failed self-test.`);
@@ -466,3 +780,4 @@ if (failures > 0) {
 }
 console.log(`All ${rules.length} rules verified: each catches a known violation and passes clean input.`);
 console.log(`${mountCases.length} mounted-engine case(s) verified.`);
+console.log(`${localeCases.length} translated-site case(s) verified, plus the mounted-and-translated composition.`);

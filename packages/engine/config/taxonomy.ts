@@ -6,12 +6,21 @@
  * z.enum in the collection schema and as a union type — and the two drifted
  * without anything noticing. Deriving them makes that impossible.
  *
+ * A topic's `title` and `description` are copy, so they are localisable the way
+ * all copy in `site/` is — an `i18n:` block on the topic. Everything else about
+ * a topic is structure and is the same in every language: the slug is the URL,
+ * `pillar` is strategy, and `listed` is a decision about the site rather than
+ * about a reader. A topic translated in one language and not another is one
+ * topic showing its default-language title on that page, not a second topic.
+ *
  * Contract: docs/specs/taxonomy.md
  */
-import { fail, KEBAB_CASE, readYaml } from './load';
+import { defaultLocale } from './site';
+import { fail, KEBAB_CASE, localised, readYaml } from './load';
 
 const FILE = 'site/taxonomy.yaml';
-const raw = readYaml<Record<string, any>>('taxonomy.yaml');
+const document = readYaml<Record<string, any>>('taxonomy.yaml');
+const raw = localised(document, defaultLocale);
 
 export type PillarDef = { name: string; goal: string };
 export type TopicDef = {
@@ -80,8 +89,51 @@ export function isSeries(value: string) {
 }
 
 /** Human label for a category slug; falls back to the slug itself. */
-export function categoryLabel(slug: string) {
-  return isCategory(slug) ? topics[slug]!.title : slug;
+export function categoryLabel(slug: string, locale: string = defaultLocale) {
+  const table = topicsFor(locale);
+  return Object.hasOwn(table, slug) ? table[slug]!.title : slug;
+}
+
+/* ------------------------------------------------------------------ *
+ * Per-locale views.
+ *
+ * The vocabulary is one vocabulary — same slugs, same pillars, same
+ * membership — read through one language's copy. Memoised because every
+ * card on every page asks for its topic's title, and a deep merge per
+ * card is a deep merge a few thousand times per build.
+ * ------------------------------------------------------------------ */
+
+const cache = new Map<string, { topics: Record<string, TopicDef>; series: Record<string, SeriesDef> }>();
+
+function viewFor(locale: string) {
+  const cached = cache.get(locale);
+  if (cached) return cached;
+  const merged = localised(document, locale);
+  const view = {
+    topics: (merged.topics ?? {}) as Record<string, TopicDef>,
+    series: (merged.series ?? {}) as Record<string, SeriesDef>,
+  };
+  cache.set(locale, view);
+  return view;
+}
+
+export function topicsFor(locale: string = defaultLocale) {
+  return viewFor(locale).topics;
+}
+
+export function seriesFor(locale: string = defaultLocale) {
+  return viewFor(locale).series;
+}
+
+/** Topics that get their own page, in one locale's copy. */
+export function topicListFor(locale: string = defaultLocale) {
+  return Object.entries(topicsFor(locale))
+    .filter(([, topic]) => topic.listed !== false)
+    .map(([slug, topic]) => ({ slug, ...topic }));
+}
+
+export function seriesListFor(locale: string = defaultLocale) {
+  return Object.entries(seriesFor(locale)).map(([slug, item]) => ({ slug, ...item }));
 }
 
 /* ------------------------------------------------------------------ *

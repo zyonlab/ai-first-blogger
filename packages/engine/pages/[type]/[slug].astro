@@ -1,36 +1,56 @@
 ---
 /**
- * Detail page for every content type in the registry.
+ * Detail page for every content type in the registry, in every locale.
  * Replaces the former per-type [slug].astro files.
+ *
+ * The integration injects this at `/[...locale]/[type]/[slug]`. That segment is
+ * an optional rest parameter: `getStaticPaths` returns `undefined` for the
+ * default locale, which collapses it and builds `/writing/x/`, and the prefix
+ * for every other locale, which builds `/en/writing/x/`.
+ *
+ * One `getStaticPaths` emitting one path per *entry* is what makes the
+ * asymmetry fall out instead of having to be enforced: an article that exists
+ * only in Chinese produces one path, so there is no English page to leave empty
+ * and no English URL to advertise. Injecting the route once per locale would
+ * have inverted it — the same path list rendered under every prefix, an English
+ * URL for every Chinese article, each one a soft 404 with a hreflang tag
+ * vouching for it.
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
-import { homePath } from '@config/routes';
-import { entryPath, getContentTypeByRoute, listPath, registry } from '@content-types/index';
-import { bySlug, getEntries } from '@lib/content';
+import { homePath, localeOfPath, localeParam, localeParams } from '@config/routes';
+import { entryPath, getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
+import { alternatesForEntry } from '@lib/alternates';
+import { bySlug, getEntries, translationsOf } from '@lib/content';
 import { detailFor } from '@lib/renderers';
 import { breadcrumbSchema } from '@lib/schema';
 import { assertSameOrigin } from '@lib/seo';
 import { render } from 'astro:content';
 
 export async function getStaticPaths() {
-  const groups = await Promise.all(
-    registry.map(async (type) => {
-      const entries = await getEntries(type);
-      return entries.map((entry) => ({
-        params: { type: type.route, slug: entry.data.slug },
-      }));
+  const perLocale = await Promise.all(
+    localeParams().map(async ({ locale, param }) => {
+      const groups = await Promise.all(
+        registryFor(locale).map(async (type) => {
+          const entries = await getEntries(type, locale);
+          return entries.map((entry) => ({
+            params: { ...localeParam(param), type: type.route, slug: entry.data.slug },
+          }));
+        }),
+      );
+      return groups.flat();
     }),
   );
-  return groups.flat();
+  return perLocale.flat();
 }
 
+const locale = localeOfPath(Astro.url.pathname);
 const { type: route, slug } = Astro.params;
-const type = getContentTypeByRoute(route!);
+const type = getContentTypeByRoute(route!, locale);
 if (!type) throw new Error(`No content type registered for route "${route}"`);
 
-const entries = await getEntries(type);
+const entries = await getEntries(type, locale);
 const entry = bySlug(entries, slug!);
-if (!entry) throw new Error(`No ${type.name} entry with slug "${slug}"`);
+if (!entry) throw new Error(`No ${type.name} entry with slug "${slug}" in locale ${locale}`);
 
 const Detail = detailFor(type.detail);
 
@@ -39,13 +59,19 @@ const { Content, headings } = await render(entry as never);
 const seo = type.seo?.(entry as never) ?? {};
 // A canonical override must stay on this origin, or the page donates its
 // ranking to another site (rule C-07).
-const canonical = assertSameOrigin(seo.canonical, entryPath(type, entry.data.slug), `${type.name}/${entry.data.slug}`);
+const canonical = assertSameOrigin(
+  seo.canonical,
+  entryPath(type, entry.data.slug, locale),
+  `${type.name}/${entry.data.slug}`,
+);
+
+const alternates = alternatesForEntry(type, await translationsOf(type, entry));
 
 const jsonLd = [
-  ...(type.jsonLd?.(entry as never, { canonical }) ?? []),
+  ...(type.jsonLd?.(entry as never, { canonical, locale }) ?? []),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
-    { name: type.listTitle, url: listPath(type) },
+    { name: 'Home', url: homePath(locale) },
+    { name: type.listTitle, url: listPath(type, locale) },
     { name: entry.data.title as string, url: canonical },
   ]),
 ];
@@ -61,6 +87,7 @@ const jsonLd = [
   publishedTime={seo.publishedTime}
   modifiedTime={seo.modifiedTime}
   tags={seo.tags}
+  alternates={alternates}
 >
   <Detail entry={entry} type={type} Content={Content} headings={headings} canonical={canonical} />
 </BaseLayout>

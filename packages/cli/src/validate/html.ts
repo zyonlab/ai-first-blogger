@@ -46,6 +46,23 @@ export function internalLinks(html: string) {
   return [...out];
 }
 
+/** The `lang` of the document, e.g. `zh-CN`. */
+export function htmlLang(html: string) {
+  return /<html[^>]*\blang="([^"]*)"/i.exec(html)?.[1];
+}
+
+export type HreflangLink = { hreflang: string; href: string };
+
+/** Every `<link rel="alternate" hreflang>` on the page, `x-default` included. */
+export function hreflangLinks(html: string): HreflangLink[] {
+  return [...html.matchAll(/<link\b[^>]*\brel="alternate"[^>]*>/gi)].flatMap((match) => {
+    const tag = match[0];
+    const hreflang = /\bhreflang="([^"]*)"/i.exec(tag)?.[1];
+    const href = /\bhref="([^"]*)"/i.exec(tag)?.[1];
+    return hreflang && href ? [{ hreflang, href }] : [];
+  });
+}
+
 export function hasVisibleBreadcrumb(html: string) {
   return /class="breadcrumbs"/.test(html);
 }

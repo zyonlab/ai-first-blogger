@@ -38,6 +38,32 @@ series:
     topic: vue-react-internals   # must be a key of `topics`
 ```
 
+### Titles and descriptions in another language
+
+On a site with `locales:` declared, a topic or series may carry an `i18n:` block:
+
+```yaml
+topics:
+  llm-reliability:
+    title: 可靠性与降级
+    description: 模型会超时、会改主意、会编。
+    pillar: foundations
+    i18n:
+      en-US:
+        title: Reliability and fallbacks
+        description: The model times out, changes its mind, and makes things up.
+```
+
+Only `title` and `description` are copy. The slug, the `pillar`, `listed` and
+which entries belong to a topic are **structure and are the same in every
+language** — a topic translated in one language and not another is one topic
+showing its default title on that page, not a second topic.
+
+A topic page is built for a language that has at least one entry in it, so a topic
+whose three articles are all in Chinese has no English page rather than an empty
+one. Untranslated copy is reported by C-31, not by a build failure. See
+[`i18n.md`](./i18n.md).
+
 ### `listed: false`
 
 A catch-all bucket such as `notes` or `career` is a legitimate category but does not

@@ -17,9 +17,13 @@
  * a site that declined those pages in `engine({ pages })` would otherwise link
  * to two URLs its own build does not produce, on every page.
  */
-import { hasPage, pagePath, rssPath } from '@config/routes';
-import { site } from '@config/site';
-import { t } from '@i18n/index';
+import { hasPage, localeOfPath, pagePath, rssPath } from '@config/routes';
+import { siteFor } from '@config/site';
+import { messages } from '@i18n/index';
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const t = messages(locale);
 
 /** Casing the platforms use for themselves; anything else is title-cased. */
 const LABELS: Record<string, string> = {
@@ -46,9 +50,9 @@ const social = Object.entries(site.social)
   <nav aria-label={t('nav.footer')}>
     {social.map(({ href, label }) => <a href={href}>{label}</a>)}
     <a href={`mailto:${site.author.email}`}>Email</a>
-    {hasPage('uses') && <a href={pagePath('uses')}>Uses</a>}
-    {hasPage('newsletter') && <a href={pagePath('newsletter')}>Newsletter</a>}
-    <a href={rssPath}>RSS</a>
+    {hasPage('uses') && <a href={pagePath('uses', locale)}>Uses</a>}
+    {hasPage('newsletter') && <a href={pagePath('newsletter', locale)}>Newsletter</a>}
+    <a href={rssPath(locale)}>RSS</a>
   </nav>
   <small>© {new Date().getFullYear()} {site.name}. {t('footer.builtWith')}</small>
 </footer>

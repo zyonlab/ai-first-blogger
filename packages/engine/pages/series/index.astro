@@ -1,28 +1,35 @@
 ---
-import { site } from '@config/site';
+import { siteFor } from '@config/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { requirePageCopy } from '@config/pages';
-import { homePath, pagePath, seriesPath } from '@config/routes';
+import { homePath, localeOfPath, localeStaticPaths, locales, pagePath, seriesPath } from '@config/routes';
 import { getActiveSeries } from '@lib/taxonomy';
-import { t } from '@i18n/index';
+import { alternatesForPath } from '@lib/alternates';
+import { messages } from '@i18n/index';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
-const { title, description } = requirePageCopy('series');
-const canonical = pagePath('series');
-const seriesList = await getActiveSeries();
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const t = messages(locale);
+const { title, description } = requirePageCopy('series', locale);
+const canonical = pagePath('series', locale);
+const seriesList = await getActiveSeries(locale);
+const alternates = alternatesForPath('/series/', locales);
 const jsonLd = [
-  collectionPageSchema(title, description, canonical),
+  collectionPageSchema(title, description, canonical, locale),
   itemListSchema(
     `${site.name} Series`,
     seriesList.map((item) => ({
       name: item.title,
       description: item.description,
-      url: seriesPath(item.slug),
+      url: seriesPath(item.slug, locale),
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
+    { name: 'Home', url: homePath(locale) },
     { name: title, url: canonical },
   ]),
 ];
@@ -34,6 +41,7 @@ const jsonLd = [
   canonical={canonical}
   jsonLd={jsonLd}
   breadcrumbs={[{ href: canonical, label: title }]}
+  alternates={alternates}
 >
   <section data-item-list class="section grid">
     {seriesList.length > 0

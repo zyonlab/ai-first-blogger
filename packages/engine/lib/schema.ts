@@ -1,4 +1,5 @@
-import { site } from '@config/site';
+import { defaultLocale, type Locale } from '@config/routes';
+import { siteFor } from '@config/site';
 import { absoluteUrl } from './seo';
 
 type ListItem = {
@@ -7,19 +8,32 @@ type ListItem = {
   description?: string;
 };
 
-export function websiteSchema() {
+/**
+ * `inLanguage` is the language of the *page*, not of the site.
+ *
+ * It used to be `site.locale` in five places, which was right while a site had
+ * one language and is a lie the moment it has two — an English article
+ * declaring itself Chinese to every consumer of structured data, on a page
+ * whose own `<html lang>` says otherwise.
+ */
+export function websiteSchema(locale: Locale = defaultLocale) {
+  const site = siteFor(locale);
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: site.name,
+    // The origin, not the locale's root. It is the identity of the site rather
+    // than the address of one of its translations, and every version of this
+    // engine has published it that way — including under a mount.
     url: site.url,
     description: site.description,
-    inLanguage: site.locale,
-    publisher: personSchema(false),
+    inLanguage: locale,
+    publisher: personSchema(false, locale),
   };
 }
 
-export function personSchema(withContext = true) {
+export function personSchema(withContext = true, locale: Locale = defaultLocale) {
+  const site = siteFor(locale);
   return {
     ...(withContext ? { '@context': 'https://schema.org' } : {}),
     '@type': 'Person',
@@ -59,14 +73,20 @@ export function itemListSchema(name: string, items: ListItem[]) {
   };
 }
 
-export function collectionPageSchema(name: string, description: string, url: string) {
+export function collectionPageSchema(
+  name: string,
+  description: string,
+  url: string,
+  locale: Locale = defaultLocale,
+) {
+  const site = siteFor(locale);
   return {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name,
     description,
     url: absoluteUrl(url),
-    inLanguage: site.locale,
+    inLanguage: locale,
     isPartOf: {
       '@type': 'WebSite',
       name: site.name,

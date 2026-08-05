@@ -1,51 +1,76 @@
 ---
 import { engineHref } from '@config/nav';
-import { hasPage, pagePath } from '@config/routes';
-import { site } from '@config/site';
+import { defaultLocale, hasPage, localeOfPath, localeStaticPaths, locales, pagePath } from '@config/routes';
+import { siteFor } from '@config/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import TopicCard from '@components/TopicCard.astro';
 import BaseLayout from '@layouts/BaseLayout.astro';
 import { getActiveSeries, getActiveTopics } from '@lib/taxonomy';
-import { entryPath, homeTypes, listPath } from '@content-types/index';
-import { getEntries } from '@lib/content';
+import { entryPath, homeTypesFor, listPath } from '@content-types/index';
+import { alternatesForPath } from '@lib/alternates';
+import { getEntries, typesWithEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
-import { t } from '@i18n/index';
+import { messages } from '@i18n/index';
 import { itemListSchema, websiteSchema, personSchema } from '@lib/schema';
+
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const t = messages(locale);
 
 /** Home sections are derived from `surfaces.home` in the registry. */
 // The taxonomy sections are links into `/topics/` and `/series/`, so they are
 // only rendered when the site publishes those pages. A section of cards whose
 // destinations were never built is not a smaller home page — it is a home page
 // full of dead links.
-const topicList = hasPage('topics') ? await getActiveTopics() : [];
-const seriesList = hasPage('series') ? await getActiveSeries() : [];
+const topicList = hasPage('topics') ? await getActiveTopics(locale) : [];
+const seriesList = hasPage('series') ? await getActiveSeries(locale) : [];
+
+/**
+ * A home page section is a heading and a "view all" link into a listing page.
+ * In a language with nothing of that kind, the listing page is not built (see
+ * pages/[type]/index.astro) — so the section is a heading over an empty box
+ * above a link to a 404, on the first page of that language anyone sees.
+ *
+ * The default locale keeps its empty sections, and its empty listing pages,
+ * because that is what every version before this one did: a declared type with
+ * no entries yet is the site's own section standing ready.
+ */
+const populated = locale === defaultLocale ? undefined : new Set((await typesWithEntries(locale)).map((type) => type.name));
 
 const sections = await Promise.all(
-  homeTypes.map(async (type) => {
-    return {
-      type,
-      Card: cardFor(type.card),
-      entries: (await getEntries(type)).slice(0, type.surfaces.home!.limit),
-    };
-  }),
+  homeTypesFor(locale)
+    .filter((type) => populated === undefined || populated.has(type.name))
+    .map(async (type) => {
+      return {
+        type,
+        Card: cardFor(type.card),
+        entries: (await getEntries(type, locale)).slice(0, type.surfaces.home!.limit),
+      };
+    }),
 );
 
 const featured = sections.flatMap(({ type, entries }) =>
   entries.map((entry) => ({
     name: entry.data.title as string,
     description: entry.data.description as string,
-    url: entryPath(type, entry.data.slug),
+    url: entryPath(type, entry.data.slug, locale),
   })),
 );
 
+// Every locale has a root. It is the one page that is guaranteed to exist in
+// each of them, which is also why it is the `x-default`.
+const alternates = alternatesForPath('/', locales);
+
 const jsonLd = [
-  websiteSchema(),
-  personSchema(),
+  websiteSchema(locale),
+  personSchema(true, locale),
   itemListSchema(`${site.name} Featured Content`, featured),
 ];
 ---
 
-<BaseLayout jsonLd={jsonLd}>
+<BaseLayout jsonLd={jsonLd} alternates={alternates}>
   <section class="hero">
     <div>
       <p class="eyebrow">{site.hero.eyebrow}</p>
@@ -53,7 +78,7 @@ const jsonLd = [
       <p>{site.hero.description}</p>
       <div class="actions">
         {site.hero.actions.map((action) => (
-          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={engineHref(action.href)}>{action.label}</a>
+          <a class={`button ${action.variant === 'primary' ? 'primary' : ''}`} href={engineHref(action.href, locale)}>{action.label}</a>
         ))}
       </div>
     </div>
@@ -87,7 +112,7 @@ const jsonLd = [
         <p class="eyebrow">{t('home.series.eyebrow')}</p>
         <h2>{t('home.series.title')}</h2>
       </div>
-      <a class="button" href={pagePath('series')}>{t('home.series.viewAll')}</a>
+      <a class="button" href={pagePath('series', locale)}>{t('home.series.viewAll')}</a>
     </div>
     <div class="grid">
       {seriesList.map((item) => <SeriesCard item={item} />)}
@@ -102,7 +127,7 @@ const jsonLd = [
           <p class="eyebrow">{type.label}</p>
           <h2>{type.listTitle}</h2>
         </div>
-        <a class="button" href={listPath(type)}>{t('home.viewAll', { label: type.listTitle })}</a>
+        <a class="button" href={listPath(type, locale)}>{t('home.viewAll', { label: type.listTitle })}</a>
       </div>
       <div class={type.listLayout ?? 'grid'}>
         {entries.length > 0

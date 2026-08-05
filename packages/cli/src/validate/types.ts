@@ -51,6 +51,20 @@ export type RuleContext = {
    * wherever the segments are what the rule is about.
    */
   mount: string;
+  /**
+   * The URL segment of every non-default locale this build published, e.g.
+   * `['en']`. Empty for a single-language site, which is every site that has
+   * not opted in.
+   *
+   * Same argument as `mount`, one segment further in: `/en/writing/` is a
+   * listing page in English, and a rule that counts from the origin files it as
+   * a detail page and stops checking listing pages in that language. The gate
+   * cannot see site.yaml's opinion of the URL space — it runs in its own
+   * process — so the build writes it to `.aifb/build.json`.
+   */
+  localePrefixes: string[];
+  /** The site's default locale, served with no prefix. */
+  defaultLocale: string;
 };
 
 export type Rule = {

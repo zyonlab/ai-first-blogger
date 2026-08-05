@@ -26,6 +26,20 @@ titleTemplate: '{title} · {name}'
 
 locale: zh-CN
 
+# Publishing in more than one language? Uncomment `locales` — the default above
+# stays at the root and every other one is served under its prefix:
+#
+#   /            /writing/       zh-CN
+#   /en/         /en/writing/    en-US
+#
+# Translations go in content/<type>/en/, paired by `translationKey`. Copy is
+# translated by an `i18n:` block on any mapping in site/. Leave this out and the
+# site is one language, exactly as before. See docs/specs/i18n.md.
+#
+# locales:
+#   zh-CN: zh
+#   en-US: en
+
 theme:
   # Token file under site/themes/.
   name: default

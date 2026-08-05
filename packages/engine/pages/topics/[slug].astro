@@ -1,42 +1,62 @@
 ---
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
-import { hasPage, homePath, pagePath, topicPath } from '@config/routes';
-import { seriesList, topics, type TopicSlug } from '@config/taxonomy';
+import { hasPage, homePath, localeOfPath, localeParam, localeParams, locales, pagePath, topicPath } from '@config/routes';
+import { seriesListFor, topicsFor, type TopicSlug } from '@config/taxonomy';
 import { getActiveTopics } from '@lib/taxonomy';
-import { entryPath, registry } from '@content-types/index';
+import { entryPath, registryFor } from '@content-types/index';
+import { alternatesForPath } from '@lib/alternates';
 import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
-import { t } from '@i18n/index';
+import { messages } from '@i18n/index';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
-  // Only topics that actually have entries — an empty topic page is thin
-  // content that still ends up in the sitemap.
-  return (await getActiveTopics()).map((topic) => ({ params: { slug: topic.slug } }));
+  // Only topics that actually have entries *in this locale* — an empty topic
+  // page is thin content that still ends up in the sitemap, and a topic whose
+  // three articles are all in Chinese has nothing to show an English reader.
+  const perLocale = await Promise.all(
+    localeParams().map(async ({ locale, param }) =>
+      (await getActiveTopics(locale)).map((topic) => ({ params: { ...localeParam(param), slug: topic.slug } })),
+    ),
+  );
+  return perLocale.flat();
 }
 
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
 const slug = Astro.params.slug as TopicSlug;
-const topic = topics[slug];
+const topic = topicsFor(locale)[slug]!;
 
 // Collects from every content type that carries a `category`, not just posts.
-const matches = await findEntries(registry, (entry) => entry.data.category === slug);
-const matchedSeries = hasPage('series') ? seriesList.filter((item) => item.topic === slug) : [];
-const canonical = topicPath(slug);
+const matches = await findEntries(registryFor(locale), (entry) => entry.data.category === slug, locale);
+const matchedSeries = hasPage('series') ? seriesListFor(locale).filter((item) => item.topic === slug) : [];
+const canonical = topicPath(slug, locale);
+
+// A topic page exists in a locale when that locale has an entry in the topic,
+// which is the same question getStaticPaths asked. Asking it again here rather
+// than assuming every locale built it is the difference between an hreflang set
+// and an hreflang guess.
+const built = (
+  await Promise.all(
+    locales.map(async (tag) => ((await getActiveTopics(tag)).some((item) => item.slug === slug) ? tag : undefined)),
+  )
+).filter((tag): tag is string => tag !== undefined);
+const alternates = alternatesForPath(`/topics/${slug}/`, built);
 
 const jsonLd = [
-  collectionPageSchema(topic.title, topic.description, canonical),
+  collectionPageSchema(topic.title, topic.description, canonical, locale),
   itemListSchema(
     `${topic.title} Content`,
     matches.map(({ type, entry }) => ({
       name: entry.data.title as string,
       description: entry.data.description as string,
-      url: entryPath(type, entry.data.slug),
+      url: entryPath(type, entry.data.slug, locale),
     })),
   ),
   breadcrumbSchema([
-    { name: 'Home', url: homePath },
-    { name: 'Topics', url: pagePath('topics') },
+    { name: 'Home', url: homePath(locale) },
+    { name: 'Topics', url: pagePath('topics', locale) },
     { name: topic.title, url: canonical },
   ]),
 ];
@@ -48,7 +68,8 @@ const jsonLd = [
   eyebrow="Topic"
   canonical={canonical}
   jsonLd={jsonLd}
-  breadcrumbs={[{ href: pagePath('topics'), label: 'Topics' }, { href: canonical, label: topic.title }]}
+  breadcrumbs={[{ href: pagePath('topics', locale), label: 'Topics' }, { href: canonical, label: topic.title }]}
+  alternates={alternates}
 >
   {matchedSeries.length > 0 && (
     <section class="section">

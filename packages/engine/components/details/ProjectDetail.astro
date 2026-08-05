@@ -1,9 +1,11 @@
 ---
 import Breadcrumbs from '@components/Breadcrumbs.astro';
 import NewsletterCTA from '@components/NewsletterCTA.astro';
-import { t } from '@i18n/index';
+import { localeOfPath } from '@config/routes';
+import { messages } from '@i18n/index';
 import type { AnyComponent } from '@lib/renderers';
 import { listPath } from '@content-types/index';
+import { localeOf } from '@lib/content';
 import type { DetailProps } from './detail-props';
 
 const { entry, type, Content, canonical } = Astro.props as DetailProps;
@@ -18,11 +20,12 @@ const data = entry.data as {
   demoUrl?: string;
   highlights: string[];
 };
+const t = messages(localeOfPath(Astro.url.pathname));
 const statusLabel = t(`project.status.${data.status}`);
 ---
 
 <article class="project-page">
-  <Breadcrumbs items={[{ href: listPath(type), label: type.listTitle }, { href: canonical, label: data.title }]} />
+  <Breadcrumbs items={[{ href: listPath(type, localeOf(entry)), label: type.listTitle }, { href: canonical, label: data.title }]} />
   <header class="project-hero">
     <div class="project-hero-copy">
       <p class="eyebrow">{type.label} · {statusLabel}</p>

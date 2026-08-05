@@ -62,6 +62,8 @@ invented and caught later by C-03.
 | A content type's route, labels, surfaces | `site/content-types.yaml` |
 | Thresholds and switches (what counts as publishable) | `site/policy.yaml` |
 | Static page copy | `site/pages.yaml` |
+| Which languages the site publishes | `locales:` in `site/site.yaml` |
+| The same copy in another language | an `i18n:` block on the mapping that holds it |
 | Writing style | `site/voice.md` |
 | Colours and typography | `site/themes/<name>.css` |
 | Markup — a component, layout, card or whole page | `site/templates/<kind>/<Name>.astro` |
@@ -83,7 +85,7 @@ pages, `llms.txt` sections, `rss.xml` entries, home page sections. Declare
 ```bash
 pnpm check      # types
 pnpm build      # produces dist/
-pnpm validate   # planning preflight, then 29 content/SEO rules; must report 0 errors
+pnpm validate   # planning preflight, then 31 content/SEO rules; must report 0 errors
 pnpm metrics    # framework health
 pnpm analyze    # writing style: articles AND every outward-facing string in site/*.yaml
 pnpm context status   # the three reports above merged, with staleness flagged
@@ -114,12 +116,21 @@ pnpm context status   # the three reports above merged, with staleness flagged
 - All publishable content lives under `content/**`.
 - Frontmatter must satisfy the content type's schema; `category` and `series` must
   exist in `site/taxonomy.yaml`.
-- Filename must equal `slug` (C-08).
+- Filename must equal `slug` (C-08). Slugs are unique per content type **and
+  language** — the same slug in two languages is a translation, not a clash.
 - Body needs at least `content.minInternalLinks` site-internal links (C-02).
 - No H1 in the body and no skipped heading levels (C-09) — the page H1 comes from
   the title.
 - **Read `site/voice.md` before writing.** Its prose half is the voice; its
   frontmatter is what `pnpm analyze` scores. Write for the prose, not for the score.
+- **Writing a translation** (only on a site with `locales:` in `site/site.yaml`):
+  put it in `content/<type>/<prefix>/`, e.g. `content/posts/en/`. Give it a slug in
+  its own language and add `translationKey:` naming the original's slug — that
+  field, and only that field, is what produces the `hreflang` pair. A translation
+  that keeps the original slug needs no field at all.
+  **Do not create a file just to fill a gap.** An article that exists in one
+  language is finished; a stub in the other becomes an indexed empty page that
+  claims to be the real one.
 - Prefer MDX with definitions, examples, tradeoffs, next steps, and internal links.
 - Do not publish drafts unless explicitly requested. `draft: true` keeps an entry
   unbuilt and outside the gate — use it for work in progress rather than leaving a

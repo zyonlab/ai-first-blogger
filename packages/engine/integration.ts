@@ -23,8 +23,16 @@ import type { AstroIntegration } from 'astro';
 import { cloudflarePages } from './deploy/cloudflare';
 import { fail } from './config/load';
 import { pageCopyProblems } from './config/pages';
-import { OPTIONAL_PAGES, ROOT_ONLY_PAGES, configureRoutes, type OptionalPage } from './config/routes';
-import { site } from './config/site';
+import {
+  LOCALE_SEGMENT,
+  OPTIONAL_PAGES,
+  ROOT_ONLY_PAGES,
+  configureRoutes,
+  defaultLocale,
+  isMultiLocale,
+  type OptionalPage,
+} from './config/routes';
+import { site, siteLocales } from './config/site';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +78,34 @@ function collectRoutes(dir: string, base = ''): { pattern: string; entrypoint: s
  */
 function pageGroup(pattern: string) {
   return pattern.split('/')[1] ?? '';
+}
+
+/**
+ * Where the locale segment goes, and which routes do not get one.
+ *
+ * `/404` and `/robots.txt` are the same two routes the mount leaves alone, for
+ * the same reason: they are facts about the origin. A crawler reads exactly one
+ * robots.txt per host and a host serves exactly one 404 page, so `/en/404` is a
+ * page nothing routes to and `/en/robots.txt` is a file nobody reads — with the
+ * added cost, here, of being a second copy that can disagree with the first.
+ *
+ * A single-language site gets no segment at all, and that is not an
+ * optimisation. `[...locale]` makes every route dynamic, and a dynamic route
+ * needs `getStaticPaths` — including one supplied by
+ * `site/templates/pages/about.astro`, which is a file the site wrote and which
+ * every 0.3.0 site that has one wrote without it. Adding the segment
+ * unconditionally would have broken every page override in existence to serve
+ * a feature those sites have not turned on.
+ *
+ * The cost is that a site *does* have to add `export const getStaticPaths =
+ * localeStaticPaths` to its page overrides on the day it declares a second
+ * locale, which is stated in docs/specs/templates.md and fails loudly rather
+ * than quietly — Astro refuses to build a dynamic route with no paths.
+ */
+function localePattern(pattern: string) {
+  if (!isMultiLocale) return pattern;
+  if ((ROOT_ONLY_PAGES as readonly string[]).includes(pageGroup(pattern))) return pattern;
+  return `${LOCALE_SEGMENT}${pattern === '/' ? '' : pattern}`;
 }
 
 /**
@@ -365,6 +401,40 @@ export type EngineOptions = {
   pages?: OptionalPage[];
 };
 
+/**
+ * What `@astrojs/sitemap` needs to know about this site's languages.
+ *
+ *     import { engine, sitemapOptions } from 'aifb-engine';
+ *     sitemap(sitemapOptions())
+ *
+ * The sitemap integration belongs to the site — it is in the site's
+ * astro.config, it may be dropped for a preview build, and a host site may
+ * already have one. So the engine does not install it; it answers the one
+ * question the site cannot answer without parsing site.yaml itself, which is the
+ * same reason `engine({ site })` exists.
+ *
+ * `{}` for a single-language site, which makes `sitemap(sitemapOptions())`
+ * byte-identical to `sitemap()`.
+ *
+ * Under a mount it still returns the option and the option does nothing —
+ * @astrojs/sitemap keys off the first path segment, which under a mount is the
+ * mount. Returning it anyway rather than detecting the mount here is
+ * deliberate: this function is evaluated inside the site's `integrations` array
+ * and cannot know whether `engine()` has been constructed yet, and a helper
+ * whose answer depends on the order of two lines in someone else's config file
+ * is worse than one that is inert. The integration logs the warning, from the
+ * one place that does know the mount.
+ */
+export function sitemapOptions(): { i18n?: { defaultLocale: string; locales: Record<string, string> } } {
+  if (!isMultiLocale) return {};
+  return {
+    i18n: {
+      defaultLocale: siteLocales.find((locale) => locale.tag === defaultLocale)!.prefix,
+      locales: Object.fromEntries(siteLocales.map((locale) => [locale.prefix, locale.tag])),
+    },
+  };
+}
+
 export function engine(options: EngineOptions = {}): AstroIntegration[] {
   // `site` here is the option, not the loaded config of the same name.
   const { cloudflare = true, site: setSite = true, themesDir = 'site/themes', templatesDir = 'site/templates' } = options;
@@ -372,8 +442,15 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
   // result to the module graph the pages render in, and Astro loads this file
   // before it loads anything that renders. See config/routes.ts.
   const routing = configureRoutes({ mount: options.mount, pages: options.pages });
-  const mountPattern = (pattern: string) =>
-    routing.mount === '' ? pattern : `${routing.mount}${pattern === '/' ? '' : pattern}`;
+  /**
+   * Mount outside, locale inside. The same order `withLocale()` composes links
+   * in — see the header comment in config/routes.ts for why it is that way
+   * round, and why these two must not be able to disagree.
+   */
+  const routePattern = (pattern: string) => {
+    const localised = localePattern(pattern);
+    return routing.mount === '' ? localised : `${routing.mount}${localised === '/' ? '' : localised}`;
+  };
 
   /** Astro tells the integration where the project is; the build hook needs it too. */
   let projectRoot = process.cwd();
@@ -462,7 +539,7 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
         let overridden = 0;
 
         for (const route of selected) {
-          const pattern = mountPattern(route.pattern);
+          const pattern = routePattern(route.pattern);
           // A page the site provides replaces the engine's, at the same URL.
           const own = ownFile(route);
           if (fs.existsSync(own)) {
@@ -475,9 +552,27 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
 
         logger.info(
           `${selected.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
+            `${isMultiLocale ? ` in ${siteLocales.length} locales (${siteLocales.map((locale) => locale.tag).join(', ')})` : ''}` +
             `${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}` +
             `${declined.length > 0 ? `, ${declined.length} declined` : ''}`,
         );
+
+        /**
+         * `@astrojs/sitemap` reads the locale out of the *first* path segment
+         * (see its parse-i18n-url.js), so under a mount `/blog/en/writing/`
+         * looks to it like a page in a locale called "blog". It does not fail —
+         * it silently pairs nothing, which is the state this project reports
+         * rather than ships. `sitemapOptions()` leaves `i18n` off in that case;
+         * the `<link rel="alternate">` tags in every page's head are emitted by
+         * the engine either way and are what Google reads first.
+         */
+        if (isMultiLocale && routing.mount !== '') {
+          logger.warn(
+            'A mounted, multi-locale site cannot use @astrojs/sitemap\'s i18n option: it keys off the first ' +
+              `path segment, which here is "${routing.mount.split('/')[1]}". hreflang is still emitted in every ` +
+              'page head, which is sufficient on its own; the sitemap simply carries no xhtml:link pairs.',
+          );
+        }
       },
 
       /**
@@ -490,7 +585,18 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
         await fs.promises.writeFile(
           file,
           `${JSON.stringify(
-            { generatedAt: new Date().toISOString(), mount: routing.mount, pages: [...routing.pages].sort() },
+            {
+              generatedAt: new Date().toISOString(),
+              mount: routing.mount,
+              pages: [...routing.pages].sort(),
+              // The gate reads URL shape, and on a translated site the first
+              // segment after the mount is a language rather than a section.
+              // Same reason the mount is written down: `pnpm validate` runs in
+              // its own process and cannot see site.yaml's opinion of the URL
+              // space, only the URLs.
+              defaultLocale,
+              locales: siteLocales,
+            },
             null,
             2,
           )}\n`,

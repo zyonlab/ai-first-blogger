@@ -177,7 +177,7 @@ export const seoRules: Rule[] = [
     title: 'Breadcrumb schema matches the page',
     severity: 'error',
     needsBuild: true,
-    run: ({ pages, mount }) => {
+    run: ({ pages, mount, localePrefixes }) => {
       const out: Violation[] = [];
       for (const page of pages) {
         const hasSchema = jsonLdBlocks(page.html).some(
@@ -187,10 +187,11 @@ export const seoRules: Rule[] = [
 
         // Listing and root pages carry breadcrumb schema without rendering a
         // trail; only flag detail pages, which is where the mismatch misleads.
-        // Depth is counted from the engine's root: a mounted `/zh/blog/writing/`
-        // is still a listing page, and counting from the origin would report
-        // every one of them.
-        const isDetail = engineSegments(page.url, mount).length >= 2;
+        // Depth is counted from the engine's root in its own language: a
+        // mounted `/zh/blog/writing/` and a translated `/en/writing/` are both
+        // still listing pages, and counting from the origin would report every
+        // one of them.
+        const isDetail = engineSegments(page.url, mount, localePrefixes).length >= 2;
         if (hasSchema && !hasMarkup && isDetail) {
           out.push({
             rule: 'C-10',

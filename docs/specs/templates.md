@@ -153,13 +153,62 @@ everything else may change in a patch.
 '@layouts/BaseLayout.astro'   '@layouts/PageLayout.astro'
 '@components/cards/card-props'                       // the CardProps type
 '@config/site' '@config/taxonomy' '@config/nav' '@config/policy' '@config/voice'
-'@config/routes'              // withMount · homePath · pagePath · topicPath · seriesPath · hasPage
-'@content-types/index'        // registry · getContentTypeByRoute · listPath · entryPath
-'@lib/content'                // getEntries
+'@config/routes'              // withMount · withLocale · homePath · pagePath · topicPath
+                              // seriesPath · hasPage · locales · localeOfPath · localeStaticPaths
+'@content-types/index'        // registry · registryFor · getContentTypeByRoute · listPath · entryPath
+'@lib/content'                // getEntries · localeOf
+'@lib/alternates'             // alternatesForPath · alternatesForEntry  (hreflang)
 '@lib/schema'                 // breadcrumbSchema · collectionPageSchema · itemListSchema
 '@lib/dates'                  // formatDate
 '@lib/renderers'              // cardFor · detailFor
 ```
+
+### On a site that publishes more than one language
+
+Three of those rows stop being optional, and one thing changes shape.
+
+`homePath`, `rssPath` and `llmsPath` are **functions** taking a locale, not
+constants. `homePath` alone is a type error, which is deliberate: the quiet
+alternative is an override that renders a default-language link on every page of
+every other language and builds green.
+
+A **page** override becomes a dynamic route — the engine injects it under an
+optional `[...locale]` segment — so it needs paths and needs to know which locale
+it is rendering:
+
+```astro
+---
+import PageLayout from '@layouts/PageLayout.astro';
+import { localeOfPath, localeStaticPaths, locales, pagePath } from '@config/routes';
+import { requirePageCopy } from '@config/pages';
+import { alternatesForPath } from '@lib/alternates';
+
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const { title, description } = requirePageCopy('about', locale);
+---
+<PageLayout
+  title={title}
+  description={description}
+  canonical={pagePath('about', locale)}
+  alternates={alternatesForPath('/about/', locales)}
+/>
+```
+
+`alternates` is what emits `hreflang`. An override that omits it publishes a page
+with no link to its other language — not a gate failure, because C-30 only checks
+the tags that *are* there, and the honest reason it is not one: a page that
+genuinely exists in one language should emit nothing.
+
+None of this applies to a single-language site. The `[...locale]` segment is only
+injected once `site/site.yaml` declares a second locale, so a 0.3.0 override keeps
+working untouched until the day the site is translated — and on that day Astro
+refuses to build a dynamic route with no paths, which is a loud failure rather
+than a quiet one.
+
+See [`i18n.md`](./i18n.md) and
+[`../adr/0006-i18n-routing.md`](../adr/0006-i18n-routing.md).
 
 The list is not arbitrary: it is **exactly what a page override needs in order
 to pass the gate**. C-01/C-05/C-06/C-07 want the head that `BaseLayout` renders,
