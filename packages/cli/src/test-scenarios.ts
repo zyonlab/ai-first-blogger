@@ -70,6 +70,11 @@ async function sh(command: string, args: string[], env: Record<string, string> =
   }
 }
 
+/** Did the build emit this path? */
+const exists = (relative: string) => fs.access(path.join(root, relative)).then(() => true).catch(() => false);
+/** One file out of the last build. */
+const dist = (file: string) => fs.readFile(path.join(root, 'dist', file), 'utf8');
+
 const build = (env: Record<string, string> = {}) => sh('pnpm', ['build'], env);
 const validate = () => sh('pnpm', ['validate']);
 const analyze = (target?: string) => sh('pnpm', ['analyze', ...(target ? [target] : [])]);
@@ -313,6 +318,69 @@ try {
    * replaced the whole list page to get it. This asserts the cheap path works,
    * so nobody pays 68 lines for it again.
    */
+  /**
+   * The landing page's shape, from the intent layer.
+   *
+   * Both halves were markup before: Topics and Series were written above the
+   * content types, and `.hero-panel` rendered whether or not it had anything in
+   * it. A product blog wanting its articles first had to fork `index.astro`,
+   * which takes the SEO contract with it — the one thing templates.md warns
+   * against.
+   */
+  await scenario('the home page renders its sections in the order the site asked for', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the default home page should build');
+
+    /** The section headings, in document order. */
+    const headings = async () =>
+      [...(await dist('index.html')).matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]!.trim());
+
+    const before = await headings();
+    const topicsAt = before.findIndex((heading) => heading.includes('精选主题'));
+    const writingAt = before.findIndex((heading) => heading === 'Writing');
+    expect(topicsAt !== -1 && writingAt !== -1, `expected both sections by default, got ${JSON.stringify(before)}`);
+    expect(topicsAt < writingAt, 'by default the taxonomy sections come first, as they always have');
+
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, topics]\n\nhero:']]);
+    expect((await build()).code === 0, 'a reordered home page should build');
+
+    const after = await headings();
+    expect(after.indexOf('Writing') < after.findIndex((h) => h.includes('精选主题')), `articles should now come first: ${JSON.stringify(after)}`);
+    expect(!after.some((h) => h.includes('精选系列')), `an omitted section should not render: ${JSON.stringify(after)}`);
+  });
+
+  await scenario('a section named twice, or not at all, is reported by name', async () => {
+    await loadExample();
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, content]\n\nhero:']]);
+    const twice = await build();
+    expect(twice.code !== 0, 'a duplicate section should fail the build');
+    expect(twice.out.includes('twice'), `the failure should say what is wrong:\n${twice.out.slice(-400)}`);
+
+    await loadExample();
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, prjects]\n\nhero:']]);
+    const typo = await build();
+    expect(typo.code !== 0, 'a misspelled section should fail the build');
+    expect(typo.out.includes('prjects'), `the failure should quote the value:\n${typo.out.slice(-400)}`);
+  });
+
+  await scenario('the hero panel goes away when it has nothing in it', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the example has signals and should build');
+    expect((await dist('index.html')).includes('hero-panel'), 'a site with signals keeps the panel it had');
+
+    // Declining it outright, with the signals still there.
+    await edit('site/site.yaml', [['hero:', 'home:\n  panel: false\n\nhero:']]);
+    expect((await build()).code === 0, 'declining the panel should build');
+    expect(!(await dist('index.html')).includes('hero-panel'), 'home.panel: false should remove it');
+
+    // …and emptying the signals is enough on its own: the panel was an empty
+    // box under a heading before, with no way to say so.
+    await loadExample();
+    await dropYamlKey('site/site.yaml', '  signals');
+    expect((await build()).code === 0, 'a site with no signals should build');
+    expect(!(await dist('index.html')).includes('hero-panel'), 'an empty panel should not render at all');
+  });
+
   await scenario('a site chooses its list layout without touching markup', async () => {
     await loadExample();
     await edit('site/content-types.yaml', [['posts:\n', 'posts:\n  listLayout: stack\n']]);
@@ -464,8 +532,6 @@ try {
    * ---------------------------------------------------------------- */
 
   const MOUNT = '/zh/blog';
-  const exists = (relative: string) => fs.access(path.join(root, relative)).then(() => true).catch(() => false);
-  const dist = (file: string) => fs.readFile(path.join(root, 'dist', file), 'utf8');
 
   /** Remove one top-level block from a YAML file — the key and everything under it. */
   async function dropYamlKey(file: string, key: string) {

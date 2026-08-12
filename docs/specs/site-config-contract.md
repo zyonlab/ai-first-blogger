@@ -46,7 +46,7 @@ most likely to tune the ones it could only tune by forking the engine.
 
 | File | Holds | Edited |
 |---|---|---|
-| `site/site.yaml` | name, url, locale, `locales`, `titleTemplate`, author, social, hero, services, theme choice, static nav, OG default | Always |
+| `site/site.yaml` | name, url, locale, `locales`, `titleTemplate`, author, social, hero, `home`, services, theme choice, static nav, OG default | Always |
 | `site/taxonomy.yaml` | pillars, topics, series — and the category vocabulary derived from them | Always |
 | `site/content-types.yaml` | route, label, list copy and surfaces per content type | When adding a type |
 | `site/policy.yaml` | thresholds and switches | When the defaults do not fit |
@@ -68,6 +68,27 @@ files. Enforce the line with the format, not with discipline.
 The cost is literal types. `TopicSlug` used to be a union derived from the topic
 map; it is now `string`, validated at runtime by `isCategory`. `taxonomy.md` had
 already made that trade when it replaced `z.enum` with `refine`.
+
+### The landing page: `home`
+
+Which blocks the home page stacks, and in what order. Both were markup before,
+so a site that wanted a different landing page had to fork `index.astro` and
+take the SEO contract with it.
+
+```yaml
+home:
+  # Order, and omission is subtraction: a site that lists only [content]
+  # renders no taxonomy blocks. Default: [topics, series, content].
+  sections: [content, topics, series]
+  # The Focus Map beside the hero. Unset means "render it when hero.signals
+  # has something in it", which is what a site with signals already saw.
+  panel: false
+```
+
+`content` is one token for every content type declaring `surfaces.home` — their
+order *among themselves* stays `surfaces.home.order`'s question, in
+`site/content-types.yaml`. This list only says where that group sits relative
+to Topics and Series.
 
 ## The dividing line inside text: chrome vs. content
 

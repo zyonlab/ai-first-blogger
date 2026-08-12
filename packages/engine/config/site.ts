@@ -150,6 +150,64 @@ for (const tag of declaredLocales(document)) {
 
 if (problems.length > 0) fail(FILE, problems);
 
+/**
+ * The blocks the home page can stack, in the order `home.sections` lists them.
+ *
+ * `content` is every content type declaring `surfaces.home`, kept in the order
+ * the registry already sorts them by — one token rather than one per type,
+ * because which types exist is `site/content-types.yaml`'s question and their
+ * order among themselves is `surfaces.home.order`'s. This list only answers
+ * where that group sits relative to the taxonomy blocks.
+ */
+export const HOME_SECTIONS = ['content', 'topics', 'series'] as const;
+
+export type HomeSection = (typeof HOME_SECTIONS)[number];
+
+/** Today's markup order, and therefore the default. */
+const DEFAULT_HOME_SECTIONS: HomeSection[] = ['topics', 'series', 'content'];
+
+/**
+ * `home.sections` — which blocks the landing page shows, and in what order.
+ *
+ * Section order used to be markup: Topics and Series were hardcoded ahead of
+ * the content types, so a product blog whose readers arrive from search and
+ * want the writing had no way to put the writing first short of forking
+ * `pages/index.astro` — which `docs/specs/templates.md` rightly discourages,
+ * because the fork takes the SEO contract with it.
+ *
+ * Omission is subtraction: a site that lists `[content]` renders no taxonomy
+ * blocks at all. That makes this one list answer both questions, which is why
+ * it is a list and not three booleans plus a weight.
+ */
+function readHomeSections(raw: unknown): HomeSection[] {
+  if (raw === undefined || raw === null) return DEFAULT_HOME_SECTIONS;
+
+  // Reported here rather than pushed onto `problems`: that list is flushed
+  // above, before any call to `buildSite`, so anything added now would never
+  // reach a reader.
+  const wrong: string[] = [];
+  if (!Array.isArray(raw)) {
+    fail(FILE, [`home.sections must be a list. Allowed: ${HOME_SECTIONS.join(', ')}.`]);
+  }
+
+  const seen = new Set<string>();
+  const out: HomeSection[] = [];
+  for (const entry of raw as unknown[]) {
+    if (typeof entry !== 'string' || !(HOME_SECTIONS as readonly string[]).includes(entry)) {
+      wrong.push(`home.sections lists ${JSON.stringify(entry)}. Allowed: ${HOME_SECTIONS.join(', ')}.`);
+      continue;
+    }
+    if (seen.has(entry)) {
+      wrong.push(`home.sections lists "${entry}" twice. A section renders once, wherever it is first named.`);
+      continue;
+    }
+    seen.add(entry);
+    out.push(entry as HomeSection);
+  }
+  if (wrong.length > 0) fail(FILE, wrong);
+  return out;
+}
+
 function buildSite(raw: Record<string, any>) {
   const rawTheme = requireRecord(raw, 'theme', FILE);
   const rawAuthor = requireRecord(raw, 'author', FILE);
@@ -202,6 +260,19 @@ function buildSite(raw: Record<string, any>) {
       description: (raw.hero?.description as string) ?? requireString(raw, 'description', FILE),
       actions: ((raw.hero?.actions ?? []) as HeroAction[]),
       signals: ((raw.hero?.signals ?? []) as string[]),
+    },
+    home: {
+      sections: readHomeSections(raw.home?.sections),
+      /**
+       * `.hero-panel` — the Focus Map beside the hero.
+       *
+       * Unset means "render it when there is something in it". The panel used
+       * to render unconditionally, so a site that declared no signals got an
+       * empty box under a heading; emptying `hero.signals` was not a way to
+       * remove it and there was no other. A site that has signals sees exactly
+       * what it saw before, which is the only site the panel was ever for.
+       */
+      panel: (raw.home?.panel as boolean | undefined) ?? ((raw.hero?.signals ?? []) as string[]).length > 0,
     },
     services: {
       title: (raw.services?.title as string) ?? '',
