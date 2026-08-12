@@ -27,7 +27,7 @@ export default defineConfig({
 | `themesDir` | `'site/themes'` | Where the site keeps its theme token files. |
 | `templatesDir` | `'site/templates'` | Where the site keeps markup overrides — see [templates.md](./templates.md). |
 | `mount` | `'/'` | The prefix every injected route lives under. |
-| `pages` | all | Whitelist of the fixed pages: `about`, `newsletter`, `series`, `topics`, `uses`, `work-with-me`. |
+| `pages` | all | Whitelist of the fixed pages: `about`, `newsletter`, `series`, `tags`, `topics`, `uses`, `work-with-me`. |
 
 There is one export beside `engine()`. `sitemapOptions()` returns what
 `@astrojs/sitemap` needs to know about the site's languages — `{}` until

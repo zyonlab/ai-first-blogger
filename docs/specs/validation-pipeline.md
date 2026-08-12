@@ -30,6 +30,9 @@ packages/cli/src/validate/
     onpage.ts       site-wide on-page   (C-14 … C-23)
     links-source.ts authored links      (C-25, no build needed)
     typography.ts   zhlint, zh-* only   (C-24)
+    quality.ts      substance and style (C-26, C-27)
+    locale.ts       translated sites    (C-30, C-31)
+    surfaces.ts     frontmatter → page  (C-32, C-33, C-34)
 ```
 
 ## Data model

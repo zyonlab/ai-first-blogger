@@ -58,10 +58,11 @@ invented and caught later by C-03.
 | Kind of value | Location |
 |---|---|
 | Brand, author, social, theme choice, static nav | `site/site.yaml` |
-| Pillars, topics, series, categories | `site/taxonomy.yaml` |
+| Pillars, topics, series, categories, tags | `site/taxonomy.yaml` |
 | A content type's route, labels, surfaces | `site/content-types.yaml` |
 | Thresholds and switches (what counts as publishable) | `site/policy.yaml` |
 | Static page copy | `site/pages.yaml` |
+| Ghost keyword → category mapping for a migration | `site/migration.yaml` |
 | Which languages the site publishes | `locales:` in `site/site.yaml` |
 | The same copy in another language | an `i18n:` block on the mapping that holds it |
 | Writing style | `site/voice.md` |
@@ -85,7 +86,7 @@ pages, `llms.txt` sections, `rss.xml` entries, home page sections. Declare
 ```bash
 pnpm check      # types
 pnpm build      # produces dist/
-pnpm validate   # planning preflight, then 31 content/SEO rules; must report 0 errors
+pnpm validate   # planning preflight, then 34 content/SEO rules; must report 0 errors
 pnpm metrics    # framework health
 pnpm analyze    # writing style: articles AND every outward-facing string in site/*.yaml
 pnpm context status   # the three reports above merged, with staleness flagged

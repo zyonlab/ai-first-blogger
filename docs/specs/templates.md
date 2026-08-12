@@ -152,11 +152,17 @@ everything else may change in a patch.
 ```ts
 '@layouts/BaseLayout.astro'   '@layouts/PageLayout.astro'
 '@components/cards/card-props'                       // the CardProps type
+'@components/details/detail-props'                   // the DetailProps type
 '@config/site' '@config/taxonomy' '@config/nav' '@config/policy' '@config/voice'
 '@config/routes'              // withMount · withLocale · homePath · pagePath · topicPath
-                              // seriesPath · hasPage · locales · localeOfPath · localeStaticPaths
+                              // seriesPath · tagPath · hasPage · locales · localeOfPath
+                              // localeStaticPaths
+'@config/pages'               // requirePageCopy — the copy a fixed-page override renders
 '@content-types/index'        // registry · registryFor · getContentTypeByRoute · listPath · entryPath
-'@lib/content'                // getEntries · localeOf
+'@lib/content'                // getEntries · localeOf · findEntries
+'@lib/taxonomy'               // getActiveTopics · getActiveSeries · getActiveTags
+                              // — the content-aware view an archive override needs
+'@lib/seo'                    // absoluteUrl · assertSameOrigin · seoFromFields
 '@lib/alternates'             // alternatesForPath · alternatesForEntry  (hreflang)
 '@lib/schema'                 // breadcrumbSchema · collectionPageSchema · itemListSchema
 '@lib/dates'                  // formatDate
@@ -217,7 +223,17 @@ the trail. A site cannot be held to those rules and denied the helpers that
 satisfy them.
 
 Not promised: `@i18n/*`, anything in `@lib/*` beyond the rows above, components
-that are not cards, and the internals of a content type module.
+that are not cards or details, and the internals of a content type module.
+
+`@lib/taxonomy` and `@lib/seo` joined the list because two override kinds turned
+out to be impossible without them. A **taxonomy archive** must ask
+`getActiveTopics` / `getActiveTags` which terms have entries — building a page
+per declared term instead produces empty archives, which is the thin content the
+engine goes out of its way to avoid, and an `hreflang` advertising a page with
+nothing on it. A **detail** override needs `DetailProps` for the same reason a
+card needs `CardProps`: the route dispatches both generically. Both are covered
+by scenarios that write the override and run the real build, so a signature
+change fails there rather than in somebody's site.
 
 Reasoning, and what to do when the list feels short:
 [`../adr/0004-template-api.md`](../adr/0004-template-api.md).

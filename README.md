@@ -49,7 +49,7 @@ Every command runs through `npx aifb`, so nothing depends on this repository's
 ```bash
 npx aifb context write      # exactly what drafting an article needs — voice,
                             # categories, and the pages that actually exist to link to
-npx aifb validate           # planning preflight, then 31 rules → validate-report.json
+npx aifb validate           # planning preflight, then 34 rules → validate-report.json
 npx aifb analyze            # writing style → content-report.json
 npx aifb context status     # both reports merged, stale ones flagged
 npx aifb env                # versions, for a bug report
@@ -128,7 +128,7 @@ pnpm context setup|type|status
 pnpm dev                  # dev server
 pnpm check                # types
 pnpm build                # static build to dist/
-pnpm validate             # planning preflight + content/SEO gate (31 rules)
+pnpm validate             # planning preflight + content/SEO gate (34 rules)
 pnpm validate --strict    # warnings fail too
 pnpm validate:self-test   # prove every rule still catches its own violation
 pnpm test:scenarios       # drive the real pipeline: themes, voice, taxonomy, deploy
@@ -171,7 +171,7 @@ cp -r examples/agent-native-engineer/site/. site/
 | File | Holds |
 |---|---|
 | `site/site.yaml` | brand, URL, locale, author, social, hero, theme choice, static nav |
-| `site/taxonomy.yaml` | pillars, topics, series — the source of the category vocabulary |
+| `site/taxonomy.yaml` | pillars, topics, series, tags — the source of the category vocabulary |
 | `site/content-types.yaml` | each content type's route, labels and surfaces |
 | `site/policy.yaml` | thresholds and switches — what counts as publishable |
 | `site/pages.yaml` | About / Uses / Newsletter / Work-with-me copy |
@@ -200,7 +200,7 @@ site you already have and mount it under a prefix:
 // astro.config.mjs
 engine({
   mount: '/zh/blog',           // every route the engine injects lives here
-  pages: ['topics', 'series'], // and these are the fixed pages you want
+  pages: ['topics', 'series', 'tags'], // and these are the fixed pages you want
 })
 ```
 
@@ -262,9 +262,22 @@ description: 110-160 display columns
 slug: article-slug        # must equal the filename
 pubDate: 2026-07-29
 category: ai-engineering  # must exist in site/taxonomy.yaml
-tags: [AI, Blogging]
+tags: [AI, Blogging]      # each gets an archive at /tags/<slug>/
 draft: true               # optional — never built, and never gated
+
+# All optional, all falling back to today's behaviour when absent:
+metaTitle: …              # the <title>, when the headline is the wrong length
+metaDescription: …
+ogTitle: … ogDescription: … ogImage: …      # the social card, written for social
+twitterTitle: … twitterDescription: … twitterImage: …
+heroImage: … heroImageAlt: … heroImageCaption: …
+author: …                 # a byline, when it is not the site owner
+featured: true            # pin it to the front of its listings
+noindex: true
 ```
+
+Per-entry SEO, and what counts as part of the content model:
+[`docs/adr/0007-ghost-parity-scope.md`](docs/adr/0007-ghost-parity-scope.md).
 
 Add a new kind of content: [`docs/recipes/add-content-type.md`](docs/recipes/add-content-type.md).
 
@@ -319,12 +332,18 @@ Put the export at `migration/ghost-export.json` (images at `migration/images/`),
 LEGACY_CONTENT_DOMAIN=https://your-old-domain.com pnpm migrate:ghost
 ```
 
-Writes MDX to `content/posts/` and a report to `migration/report.md`.
-Slug overrides: `packages/cli/src/slug-map.ts`. Category and series mapping:
-`packages/cli/src/category-map.ts`. Both ship empty — fill in the mapping with **your**
-categories. It is checked against `site/taxonomy.yaml` before anything is written,
-so a mismatch aborts the run instead of producing hundreds of files that fail the
-build. Posts matching no rule land in `fallbackCategory` and are listed in the report.
+Writes MDX to `content/posts/` and a report to `migration/report.md`. Reads both
+export shapes — the Content API's and the admin export's six sibling tables —
+because reading the wrong one does not fail, it silently drops your taxonomy.
+
+Keyword → category mapping goes in `site/migration.yaml`, checked against
+`site/taxonomy.yaml` before anything is written, so a mismatch aborts the run
+instead of producing hundreds of files that fail the build.
+
+**Read the report.** Your tags, your site settings and any cross-origin canonical
+are offered there as ready-to-paste blocks rather than written for you — `site/`
+is yours. Full contract:
+[`docs/recipes/migrate-from-ghost.md`](docs/recipes/migrate-from-ghost.md).
 
 ## Documentation
 
@@ -335,7 +354,7 @@ docs/evaluation-2026-08.md   full-pipeline evaluation against a lookalike site
 docs/specs/                  content-contract · site-config-contract · taxonomy
                              theming · i18n · validation-pipeline · metrics
                              deployment · releasing · templates
-docs/recipes/                add-content-type · add-theme · add-locale
+docs/recipes/                add-content-type · add-theme · add-locale · migrate-from-ghost
 docs/adr/                    decisions (0002 planes · 0003 workspace · 0004 template API)
 docs/playbooks/              AI-first workflow · template customization
 .github/ISSUE_TEMPLATE/      boundary · gate · bug — the three ways to report
