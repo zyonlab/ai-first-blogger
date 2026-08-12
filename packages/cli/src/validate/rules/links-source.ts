@@ -16,7 +16,7 @@ import { topics, series } from 'aifb-engine/config/taxonomy';
 import type { Rule, Violation } from '../types';
 
 /** Pages the engine always renders, regardless of content. */
-const STATIC_PAGES = new Set(['/', '/about/', '/uses/', '/newsletter/', '/work-with-me/', '/topics/', '/series/']);
+const STATIC_PAGES = new Set(['/', '/about/', '/uses/', '/newsletter/', '/work-with-me/', '/topics/', '/series/', '/tags/']);
 
 const linkPattern = /\]\((\/[^)\s]*)\)/g;
 

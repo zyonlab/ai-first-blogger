@@ -22,6 +22,7 @@ import { sourceLinkRules } from './rules/links-source';
 import { onPageRules } from './rules/onpage';
 import { qualityRules } from './rules/quality';
 import { seoRules } from './rules/seo';
+import { surfaceRules } from './rules/surfaces';
 import { typographyRules } from './rules/typography';
 import { themeRules } from './rules/theme';
 import type { Rule, RuleContext, Violation } from './types';
@@ -31,7 +32,7 @@ const RED = '\u001b[31m';
 const YELLOW = '\u001b[33m';
 const DIM = '\u001b[2m';
 
-const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules].sort((a, b) => a.id.localeCompare(b.id));
+const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules, ...surfaceRules].sort((a, b) => a.id.localeCompare(b.id));
 
 const strict = process.argv.includes('--strict');
 // The origin comes from the site's own config, which already honours
