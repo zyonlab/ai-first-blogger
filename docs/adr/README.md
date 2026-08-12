@@ -15,6 +15,7 @@ undo the decision without knowing what it cost.
 | [0004](./0004-template-api.md) | What a template override may import | accepted |
 | [0005](./0005-mounting-the-engine.md) | Mounting the engine under a prefix | accepted |
 | [0006](./0006-i18n-routing.md) | Publishing one site in more than one language | accepted |
+| [0007](./0007-ghost-parity-scope.md) | How much of Ghost this engine replaces | accepted |
 
 ## Writing one
 
@@ -40,3 +41,7 @@ Recorded here so they are not made by accident:
   current static pipeline does. Deferred.
 - **Replacing regex HTML inspection in the validation pipeline with a real parser.**
   Required before any accessibility rule, or before validating third-party HTML.
+- **A configurable URL space** — permalink patterns, taxonomy prefixes, a content
+  type claiming the root. Deferred in 0007; overlaps issue #21.
+- **Declarable standalone pages**, so `OPTIONAL_PAGES` stops being a fixed list of
+  six. Deferred in 0007.
