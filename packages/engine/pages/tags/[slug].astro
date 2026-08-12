@@ -14,7 +14,7 @@
  * building the page anyway would advertise an empty one over hreflang.
  */
 import PageLayout from '@layouts/PageLayout.astro';
-import { homePath, localeOfPath, localeParam, localeParams, locales, pagePath, tagPath } from '@config/routes';
+import { localeOfPath, localeParam, localeParams, locales, pagePath, tagPath } from '@config/routes';
 import { entryPath, registryFor } from '@content-types/index';
 import { alternatesForPath } from '@lib/alternates';
 import { assertSameOrigin, seoFromFields } from '@lib/seo';
@@ -22,6 +22,7 @@ import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
 import { getActiveTags, getUnaddressableTags } from '@lib/taxonomy';
 import { messages } from '@i18n/index';
+import { requirePageCopy } from '@config/pages';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
@@ -108,11 +109,13 @@ const jsonLd = [
       url: entryPath(type, entry.data.slug, locale),
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: 'Tags', url: pagePath('tags', locale) },
-    { name: tag.title, url: canonical },
-  ]),
+  breadcrumbSchema(
+    [
+      { name: requirePageCopy('tags', locale).title, url: pagePath('tags', locale) },
+      { name: tag.title, url: canonical },
+    ],
+    locale,
+  ),
 ];
 ---
 

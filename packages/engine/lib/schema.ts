@@ -1,5 +1,6 @@
-import { defaultLocale, type Locale } from '@config/routes';
+import { defaultLocale, homePath, type Locale } from '@config/routes';
 import { siteFor } from '@config/site';
+import { messages } from '@i18n/index';
 import { absoluteUrl, engineRootUrl } from './seo';
 
 type ListItem = {
@@ -46,11 +47,24 @@ export function personSchema(withContext = true, locale: Locale = defaultLocale)
   };
 }
 
-export function breadcrumbSchema(items: ListItem[]) {
+/**
+ * A breadcrumb trail. The root crumb is added here rather than passed in.
+ *
+ * All twelve callers used to open with `{ name: 'Home', url: homePath(locale) }`
+ * spelled out, which made the label unreachable: it is in the page routes, not
+ * in a component, so `templatesDir` cannot touch it and a Chinese site told
+ * search engines its root was called "Home". Twelve copies of one fact is also
+ * twelve chances for them to disagree.
+ *
+ * The label comes from the same message key as the visible breadcrumb, so the
+ * page and its structured data cannot drift apart.
+ */
+export function breadcrumbSchema(items: ListItem[], locale: Locale = defaultLocale) {
+  const trail = [{ name: messages(locale)('breadcrumb.home'), url: homePath(locale) }, ...items];
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: items.map((item, index) => ({
+    itemListElement: trail.map((item, index) => ({
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,

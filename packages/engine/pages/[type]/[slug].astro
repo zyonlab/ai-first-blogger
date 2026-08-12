@@ -17,7 +17,7 @@
  * vouching for it.
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
-import { homePath, localeOfPath, localeParam, localeParams } from '@config/routes';
+import { localeOfPath, localeParam, localeParams } from '@config/routes';
 import { entryPath, getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
 import { seoFromEntry } from '@content-types/types';
 import { alternatesForEntry } from '@lib/alternates';
@@ -79,11 +79,13 @@ const alternates = alternatesForEntry(type, await translationsOf(type, entry));
 
 const jsonLd = [
   ...(type.jsonLd?.(entry as never, { canonical, locale }) ?? []),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: type.listTitle, url: listPath(type, locale) },
-    { name: entry.data.title as string, url: canonical },
-  ]),
+  breadcrumbSchema(
+    [
+      { name: type.listTitle, url: listPath(type, locale) },
+      { name: entry.data.title as string, url: canonical },
+    ],
+    locale,
+  ),
 ];
 ---
 

@@ -7,18 +7,27 @@
  * docs/specs/site-config-contract.md for where the line sits.
  */
 export default {
-  'nav.menu': 'Menu',
+  'nav.menu': '菜单',
   'nav.skipToContent': '跳到正文',
   'nav.primary': '主导航',
   'nav.footer': '页脚导航',
 
   'toc.title': '目录',
 
+  'breadcrumb.home': '首页',
+
   'article.publishedOn': '发布于 {date}',
   'article.updatedOn': '更新于 {date}',
   'article.readingTime': '{minutes} 分钟阅读',
   'article.brief': '本文重点',
   'article.overview': '文章概览',
+  'article.topic': '主题',
+  'article.read': '阅读',
+  // Separate from `article.readingTime`: this one sits under a `阅读` label, so
+  // repeating the verb would read as "阅读 / 7 分钟阅读". The unit has to be in
+  // the string rather than beside it — Chinese puts no space before it.
+  'article.readingMinutes': '{minutes} 分钟',
+  'article.series': '系列',
 
   'aiStudy.title': 'AI 学习',
   'aiStudy.description': '把链接和提示词丢给 AI，让它按你的节奏讲一遍。',
@@ -44,9 +53,9 @@ export default {
   'cta.primary': '咨询合作',
   'cta.secondary': '订阅更新',
 
-  'project.status.active': 'Active',
-  'project.status.archived': 'Archived',
-  'project.status.planned': 'Planned',
+  'project.status.active': '进行中',
+  'project.status.archived': '已归档',
+  'project.status.planned': '计划中',
   'project.viewDemo': '查看 Demo',
   'project.viewSource': '查看源码',
 
@@ -65,13 +74,13 @@ export default {
 
   'home.viewAll': '查看全部{label}',
   'home.empty': '内容即将上线。',
-  'home.topics.eyebrow': 'Topics',
-  'home.topics.title': 'Featured Topics',
+  'home.topics.eyebrow': '主题',
+  'home.topics.title': '精选主题',
   'home.topics.description': '按主题归档，不按标签堆。',
-  'home.series.eyebrow': 'Learning Paths',
-  'home.series.title': 'Featured Series',
+  'home.series.eyebrow': '学习路径',
+  'home.series.title': '精选系列',
   'home.series.viewAll': '全部系列',
-  'home.focusMap': 'Focus Map',
+  'home.focusMap': '关注方向',
 
-  'footer.builtWith': 'Built with Astro.',
+  'footer.builtWith': '由 Astro 构建。',
 } as const;

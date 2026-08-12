@@ -13,7 +13,7 @@
  * reader did not ask for.
  */
 import PageLayout from '@layouts/PageLayout.astro';
-import { hasPage, homePath, localeOfPath, localeParam, localeParams, defaultLocale, tagPath } from '@config/routes';
+import { hasPage, localeOfPath, localeParam, localeParams, defaultLocale, tagPath } from '@config/routes';
 import { tagCopyFor, tagSlug } from '@config/taxonomy';
 import { siteFor } from '@config/site';
 import { getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
@@ -72,10 +72,7 @@ const jsonLd = [
       url: `${canonical}${entry.data.slug}/`,
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: type.listTitle, url: canonical },
-  ]),
+  breadcrumbSchema([{ name: type.listTitle, url: canonical }], locale),
 ];
 ---
 

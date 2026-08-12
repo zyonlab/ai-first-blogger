@@ -12,7 +12,7 @@ import TagCard from '@components/TagCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { requirePageCopy } from '@config/pages';
 import { siteFor } from '@config/site';
-import { homePath, localeOfPath, localeStaticPaths, locales, pagePath, tagPath } from '@config/routes';
+import { localeOfPath, localeStaticPaths, locales, pagePath, tagPath } from '@config/routes';
 import { alternatesForPath } from '@lib/alternates';
 import { getActiveTags } from '@lib/taxonomy';
 import { messages } from '@i18n/index';
@@ -55,10 +55,7 @@ const jsonLd = [
       url: tagPath(tag.slug, locale),
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: title, url: canonical },
-  ]),
+  breadcrumbSchema([{ name: title, url: canonical }], locale),
 ];
 ---
 

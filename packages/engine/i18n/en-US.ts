@@ -12,11 +12,17 @@ const messages: MessageTable = {
 
   'toc.title': 'On this page',
 
+  'breadcrumb.home': 'Home',
+
   'article.publishedOn': 'Published {date}',
   'article.updatedOn': 'Updated {date}',
   'article.readingTime': '{minutes} min read',
   'article.brief': 'Key takeaways',
   'article.overview': 'Article overview',
+  'article.topic': 'Topic',
+  'article.read': 'Read',
+  'article.readingMinutes': '{minutes} min',
+  'article.series': 'Series',
 
   'aiStudy.title': 'Study with AI',
   'aiStudy.description': 'Hand the link and a prompt to an AI and have it explain this at your pace.',

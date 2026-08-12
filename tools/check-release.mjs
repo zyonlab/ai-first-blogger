@@ -274,6 +274,62 @@ for (const [dir, manifest] of Object.entries(manifests)) {
 }
 
 /* ---------------------------------------------------------------- *
+ * 8. A locale's message table is actually in that locale
+ * ---------------------------------------------------------------- *
+ *
+ * `zh-CN.ts` shipped ten entries whose values were plain English — `Menu`,
+ * `Focus Map`, `Featured Topics`, `Built with Astro.` — so a site publishing
+ * only Chinese rendered English chrome on its own home page. Nothing caught it:
+ * the keys were all present, which is the only thing the type system can see.
+ *
+ * A value in a non-Latin locale that contains no character from that locale's
+ * script is either untranslated or a proper noun. Proper nouns are rare enough
+ * to name here; untranslated values are not.
+ */
+
+/** Locale tag prefix → the script its own words are written in. */
+const SCRIPTS = {
+  zh: /\p{Script=Han}/u,
+  ja: /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u,
+  ko: /\p{Script=Hangul}/u,
+  ru: /\p{Script=Cyrillic}/u,
+  ar: /\p{Script=Arabic}/u,
+};
+
+/**
+ * Values that are a name rather than a translation. A brand keeps its spelling
+ * in every language, so requiring one here would be the wrong fix.
+ */
+const PROPER_NOUNS = [/^Astro$/, /^RSS$/, /^JSON$/];
+
+const i18nDir = path.join(root, 'packages/engine/i18n');
+for (const file of (await fs.readdir(i18nDir).catch(() => [])).filter((name) => /^[a-z]{2}-[A-Z]{2}\.ts$/.test(name))) {
+  const tag = file.replace(/\.ts$/, '');
+  const script = SCRIPTS[tag.split('-')[0]];
+  if (!script) continue;
+
+  const text = await fs.readFile(path.join(i18nDir, file), 'utf8');
+  const untranslated = [];
+  // `'key': 'value',` — the single-line entries. Multi-line arrays (the AI
+  // prompts) are skipped: one English line inside a Chinese block is normal.
+  for (const entry of text.matchAll(/^\s*'([\w.]+)':\s*'((?:[^'\\]|\\.)*)',?\s*$/gm)) {
+    const [, key, value] = entry;
+    if (value.trim() === '' || script.test(value)) continue;
+    if (PROPER_NOUNS.some((noun) => noun.test(value.trim()))) continue;
+    untranslated.push(`${key} = ${value}`);
+  }
+
+  if (untranslated.length > 0) {
+    problems.push(
+      `packages/engine/i18n/${file} has ${untranslated.length} value(s) with no ${tag.split('-')[0]} characters in them:\n` +
+        untranslated.map((line) => `    ${line}`).join('\n') +
+        '\n  A site publishing only this language would render them as English chrome. Translate them,\n' +
+        '  or add the value to PROPER_NOUNS in tools/check-release.mjs if it is a name.',
+    );
+  }
+}
+
+/* ---------------------------------------------------------------- *
  * 6. A tag, if one was given, must match
  * ---------------------------------------------------------------- */
 

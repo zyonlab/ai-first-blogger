@@ -909,6 +909,50 @@ try {
     expect(info.locales.length === 1, `one locale should be recorded, got ${JSON.stringify(info.locales)}`);
   });
 
+  /**
+   * A single-language site is the case where untranslated chrome is loudest:
+   * there is no second language to explain the English away. The three sources
+   * were separate — a literal in a component, an English value sitting in the
+   * zh-CN table, and a literal in the page routes that `templatesDir` cannot
+   * reach — so all three are asserted here.
+   */
+  await scenario('a zh-CN site renders no English chrome', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'a single-language build should succeed');
+
+    const article = await dist('writing/why-retries-made-it-worse/index.html');
+    const brief = /<aside class="article-brief"[\s\S]*?<\/aside>/.exec(article)?.[0] ?? '';
+    expect(brief !== '', 'the article should carry its brief rail');
+    for (const label of ['>Topic<', '>Read<', '>Series<']) {
+      expect(!brief.includes(label), `the brief still has a hardcoded English label: ${label}`);
+    }
+    expect(/<dt>主题<\/dt>/.test(brief), `the topic label should be translated:\n${brief.slice(0, 400)}`);
+
+    const crumbs = /<nav class="breadcrumbs"[\s\S]*?<\/nav>/.exec(article)?.[0] ?? '';
+    expect(!crumbs.includes('>Home<'), 'the visible breadcrumb root should not be English');
+    expect(crumbs.includes('>首页<'), `the breadcrumb root should be translated:\n${crumbs}`);
+
+    // …and the same word in the structured data, from the same key.
+    const trail = [...article.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .flatMap((match) => {
+        const parsed = JSON.parse(match[1]!);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      })
+      .find((block: { '@type'?: string }) => block['@type'] === 'BreadcrumbList') as
+      | { itemListElement: { name: string }[] }
+      | undefined;
+    expect(trail !== undefined, 'the article should carry a breadcrumb trail');
+    expect(
+      trail!.itemListElement[0]!.name === '首页',
+      `BreadcrumbList tells crawlers the root is called "${trail!.itemListElement[0]!.name}"`,
+    );
+
+    const home = await dist('index.html');
+    for (const english of ['Featured Topics', 'Learning Paths', 'Focus Map', 'Built with Astro.']) {
+      expect(!home.includes(english), `the home page still shows "${english}" on a Chinese site`);
+    }
+  });
+
   await scenario('a second language is served under its prefix, the default at the root', async () => {
     await localiseExample();
     await writeTranslation();
