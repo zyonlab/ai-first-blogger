@@ -381,6 +381,28 @@ try {
     expect(!(await dist('index.html')).includes('hero-panel'), 'an empty panel should not render at all');
   });
 
+  /**
+   * `getActiveSeries()` returns `topic` as the taxonomy key, so a card that
+   * prints it prints a slug. `TopicCard` and the article header both resolve to
+   * a title; `SeriesCard` did not, which put the one English word on an
+   * otherwise Chinese card.
+   */
+  await scenario('a series card shows the topic title, not its slug', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the example should build');
+
+    for (const page of ['index.html', 'series/index.html']) {
+      const cards = [...(await dist(page)).matchAll(/<article class="card series-card">([\s\S]*?)<\/article>/g)]
+        .map((match) => match[1]!);
+      expect(cards.length > 0, `${page} should render series cards`);
+      for (const card of cards) {
+        const eyebrow = /<div class="eyebrow">([^<]*)<\/div>/.exec(card)?.[1]?.trim() ?? '';
+        expect(!/^[a-z0-9-]+$/.test(eyebrow), `${page} renders the raw topic slug "${eyebrow}"`);
+      }
+    }
+    expect((await dist('series/index.html')).includes('>后端转型<'), 'the eyebrow should be the topic title from taxonomy.yaml');
+  });
+
   await scenario('a site chooses its list layout without touching markup', async () => {
     await loadExample();
     await edit('site/content-types.yaml', [['posts:\n', 'posts:\n  listLayout: stack\n']]);

@@ -1,5 +1,6 @@
 ---
 import { localeOfPath, seriesPath } from '@config/routes';
+import { topicsFor } from '@config/taxonomy';
 
 type Props = {
   item: {
@@ -15,10 +16,26 @@ type Props = {
 
 const { item, headingLevel = 3 } = Astro.props;
 const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const locale = localeOfPath(Astro.url.pathname);
+
+/**
+ * `item.topic` is the taxonomy key, not a title — `getActiveSeries()` returns
+ * it that way, so the resolution has to happen here. `TopicCard` and the
+ * article header eyebrow both resolve it; this card did not, and rendered the
+ * raw slug.
+ *
+ * On an English site a slug often reads close enough to a title for that to go
+ * unnoticed. On a site whose taxonomy titles are not ASCII it is the one
+ * English word on the card.
+ *
+ * Falling back to the slug keeps a series whose topic was renamed from
+ * rendering an empty eyebrow.
+ */
+const topicLabel = topicsFor(locale)[item.topic]?.title ?? item.topic;
 ---
 
 <article class="card series-card">
-  <div class="eyebrow">{item.topic}</div>
-  <Heading><a href={seriesPath(item.slug, localeOfPath(Astro.url.pathname))}>{item.title}</a></Heading>
+  <div class="eyebrow">{topicLabel}</div>
+  <Heading><a href={seriesPath(item.slug, locale)}>{item.title}</a></Heading>
   <p>{item.description}</p>
 </article>
