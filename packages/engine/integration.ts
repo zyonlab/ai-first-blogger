@@ -28,11 +28,15 @@ import {
   LOCALE_SEGMENT,
   OPTIONAL_PAGES,
   ROOT_ONLY_PAGES,
+  TAXONOMY_PAGES,
   configureRoutes,
   defaultLocale,
   isMultiLocale,
+  segmentFor,
   type OptionalPage,
+  type TaxonomyPage,
 } from './config/routes';
+import { rootRoutedTypeName } from './config/content-types';
 import { site, siteLocales } from './config/site';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -478,6 +482,37 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
     return routing.mount === '' ? localised : `${routing.mount}${localised === '/' ? '' : localised}`;
   };
 
+  /**
+   * The file tree's pattern → the URL the site actually asked for.
+   *
+   * Route patterns are derived from the engine's own directory names, which
+   * made two of them unmovable: `pages/tags/[slug].astro` could only ever be
+   * `/tags/[slug]`, and `pages/[type]/[slug].astro` could only ever carry a
+   * type segment. Both are the site's URL space, not the engine's filing
+   * system, so the mapping happens here — once, on the way into `injectRoute`.
+   *
+   * Deliberately *not* applied before `pageGroup()`: the whitelist, the copy
+   * check and the override lookup all key off the page's canonical name, and a
+   * site that renamed its tag archive did not rename `pages: ['tags']`.
+   */
+  const publicPattern = (pattern: string) => {
+    const segments = pattern.split('/');
+    const first = segments[1];
+
+    if ((TAXONOMY_PAGES as readonly string[]).includes(first ?? '')) {
+      segments[1] = segmentFor(first as TaxonomyPage);
+      return segments.join('/');
+    }
+
+    // The list page keeps its route; only entry URLs move to the root. See
+    // `routeAtRoot` in config/content-types.ts for why the archive stays.
+    if (rootRoutedTypeName !== undefined && first === '[type]' && segments[2] === '[slug]') {
+      return '/[slug]';
+    }
+
+    return pattern;
+  };
+
   /** Astro tells the integration where the project is; the build hook needs it too. */
   let projectRoot = process.cwd();
 
@@ -576,7 +611,7 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
         let overridden = 0;
 
         for (const route of selected) {
-          const pattern = routePattern(route.pattern);
+          const pattern = routePattern(publicPattern(route.pattern));
           // A page the site provides replaces the engine's, at the same URL.
           const own = ownFile(route);
           if (fs.existsSync(own)) {

@@ -152,6 +152,33 @@ async function loadExample(name = EXAMPLES[0]!) {
   await fs.rm(path.join(root, 'node_modules/.astro'), { recursive: true, force: true });
 }
 
+/**
+ * Trim the loaded example to the one content type, the way a site that
+ * publishes only articles is configured. `routeAtRoot` is only legal there, so
+ * every scenario about it starts here.
+ */
+async function onlyPosts() {
+  const file = path.join(root, 'site/content-types.yaml');
+  let text = await fs.readFile(file, 'utf8');
+  for (const type of ['videos', 'projects', 'case-studies']) {
+    const without = text.replace(new RegExp(`^${type}:\\n(?:[ \\t].*\\n|\\n(?=[ \\t]))*`, 'm'), '');
+    if (without === text) throw new Error(`scenario setup: no "${type}:" block in site/content-types.yaml`);
+    text = without;
+    await fs.rm(path.join(root, 'content', type), { recursive: true, force: true });
+  }
+  await fs.writeFile(file, text);
+
+  // A hero action or nav entry pointing at a section this site no longer
+  // publishes is a dead link, and the gate is right to say so — the same
+  // tidying `mountExample` does for the pages it declines.
+  const siteYaml = path.join(root, 'site/site.yaml');
+  const withoutDeclined = (await fs.readFile(siteYaml, 'utf8'))
+    .split('\n')
+    .filter((line) => !/href: \/(videos|projects|case-studies)\//.test(line))
+    .join('\n');
+  await fs.writeFile(siteYaml, withoutDeclined);
+}
+
 async function edit(file: string, replacements: [string, string][]) {
   const target = path.join(root, file);
   let text = await fs.readFile(target, 'utf8');
@@ -1531,6 +1558,130 @@ try {
 
     const gate = await validate();
     expect(gate.code === 0, `a site with tag archives should pass the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  /* ---------------------------------------------------------------- *
+   * The URL space a site chooses. See #21 and #26.
+   * ---------------------------------------------------------------- */
+
+  await scenario('a site can move its taxonomy prefixes', async () => {
+    await loadExample();
+    // Ghost's tag archive is /tag/{slug}/ — singular — which this engine could
+    // not express, so every migrated tag URL took a redirect hop forever.
+    await edit('site/taxonomy.yaml', [['pillars:', 'routes:\n  tags: tag\n  topics: topic\n\npillars:']]);
+    expect((await build()).code === 0, 'a site with moved prefixes should build');
+
+    expect(await exists('dist/tag/index.html'), 'the tag archive should be served at its new prefix');
+    expect(await exists('dist/topic/index.html'), 'and so should topics');
+    expect(!(await exists('dist/tags')), '/tags/ should not be built at all');
+    expect(!(await exists('dist/topics')), '/topics/ should not be built at all');
+
+    // Both halves of a page move together, or the index is at one prefix and
+    // its detail pages at another.
+    expect(await exists('dist/topic/llm-reliability/index.html'), 'a topic detail page should move with its archive');
+
+    // `series` was left alone and must not have moved with them.
+    expect(await exists('dist/series/index.html'), 'an archive with no routes: entry keeps its prefix');
+
+    // The site still writes /tags/ in its nav — the key is the stable name.
+    const home = await dist('index.html');
+    expect(home.includes('href="/tag/"'), `the nav entry should resolve to the new prefix:\n${/<nav[\s\S]{0,400}/.exec(home)?.[0]}`);
+    expect(!home.includes('href="/tags/"'), 'and must not leave a link at the old one');
+
+    /**
+     * Moving a prefix is a URL change, and the links an author already wrote
+     * into an article are not the engine's to rewrite. The gate says so rather
+     * than letting the site ship them — which is the whole reason a site can be
+     * trusted to make this change.
+     */
+    const stale = await validate();
+    expect(stale.code !== 0, 'links written against the old prefix should be reported');
+    expect(stale.out.includes('/topics/llm-reliability/'), `the report should name the dead link:\n${stale.out.slice(-600)}`);
+
+    for (const file of await fs.readdir(path.join(root, 'content/posts'))) {
+      if (!file.endsWith('.mdx')) continue;
+      const article = path.join(root, 'content/posts', file);
+      await fs.writeFile(article, (await fs.readFile(article, 'utf8')).replaceAll('](/topics/', '](/topic/'));
+    }
+    await build();
+    const gate = await validate();
+    expect(gate.code === 0, `once the links follow, the site should pass:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('two archives cannot claim one prefix', async () => {
+    await loadExample();
+    await edit('site/taxonomy.yaml', [['pillars:', 'routes:\n  tags: topics\n\npillars:']]);
+    const result = await build();
+    expect(result.code !== 0, 'two archives at one prefix should fail the build');
+    expect(result.out.includes('both resolve to'), `the failure should name the collision:\n${result.out.slice(-500)}`);
+  });
+
+  /**
+   * A site that publishes one content type pays for a segment that cannot
+   * disambiguate anything — there is nothing else an entry could be.
+   */
+  await scenario('a single content type can claim the engine root', async () => {
+    await loadExample();
+    await onlyPosts();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+
+    /**
+     * Claiming the root moves every entry URL, so the site's own redirect table
+     * now points at pages that no longer exist. The build refuses rather than
+     * shipping a redirect to a 404 — which is the guard that makes this option
+     * safe to turn on, so it is asserted before the happy path.
+     */
+    const stale = await build();
+    expect(stale.code !== 0, 'a redirect to the old URL should fail the build');
+    expect(stale.out.includes('/writing/why-retries-made-it-worse/'), `the failure should name the dead target:\n${stale.out.slice(-500)}`);
+
+    await edit('site/redirects.yaml', [['/writing/why-retries-made-it-worse/', '/why-retries-made-it-worse/']]);
+    for (const file of await fs.readdir(path.join(root, 'content/posts'))) {
+      if (!file.endsWith('.mdx')) continue;
+      const article = path.join(root, 'content/posts', file);
+      await fs.writeFile(article, (await fs.readFile(article, 'utf8')).replaceAll('](/writing/', '](/'));
+    }
+    expect((await build()).code === 0, 'a root-routed site should build');
+
+    expect(await exists('dist/why-retries-made-it-worse/index.html'), 'an entry should be served at the root');
+    expect(!(await exists('dist/writing/why-retries-made-it-worse')), 'and not also under its route');
+
+    // The archive keeps its own URL: it is what nav, llms.txt and the ItemList
+    // point at, and `/` is the landing page.
+    expect(await exists('dist/writing/index.html'), 'the list page keeps its route');
+
+    const article = await dist('why-retries-made-it-worse/index.html');
+    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(article)?.[1] ?? '';
+    expect(new URL(canonical).pathname === '/why-retries-made-it-worse/', `canonical should be the root URL: ${canonical}`);
+
+    expect((await dist('index.html')).includes('href="/why-retries-made-it-worse/"'), 'the home page should link to the root URL');
+    expect((await dist('llms.txt')).includes('](/why-retries-made-it-worse/'), 'llms.txt should too');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a root-routed site should pass the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('claiming the root needs there to be nothing else at it', async () => {
+    // Two types published, one claiming the root: the segment is the only thing
+    // telling their entries apart.
+    await loadExample();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+    const shared = await build();
+    expect(shared.code !== 0, 'routeAtRoot alongside another type should fail the build');
+    expect(shared.out.includes('routeAtRoot'), `the failure should name the option:\n${shared.out.slice(-600)}`);
+
+    // …and a slug that collides with a page the engine already serves.
+    await loadExample();
+    await onlyPosts();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+    await fs.rename(
+      path.join(root, 'content/posts/why-retries-made-it-worse.mdx'),
+      path.join(root, 'content/posts/series.mdx'),
+    );
+    await edit('content/posts/series.mdx', [['slug: why-retries-made-it-worse', 'slug: series']]);
+    const collision = await build();
+    expect(collision.code !== 0, 'a slug that shadows an archive should fail the build');
+    expect(collision.out.includes('"series" is already'), `the failure should name the slug:\n${collision.out.slice(-600)}`);
   });
 
   await scenario('a tag whose name is already a slug needs no declaration', async () => {

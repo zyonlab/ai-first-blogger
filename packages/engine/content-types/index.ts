@@ -10,7 +10,8 @@
  * See docs/adr/0001-content-type-registry.md and docs/recipes/add-content-type.md.
  */
 import { siteContentTypes, siteContentTypesFor } from '../config/content-types';
-import { defaultLocale, withLocale, type Locale } from '../config/routes';
+import { defaultLocale, reservedSegments, withLocale, type Locale } from '../config/routes';
+import { siteLocales } from '../config/site';
 import caseStudies from './case-studies';
 import posts from './posts';
 import projects from './projects';
@@ -53,6 +54,54 @@ if (missing.length > 0) {
 }
 
 const published = engineTypes.filter((type) => Object.hasOwn(siteContentTypes, type.name));
+
+/* ------------------------------------------------------------------ *
+ * `routeAtRoot` — one type's entries served at the engine's root.
+ *
+ * The guard is the whole feature. `/writing/` carries no information on a site
+ * where every entry is under it, and carries all of it on a site where two
+ * types exist: dropping the segment there means `/my-post/` and `/my-video/`
+ * are indistinguishable, and the first slug that appears in both types wins by
+ * whichever route Astro sorts first.
+ *
+ * So it is refused rather than resolved, at config time, by name.
+ * ------------------------------------------------------------------ */
+
+const claimingRoot = published.filter((type) => siteContentTypes[type.name]!.routeAtRoot === true);
+
+if (claimingRoot.length > 1) {
+  throw new Error(
+    'Invalid content type registry:\n' +
+      `- ${claimingRoot.map((type) => `"${type.name}"`).join(' and ')} both set routeAtRoot. ` +
+      'Only one type can own the root — two would put every entry of each at the same URL space, ' +
+      'where a slug shared by both is a collision the build cannot see.',
+  );
+}
+
+if (claimingRoot.length === 1 && published.length > 1) {
+  throw new Error(
+    'Invalid content type registry:\n' +
+      `- "${claimingRoot[0]!.name}" sets routeAtRoot, but this site also publishes ` +
+      `${published.filter((type) => type !== claimingRoot[0]).map((type) => `"${type.name}"`).join(', ')}.\n` +
+      '  The route segment is what tells those types apart. It is droppable only when there is ' +
+      'nothing else an entry could be — declare one type, or leave routeAtRoot off.',
+  );
+}
+
+/** Whether some published type serves its entries at the engine's root. */
+export const hasRootRoutedType = claimingRoot.length === 1;
+
+/**
+ * The type serving its entries at the engine's root, as one locale reads it.
+ *
+ * A function, and locale-aware, for the same reason the rest of the registry
+ * is: the merged type carries the site's half, and the site's half is
+ * translatable.
+ */
+export function rootRoutedTypeFor(locale: Locale = defaultLocale): ContentTypeDef | undefined {
+  if (!hasRootRoutedType) return undefined;
+  return registryFor(locale).find((type) => type.name === claimingRoot[0]!.name);
+}
 
 const registryByLocale = new Map<Locale, ContentTypeDef[]>();
 
@@ -130,7 +179,32 @@ export function listPath(type: ContentTypeDef, locale: Locale = defaultLocale) {
   return withLocale(`/${type.route}/`, locale);
 }
 
-/** Absolute path of a detail page, e.g. `/writing/my-post/`. */
+/**
+ * Absolute path of a detail page, e.g. `/writing/my-post/` — or `/my-post/` on
+ * a site whose single content type claimed the root.
+ */
 export function entryPath(type: ContentTypeDef, slug: string, locale: Locale = defaultLocale) {
-  return withLocale(`/${type.route}/${slug}/`, locale);
+  return withLocale(type.routeAtRoot === true ? `/${slug}/` : `/${type.route}/${slug}/`, locale);
+}
+
+/**
+ * Slugs that cannot live at the engine's root because something else already
+ * does. Only meaningful under `routeAtRoot`, where an entry slug *is* a
+ * top-level segment.
+ *
+ * Returns the offenders rather than throwing, so the caller can report every
+ * one of them at once instead of one per build.
+ */
+export function rootSlugCollisions(slugs: string[]): { slug: string; taken: string }[] {
+  if (!hasRootRoutedType) return [];
+
+  const taken = new Map<string, string>();
+  for (const segment of reservedSegments()) taken.set(segment, 'a page the engine serves');
+  for (const type of published) taken.set(siteContentTypes[type.name]!.route, `the "${type.name}" list page`);
+  for (const locale of siteLocales) taken.set(locale.prefix, `the "${locale.tag}" locale prefix`);
+
+  return slugs.flatMap((slug) => {
+    const owner = taken.get(slug);
+    return owner ? [{ slug, taken: owner }] : [];
+  });
 }

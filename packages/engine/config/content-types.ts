@@ -17,6 +17,7 @@
  * The merge, and the history behind the asymmetry: ../content-types/index.ts.
  */
 import { fail, KEBAB_CASE, localised, readYaml } from './load';
+import { reservedSegments } from './routes';
 import { defaultLocale, siteLocales } from './site';
 
 const FILE = 'site/content-types.yaml';
@@ -52,6 +53,23 @@ export type SiteContentType = {
   listDescription: string;
   surfaces: ContentTypeSurfaces;
   /**
+   * Serve this type's entries at the engine's root: `/my-post/` rather than
+   * `/writing/my-post/`.
+   *
+   * Only legal when the site publishes exactly one type, which is the only
+   * case where the segment carries no information — there is nothing else an
+   * entry could be. `route` is still required, and still serves the list page:
+   * `/writing/` keeps the archive, its ItemList and its nav entry, while the
+   * URLs readers actually share lose a segment they never chose. That is the
+   * shape a single-purpose blog has everywhere, and the shape a Ghost site
+   * arrives with.
+   *
+   * Every entry slug then occupies a top-level segment, so a slug that
+   * collides with an archive or a fixed page fails the build rather than
+   * shadowing the page.
+   */
+  routeAtRoot?: boolean;
+  /**
    * How the list page arranges its entries. Optional — the engine's default
    * per type applies when it is absent.
    *
@@ -74,11 +92,14 @@ export type SiteContentType = {
 const document = readYaml<Record<string, Record<string, any>>>('content-types.yaml');
 const raw = localised(document, defaultLocale) as Record<string, SiteContentType>;
 
-/** Static page routes a content type must not shadow. */
-const RESERVED_ROUTES = new Set([
-  'topics', 'series', 'tags', 'about', 'uses', 'newsletter', 'work-with-me',
-  'rss.xml', 'robots.txt', 'llms.txt',
-]);
+/**
+ * Static page routes a content type must not shadow.
+ *
+ * Read from the resolved URL space rather than listed: a site that moves its
+ * tag archive to `/tag/` has freed `tags` for a content type, and a site that
+ * has not is protected exactly as before.
+ */
+const RESERVED_ROUTES = new Set(reservedSegments());
 
 const problems: string[] = [];
 const seenRoutes = new Map<string, string>();
@@ -136,6 +157,17 @@ if (problems.length > 0) fail(FILE, problems);
 
 export const siteContentTypes = raw;
 export const declaredTypeNames = Object.keys(raw);
+
+/**
+ * The type that declared `routeAtRoot`, by name — or undefined.
+ *
+ * Read from the YAML rather than from the merged registry because the
+ * integration needs it while loading astro.config, where `astro:content` does
+ * not exist yet and the registry therefore cannot be imported. Whether that
+ * declaration is *legal* — one type, and only one — is checked in
+ * ../content-types/index.ts, which is the module that knows what is published.
+ */
+export const rootRoutedTypeName = Object.entries(raw).find(([, def]) => def?.routeAtRoot === true)?.[0];
 
 const byLocale = new Map<string, Record<string, SiteContentType>>();
 

@@ -44,6 +44,30 @@ tags:                       # optional, and keyed by the *name* articles write
     description: …          # optional; the archive's own prose
 ```
 
+### Where the archives live: `routes`
+
+Optional. The three archives are served at `/topics/`, `/series/` and `/tags/`
+unless the site says otherwise:
+
+```yaml
+routes:
+  tags: tag        # /tag/{slug}/  — Ghost's shape, so a migration keeps its URLs
+  topics: topic
+```
+
+The **key** stays canonical everywhere else: `engine({ pages: ['tags'] })`,
+`site/pages.yaml`, and an href written as `/tags/` in `site.yaml` all keep
+saying `tags`. Only the URL segment moves, and both halves of an archive move
+together — `/tag/` and `/tag/{slug}/`, never one without the other.
+
+Two archives cannot resolve to the same segment, and none of them can take a
+segment the engine already serves (`/about/`, `/rss.xml`, …). Both fail the
+build by name.
+
+Moving a prefix is a URL change like any other: links already written into
+articles still point at the old one, and the gate reports them (C-25/C-03).
+Add the old URLs to `site/redirects.yaml` if they were ever public.
+
 ### What an archive can say about itself
 
 Topics, series and tags all accept the same optional block. `title` and

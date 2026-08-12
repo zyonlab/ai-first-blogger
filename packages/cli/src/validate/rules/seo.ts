@@ -2,6 +2,7 @@ import { policy } from 'aifb-engine/config/policy';
 import { canonicalHref, displayWidth, hasVisibleBreadcrumb, jsonLdBlocks, metaContent, titleText } from '../html';
 import type { Rule, Violation } from '../types';
 import { engineSegments } from '../url';
+import { isDetailUrl } from '../page-kind';
 
 /**
  * SERP truncation limits, measured in display columns (CJK counts as 2).
@@ -191,7 +192,7 @@ export const seoRules: Rule[] = [
         // mounted `/zh/blog/writing/` and a translated `/en/writing/` are both
         // still listing pages, and counting from the origin would report every
         // one of them.
-        const isDetail = engineSegments(page.url, mount, localePrefixes).length >= 2;
+        const isDetail = isDetailUrl(page.url, mount, localePrefixes);
         if (hasSchema && !hasMarkup && isDetail) {
           out.push({
             rule: 'C-10',

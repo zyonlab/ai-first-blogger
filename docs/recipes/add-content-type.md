@@ -39,6 +39,29 @@ tutorials:
     sitemap: true
 ```
 
+### `routeAtRoot`, for a site with exactly one type
+
+A site that publishes only articles still pays for the segment:
+
+```
+/writing/apps-ignore-system-proxy/
+ ^^^^^^^ carries no information — there is nothing else an entry could be
+```
+
+```yaml
+posts:
+  route: writing
+  routeAtRoot: true     # entries at /apps-ignore-system-proxy/
+```
+
+`route` is still required and still serves the **list** page: `/writing/`
+keeps the archive, its `ItemList` and its nav entry, and `/` stays the landing
+page. Only the entry URLs move.
+
+Refused at build time if a second type is published — the segment is what tells
+their entries apart — and refused if an entry slug collides with an archive, a
+fixed page or a locale prefix, since every slug is now a top-level URL segment.
+
 ## 2. Declare the half the engine owns
 
 `packages/engine/content-types/tutorials.ts`:

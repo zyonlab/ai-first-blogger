@@ -71,15 +71,102 @@
  * and `entryPath()` in the registry — is built from it, for the same reason
  * everything with a mount in it is built from `withMount()`.
  */
+import { fail, KEBAB_CASE, readYaml } from './load';
 import { defaultLocale, isMultiLocale, siteLocales } from './site';
 
-/** Fixed pages a site can decline via `engine({ pages })`. Names are the URL segment. */
+/** Fixed pages a site can decline via `engine({ pages })`. Names are the page's key. */
 export const OPTIONAL_PAGES = ['about', 'newsletter', 'series', 'tags', 'topics', 'uses', 'work-with-me'] as const;
 
 export type OptionalPage = (typeof OPTIONAL_PAGES)[number];
 
 /** Injected only when the engine owns the origin root. See the header comment. */
 export const ROOT_ONLY_PAGES = ['404', 'robots.txt'] as const;
+
+/* ------------------------------------------------------------------ *
+ * Taxonomy prefixes.
+ *
+ * A page's key and the segment it is served under used to be the same
+ * string, so `/topics/`, `/series/` and `/tags/` were three URLs nobody
+ * could move. Ghost puts the whole URL space in routes.yaml and its tag
+ * archive is `/tag/{slug}/` — singular — so a migration handed over
+ * Ghost's own tag slugs and still could not produce Ghost's URL.
+ *
+ * The key stays canonical: `engine({ pages })`, `site/pages.yaml` and
+ * `hasPage()` all still say `tags`. Only the segment moves, in one place,
+ * which is what keeps the archive page and its detail pages from ending up
+ * under different prefixes.
+ * ------------------------------------------------------------------ */
+
+/** The archives whose URL prefix a site can choose. */
+export const TAXONOMY_PAGES = ['topics', 'series', 'tags'] as const;
+
+export type TaxonomyPage = (typeof TAXONOMY_PAGES)[number];
+
+/** Segments the engine serves itself, which a taxonomy prefix must not take. */
+const FIXED_SEGMENTS = ['about', 'newsletter', 'uses', 'work-with-me', 'rss.xml', 'robots.txt', 'llms.txt', '404'];
+
+function readTaxonomySegments(): Record<TaxonomyPage, string> {
+  const defaults = Object.fromEntries(TAXONOMY_PAGES.map((page) => [page, page])) as Record<TaxonomyPage, string>;
+  const raw = readYaml<Record<string, any>>('taxonomy.yaml').routes;
+  if (raw === undefined || raw === null) return defaults;
+
+  const FILE = 'site/taxonomy.yaml';
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    fail(FILE, [`routes must be a mapping of archive to URL segment, e.g. \`routes: { tags: tag }\`.`]);
+  }
+
+  const problems: string[] = [];
+  const out = { ...defaults };
+  const claimed = new Map<string, string>();
+
+  for (const [page, segment] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(TAXONOMY_PAGES as readonly string[]).includes(page)) {
+      problems.push(`routes."${page}" is not an archive. Allowed: ${TAXONOMY_PAGES.join(', ')}.`);
+      continue;
+    }
+    if (typeof segment !== 'string' || !KEBAB_CASE.test(segment)) {
+      problems.push(`routes."${page}" must be a single kebab-case path segment. Got ${JSON.stringify(segment)}.`);
+      continue;
+    }
+    if (FIXED_SEGMENTS.includes(segment)) {
+      problems.push(`routes."${page}" is "${segment}", which the engine already serves at that level.`);
+      continue;
+    }
+    out[page as TaxonomyPage] = segment;
+  }
+
+  for (const page of TAXONOMY_PAGES) {
+    const previous = claimed.get(out[page]);
+    if (previous) {
+      problems.push(
+        `routes."${page}" and routes."${previous}" both resolve to "${out[page]}". ` +
+          'Two archives at one prefix is one archive whose pages overwrite the other\'s.',
+      );
+    }
+    claimed.set(out[page], page);
+  }
+
+  if (problems.length > 0) fail(FILE, problems);
+  return out;
+}
+
+const taxonomySegments = readTaxonomySegments();
+
+/**
+ * The URL segment a fixed page is served under.
+ *
+ * The same for every locale: a prefix is a fact about the site's URL space,
+ * not about the language of the page. Translating it would give one archive
+ * two addresses and make every `hasPage`/`pages` key ambiguous.
+ */
+export function segmentFor(name: OptionalPage): string {
+  return taxonomySegments[name as TaxonomyPage] ?? name;
+}
+
+/** Every top-level segment the engine occupies, for collision checks elsewhere. */
+export function reservedSegments(): string[] {
+  return [...FIXED_SEGMENTS, ...TAXONOMY_PAGES.map((page) => taxonomySegments[page])];
+}
 
 const MOUNT_ENV = 'AIFB_MOUNT';
 const PAGES_ENV = 'AIFB_PAGES';
@@ -332,17 +419,17 @@ export function llmsPath(locale: Locale = defaultLocale) {
 
 /** The path of a fixed page, e.g. `/topics/` or `/work-with-me/`. */
 export function pagePath(name: OptionalPage, locale: Locale = defaultLocale) {
-  return withLocale(`/${name}/`, locale);
+  return withLocale(`/${segmentFor(name)}/`, locale);
 }
 
 export function topicPath(slug: string, locale: Locale = defaultLocale) {
-  return withLocale(`/topics/${slug}/`, locale);
+  return withLocale(`/${segmentFor('topics')}/${slug}/`, locale);
 }
 
 export function seriesPath(slug: string, locale: Locale = defaultLocale) {
-  return withLocale(`/series/${slug}/`, locale);
+  return withLocale(`/${segmentFor('series')}/${slug}/`, locale);
 }
 
 export function tagPath(slug: string, locale: Locale = defaultLocale) {
-  return withLocale(`/tags/${slug}/`, locale);
+  return withLocale(`/${segmentFor('tags')}/${slug}/`, locale);
 }
