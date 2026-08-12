@@ -17,6 +17,7 @@
  * is a list that will be wrong.
  */
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
@@ -35,6 +36,23 @@ import {
 import { site, siteLocales } from './config/site';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Whether the site can render Mermaid diagrams — i.e. whether it installed the
+ * optional peer.
+ *
+ * Asked from the *project's* root rather than the engine's, because that is
+ * where the site's `node_modules` is and pnpm's layout will not hoist a package
+ * the site never declared into ours.
+ */
+function mermaidInstalled(root: string) {
+  try {
+    createRequire(path.join(root, 'package.json')).resolve('mermaid');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Aliases the engine's own modules use. Resolved to this package, wherever it lives. */
 const ALIASES = ['components', 'layouts', 'lib', 'i18n', 'config', 'content-types'] as const;
@@ -208,10 +226,10 @@ function overrideFor(overrides: string, absolute: string) {
  * after the prefix has been substituted — the one place in the resolve pipeline
  * that sees an aliased import before it becomes a fixed path.
  */
-function aliases(root: string, templatesDir: string) {
+function aliases(root: string, templatesDir: string, hasMermaid: boolean) {
   const overrides = path.resolve(root, templatesDir);
 
-  return ALIASES.map((name) => {
+  const engineAliases = ALIASES.map((name) => {
     const replacement = path.join(here, name);
     if (!OVERRIDABLE.includes(name as (typeof OVERRIDABLE)[number])) {
       return { find: `@${name}`, replacement };
@@ -222,6 +240,14 @@ function aliases(root: string, templatesDir: string) {
       customResolver: (updatedId: string) => overrideFor(overrides, updatedId) ?? updatedId,
     };
   });
+
+  // Exact match, not a prefix: an alias on the bare string would also catch
+  // `mermaid/dist/...`, and the stub answers for the package entry only.
+  const optionalMermaid = hasMermaid
+    ? []
+    : [{ find: /^mermaid$/, replacement: path.join(here, 'lib', 'mermaid-absent.ts') }];
+
+  return [...engineAliases, ...optionalMermaid];
 }
 
 /**
@@ -459,6 +485,13 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
     name: 'aifb-engine',
     hooks: {
       'astro:config:setup': ({ injectRoute, updateConfig, config, logger }) => {
+        const hasMermaid = mermaidInstalled(fileURLToPath(config.root));
+        // Said out loud, because the alternative is a site that used to render
+        // diagrams quietly serving code blocks after an unrelated install.
+        if (!hasMermaid) {
+          logger.info('mermaid is not installed — ```mermaid blocks will render as code. `npm i mermaid` to draw them.');
+        }
+
         updateConfig({
           // The canonical origin comes from the intent layer, and reading the
           // intent layer is the engine's job. A site's astro.config had to
@@ -478,8 +511,12 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
               renderersPlugin(fileURLToPath(config.root), templatesDir),
             ],
             resolve: {
-              alias: aliases(fileURLToPath(config.root), templatesDir),
+              alias: aliases(fileURLToPath(config.root), templatesDir, hasMermaid),
             },
+            // The diagram renderer's one guard. False here means the site did
+            // not install the optional peer, and a ```mermaid block stays a
+            // readable code block instead of becoming an empty figure.
+            define: { __AIFB_MERMAID__: JSON.stringify(hasMermaid) },
           },
         });
 

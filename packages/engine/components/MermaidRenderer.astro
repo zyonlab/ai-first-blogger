@@ -6,7 +6,11 @@
     ...document.querySelectorAll<HTMLElement>('pre[data-language="mermaid"] code'),
   ];
 
-  if (originalBlocks.length > 0) {
+  // `mermaid` is an optional peer. When it is absent the integration defines
+  // this as `false` and the block below never runs, which leaves a ```mermaid
+  // fence rendered as a code block — the source of the diagram, which is worth
+  // more to a reader than an empty figure.
+  if (__AIFB_MERMAID__ && originalBlocks.length > 0) {
     const { default: mermaid } = await import('mermaid');
 
     const diagrams = originalBlocks
