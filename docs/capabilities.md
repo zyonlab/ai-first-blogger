@@ -277,8 +277,8 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 | 无障碍规则 | 部分 | C-29 查渲染后的标题层级（无需真 DOM）；对比度、焦点顺序这类仍靠 Lighthouse 独立 job |
 | `engine/lib` 单元测试 | 零覆盖 | `assertSameOrigin` 这类函数直接决定 SEO 正确性 |
 | **站点加不了内容类型** | 只能拒绝，不能新增 | `engineTypes` 是硬编码数组，npm 安装的站点改不到（#24） |
-| 独立页面（Ghost `type: page`） | 未做 | `OPTIONAL_PAGES` 是固定六项，迁移只能跳过并计数（ADR 0007） |
-| URL 空间可配置 | 未做 | permalink 模板、taxonomy 前缀、根路径都写死；Ghost 站保不住原 URL（#21、ADR 0007） |
+| 独立页面（Ghost `type: page`） | 未做 | `OPTIONAL_PAGES` 是固定列表，迁移只能跳过并计数（#27、ADR 0007） |
+| URL 空间可配置 | 未做 | permalink 模板、taxonomy 前缀、根路径都写死；Ghost 站保不住原 URL（#26、#21、ADR 0007） |
 | 流量 / 排名 | 不测 | 在仓库之外——这套工具衡量的是**结构上是否具备**排名能力 |
 
 ---
