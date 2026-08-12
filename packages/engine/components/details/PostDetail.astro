@@ -23,6 +23,10 @@ const data = entry.data as {
   category: string;
   tags: string[];
   series?: string;
+  author?: string;
+  heroImage?: string;
+  heroImageAlt?: string;
+  heroImageCaption?: string;
 };
 const readingMinutes = readingTime(entry.body ?? '');
 ---
@@ -40,6 +44,10 @@ const readingMinutes = readingTime(entry.body ?? '');
       tags={data.tags}
       seriesSlug={data.series}
       readingMinutes={readingMinutes}
+      author={data.author}
+      heroImage={data.heroImage}
+      heroImageAlt={data.heroImageAlt}
+      heroImageCaption={data.heroImageCaption}
     />
     <Toc headings={headings} />
     <div class="prose">

@@ -19,6 +19,7 @@
 import BaseLayout from '@layouts/BaseLayout.astro';
 import { homePath, localeOfPath, localeParam, localeParams } from '@config/routes';
 import { entryPath, getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
+import { seoFromEntry } from '@content-types/types';
 import { alternatesForEntry } from '@lib/alternates';
 import { bySlug, getEntries, translationsOf } from '@lib/content';
 import { detailFor } from '@lib/renderers';
@@ -56,7 +57,16 @@ const Detail = detailFor(type.detail);
 
 const { Content, headings } = await render(entry as never);
 
-const seo = type.seo?.(entry as never) ?? {};
+/**
+ * The type's hints first, then the entry's own overrides on top.
+ *
+ * That order is the whole contract of the per-entry fields: a content type says
+ * what its entries mean — an article's image is its hero, its dates are its
+ * publication dates — and one entry is allowed to disagree about how it is
+ * presented. `seoFromEntry` only emits keys the author actually wrote, so an
+ * entry that overrides nothing leaves the type's hints exactly as they were.
+ */
+const seo = { ...(type.seo?.(entry as never) ?? {}), ...seoFromEntry(entry as never) };
 // A canonical override must stay on this origin, or the page donates its
 // ranking to another site (rule C-07).
 const canonical = assertSameOrigin(
@@ -78,15 +88,21 @@ const jsonLd = [
 ---
 
 <BaseLayout
-  title={entry.data.title as string}
-  description={entry.data.description as string}
+  title={seo.title ?? (entry.data.title as string)}
+  description={seo.description ?? (entry.data.description as string)}
   canonical={canonical}
   image={seo.image}
   type={seo.type ?? 'website'}
+  noindex={seo.noindex}
   jsonLd={jsonLd}
   publishedTime={seo.publishedTime}
   modifiedTime={seo.modifiedTime}
   tags={seo.tags}
+  ogTitle={seo.ogTitle}
+  ogDescription={seo.ogDescription}
+  twitterTitle={seo.twitterTitle}
+  twitterDescription={seo.twitterDescription}
+  twitterImage={seo.twitterImage}
   alternates={alternates}
 >
   <Detail entry={entry} type={type} Content={Content} headings={headings} canonical={canonical} />

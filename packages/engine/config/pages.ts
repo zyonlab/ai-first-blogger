@@ -26,6 +26,7 @@ type Titled = { title: string; description: string };
 export type PagesConfig = {
   topics?: Titled;
   series?: Titled;
+  tags?: Titled;
   about?: { title: string; sections: { heading: string; body: string }[] };
   newsletter?: { title: string; description: string; body: string; action: string };
   uses?: { title: string; description: string; items: { name: string; body: string }[] };
@@ -61,6 +62,7 @@ const COPY_KEY: Record<OptionalPage, keyof PagesConfig> = {
   about: 'about',
   newsletter: 'newsletter',
   series: 'series',
+  tags: 'tags',
   topics: 'topics',
   uses: 'uses',
   'work-with-me': 'workWithMe',
@@ -70,6 +72,7 @@ const COPY_KEY: Record<OptionalPage, keyof PagesConfig> = {
 const REQUIRED: Record<keyof PagesConfig, { strings: string[]; lists: string[] }> = {
   topics: { strings: ['title', 'description'], lists: [] },
   series: { strings: ['title', 'description'], lists: [] },
+  tags: { strings: ['title', 'description'], lists: [] },
   about: { strings: ['title'], lists: ['sections'] },
   newsletter: { strings: ['title', 'description', 'body', 'action'], lists: [] },
   uses: { strings: ['title', 'description'], lists: ['items'] },

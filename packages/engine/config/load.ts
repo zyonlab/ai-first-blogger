@@ -56,6 +56,25 @@ export function readYaml<T = unknown>(name: string): T {
   }
 }
 
+/**
+ * The same, for a file a site may simply not have.
+ *
+ * `readYaml` treats a missing file as a misconfigured site, which is right for
+ * the six every site needs and wrong for one that only matters during a
+ * migration. Returns `undefined` when the file is absent; a file that exists
+ * and is malformed still fails by name, because "I wrote it and nothing
+ * happened" is the worse outcome of the two.
+ */
+export function readOptionalYaml<T = unknown>(name: string): T | undefined {
+  const file = path.join(siteDir, name);
+  if (!fs.existsSync(file)) return undefined;
+  try {
+    return (parse(fs.readFileSync(file, 'utf8')) ?? {}) as T;
+  } catch (error) {
+    fail(`site/${name}`, [`Not valid YAML: ${(error as Error).message}`]);
+  }
+}
+
 export function readText(name: string): string {
   const file = path.join(siteDir, name);
   try {

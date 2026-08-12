@@ -43,16 +43,26 @@ const EMPTY_ANCHORS = [
  * C-21 and C-22 would stop checking listing pages altogether and report
  * nothing.
  */
+/**
+ * The taxonomy archives, whose second segment is a term rather than a slug.
+ * `/topics/x/` and `/tags/x/` are listing pages two levels deep; every other
+ * two-segment URL is an entry. A set rather than two comparisons because the
+ * next archive added would otherwise be filed as a detail page in one of these
+ * functions and a listing page in neither — which is silent, and is exactly how
+ * C-21 and C-22 would stop checking a whole class of page.
+ */
+const TAXONOMY_ARCHIVES = new Set(['topics', 'series', 'tags']);
+
 function isListingPage(page: BuiltPage, mount: string, localePrefixes: string[]) {
   const segments = engineSegments(page.url, mount, localePrefixes);
   if (segments.length === 0) return false;
   if (segments.length === 1) return true; // /writing/, /projects/
-  return segments.length === 2 && (segments[0] === 'topics' || segments[0] === 'series');
+  return segments.length === 2 && TAXONOMY_ARCHIVES.has(segments[0]!);
 }
 
 function isDetailPage(page: BuiltPage, mount: string, localePrefixes: string[]) {
   const segments = engineSegments(page.url, mount, localePrefixes);
-  return segments.length >= 2 && segments[0] !== 'topics' && segments[0] !== 'series';
+  return segments.length >= 2 && !TAXONOMY_ARCHIVES.has(segments[0]!);
 }
 
 /**

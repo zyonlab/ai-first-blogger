@@ -68,13 +68,22 @@ export async function getEntries(type: ContentTypeDef | string, locale: Locale =
 
   const inLocale = isMultiLocale ? entries.filter((entry) => localeOf(entry) === locale) : entries;
 
-  if (def.sortBy === 'none') return inLocale;
+  /**
+   * `featured` pins an entry to the front of every listing of its type.
+   *
+   * It sorts ahead of `sortBy` rather than replacing it, and it applies even to
+   * `sortBy: 'none'` — a type that keeps its declared order still has to be
+   * able to say "start here", which was previously only expressible by
+   * hardcoding a slug in a template. Ties inside each group keep whatever order
+   * the type already had, so pinning nothing changes nothing.
+   */
+  const pinned = (entry: AnyEntry) => (entry.data.featured === true ? 0 : 1);
 
-  return [...inLocale].sort((a, b) => {
-    const left = a.data.pubDate?.valueOf() ?? 0;
-    const right = b.data.pubDate?.valueOf() ?? 0;
-    return right - left;
-  });
+  const byDate = def.sortBy === 'none'
+    ? inLocale
+    : [...inLocale].sort((a, b) => (b.data.pubDate?.valueOf() ?? 0) - (a.data.pubDate?.valueOf() ?? 0));
+
+  return [...byDate].sort((a, b) => pinned(a) - pinned(b));
 }
 
 /** Every published entry of a content type, in every locale. */

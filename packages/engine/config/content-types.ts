@@ -76,7 +76,7 @@ const raw = localised(document, defaultLocale) as Record<string, SiteContentType
 
 /** Static page routes a content type must not shadow. */
 const RESERVED_ROUTES = new Set([
-  'topics', 'series', 'about', 'uses', 'newsletter', 'work-with-me',
+  'topics', 'series', 'tags', 'about', 'uses', 'newsletter', 'work-with-me',
   'rss.xml', 'robots.txt', 'llms.txt',
 ]);
 

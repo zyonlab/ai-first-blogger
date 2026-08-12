@@ -1,0 +1,34 @@
+---
+/**
+ * One tag on the tag index.
+ *
+ * A card rather than a chip, for the same reason TopicCard is one: the index is
+ * a listing page, its ItemList says so, and rule C-22 checks that the two agree
+ * by counting the cards in the marked region. A cloud of bare links would
+ * declare items the page does not render — structured data describing a page
+ * that does not exist, which is the failure the rule was written for.
+ *
+ * The count carries its own weight here: unlike a topic, nobody planned how
+ * many entries a tag would gather, so the number is the only thing that
+ * distinguishes an organising tag from one used once.
+ */
+import { localeOfPath, tagPath } from '@config/routes';
+import { messages } from '@i18n/index';
+
+type Props = {
+  tag: { slug: string; title: string; description?: string; count: number };
+  /** Same contract as TopicCard: the level belongs to the caller. */
+  headingLevel?: 2 | 3;
+};
+
+const { tag, headingLevel = 3 } = Astro.props;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
+---
+
+<article class="card tag-card">
+  <Heading><a href={tagPath(tag.slug, locale)}>{tag.title}</a></Heading>
+  <p class="tag-count">{t('taxonomy.tagEntryCount', { count: tag.count })}</p>
+  {tag.description && <p>{tag.description}</p>}
+</article>

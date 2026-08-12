@@ -34,7 +34,7 @@ site/       意图 + 策略 — 人来决定的（YAML + Markdown，塞不进代
 content/    素材        — 文章
 packages/
   engine/   aifb-engine  Astro 集成：注入路由、解析别名、提供主题、产出部署产物
-  cli/      aifb-cli     前置检查 · 29 条规则 · 风格分析 · context · 指标 · 迁移
+  cli/      aifb-cli     前置检查 · 34 条规则 · 风格分析 · context · 指标 · 迁移
   create/   create-aifb   脚手架
 examples/   参考站点（构建时不读取）
 ```
@@ -89,7 +89,7 @@ examples/   参考站点（构建时不读取）
 | 文件 | 装什么 |
 |---|---|
 | `site/site.yaml` | 品牌、作者、社交、hero、主题选择、`titleTemplate`、静态导航 |
-| `site/taxonomy.yaml` | **pillars + topics + series 三合一**；category 从 topic key 派生 |
+| `site/taxonomy.yaml` | **pillars + topics + series + tags 四合一**；category 从 topic key 派生 |
 | `site/content-types.yaml` | 每个类型的 route、标签、surfaces |
 | `site/pages.yaml` | 静态页文案 |
 | `site/redirects.yaml` | URL 历史 |
@@ -157,7 +157,7 @@ Markdown 正文:        →  写作的 agent 读它，决定语感
 
 ---
 
-## 5. 发布闸门：29 条规则
+## 5. 发布闸门：34 条规则
 
 `aifb validate` → `validate-report.json`，error 非零则退出码 1。
 
@@ -169,6 +169,8 @@ Markdown 正文:        →  写作的 agent 读它，决定语感
 | 中文排版 | C-24 | zhlint，规则来自 policy，zh-* locale 自动启用 |
 | 源码级链接 | C-25 | 不构建就解析，并说明**为什么**不可链 |
 | **内容质量** | C-26 C-27 | 正文实质（代码不算）、风格分下限（默认关闭） |
+| 多语言 | C-30 C-31 | hreflang 真实且互指、译文没译过会被点名 |
+| **内容模型** | C-32 C-33 C-34 | **字段必须能被读者看到**（结构化数据不算）、metaTitle 长度、heroImage 必须有 alt |
 
 几个设计点：
 
@@ -239,8 +241,10 @@ CI 自带。契约在 `.env.example` 和 `docs/specs/deployment.md`。
 **`aifb metrics`** —— T1 复用成本（品牌串从 `site.yaml` 派生，跟着站点走）· T2 扩展成本 ·
 T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `–` 而不是 `✗`。
 
-**`aifb migrate:ghost`** —— HTML→MDX，映射表出厂为空且类型从 taxonomy 派生，
-迁移前整表校验；改了 slug 自动写进 `site/redirects.yaml`。
+**`aifb migrate:ghost`** —— HTML→MDX，读 admin export 的六张兄弟表（`posts` ·
+`posts_meta` · `tags` · `posts_tags` · `users` · `posts_authors`）与 Content API
+两种形状；映射表在 `site/migration.yaml`，迁移前整表校验；改了 slug 自动写进
+`site/redirects.yaml`。标签、站点设置、跨域 canonical **只进报告不写入 `site/`**。
 
 **AI 操作层** —— `AGENTS.md`（一句话边界 + 完成前必须跑什么）、`.ai/skills/`、
 `prompts/`（intake · 内容计划 · 文章 brief · SEO/GEO 审计 · 部署）、`docs/playbooks/`。
@@ -251,9 +255,11 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 最后这条是这个仓库特有的风险：站点走 workspace 链接，本地全绿也证明不了 npm 上的包是新的。
 契约：`docs/specs/releasing.md`。
 
-**回归测试** —— `aifb test:scenarios` 16 个场景驱动真实管道跑真实文件（换主题、换 voice、
-**覆盖模板**、破坏 taxonomy、预览构建、死重定向），每个双向断言。它抓到过 self-test 抓不到的东西：
-包化时主题路径静默失效，5 个场景当场变红。
+**回归测试** —— `aifb test:scenarios` 60 个场景驱动真实管道跑真实文件（换主题、换 voice、
+**覆盖模板**、破坏 taxonomy、预览构建、死重定向、跑一遍 Ghost 迁移），每个双向断言。
+它抓到过 self-test 抓不到的东西：包化时主题路径静默失效，5 个场景当场变红；
+以及 `migrate:ghost` 读错导出形状——两次，两张不同的表，都不报错只是静默丢数据。
+`--only <text>` 可只跑名字匹配的场景，汇总行会说明这次跳过了多少。
 
 ---
 
@@ -267,10 +273,12 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 | **主题不随版本升级** | 「主题归站点」的代价 | 脚手架复制而非依赖 |
 | 内容 AST 校验 | 未做 | C-02/C-09 用正则读 MDX，JSX 形式的链接与标题不计入 |
 | 外链有效性 | 不检查 | 会让 CI 依赖第三方可用性；应是独立定时任务 |
-| 单篇 OG 图 | 未做 | 只有站点级兜底；C-01 只验格式不验尺寸 |
+| 单篇 OG 图 | 可声明，不生成 | `ogImage` 每篇可写；自动生成仍未做，C-01 只验格式不验尺寸 |
 | 无障碍规则 | 部分 | C-29 查渲染后的标题层级（无需真 DOM）；对比度、焦点顺序这类仍靠 Lighthouse 独立 job |
 | `engine/lib` 单元测试 | 零覆盖 | `assertSameOrigin` 这类函数直接决定 SEO 正确性 |
-| 多语言路由 | 不支持 | 框架与语言无关，一个构建一种语言 |
+| **站点加不了内容类型** | 只能拒绝，不能新增 | `engineTypes` 是硬编码数组，npm 安装的站点改不到（#24） |
+| 独立页面（Ghost `type: page`） | 未做 | `OPTIONAL_PAGES` 是固定六项，迁移只能跳过并计数（ADR 0007） |
+| URL 空间可配置 | 未做 | permalink 模板、taxonomy 前缀、根路径都写死；Ghost 站保不住原 URL（#21、ADR 0007） |
 | 流量 / 排名 | 不测 | 在仓库之外——这套工具衡量的是**结构上是否具备**排名能力 |
 
 ---
@@ -284,7 +292,7 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 | 主题色一致性检查 | `split(/(?=^:root)/)` 的索引错位一格，从未运行 | 手工换主题 |
 | C-12 | 只查 token 在文件里出现过，漏掉 alternate 块 | 手工造缺失 |
 | C-22 | 按 `<article>` 计数，把正确的分类页判成不一致 | 写真实文章 |
-| 回归测试本身 | 12 个场景建好了，CI 一个都不跑 | 按目标复查 |
+| 回归测试本身 | 场景建好了，CI 一个都不跑 | 按目标复查 |
 | 组件覆盖 | `enforce: 'pre'` 插件排在 `resolve.alias` **之后**，`@components/*` 的覆盖永远不生效；构建日志照旧报「N overridden」（那是页面覆盖，走另一条路） | 拿 example 站点照着参考站改模板 |
 
 第五个实例最值得看：它没有任何报错，日志还是绿的，只有把覆盖文件写出来、
@@ -300,7 +308,7 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 ## 相关文档
 
 - `docs/getting-started.md` — fork 到上线
-- `docs/specs/content-contract.md` — 什么叫「可发布」（29 条规则 + 前置检查）
+- `docs/specs/content-contract.md` — 什么叫「可发布」（34 条规则 + 前置检查）
 - `docs/specs/deployment.md` — 流水线、预览契约、部署产物、环境变量
 - `docs/specs/validation-pipeline.md` — 闸门机制与扩展方式
 - `docs/specs/site-config-contract.md` · `taxonomy.md` · `theming.md` · `i18n.md` · `metrics.md`

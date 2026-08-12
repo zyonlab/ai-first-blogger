@@ -23,7 +23,40 @@ const document = readYaml<Record<string, any>>('taxonomy.yaml');
 const raw = localised(document, defaultLocale);
 
 export type PillarDef = { name: string; goal: string };
-export type TopicDef = {
+
+/**
+ * The head, card and hero a taxonomy archive may declare for itself.
+ *
+ * Shared by topics, series and tags because an archive is an archive: the three
+ * render through the same `PageLayout` and land next to each other in a
+ * sitemap. Giving one of them a social card and not the others would be a
+ * difference nobody chose — and Ghost, which has a single taxonomy, carries
+ * exactly this column set on its `tags` table.
+ *
+ * Every field optional; absent is byte-for-byte what the archive rendered
+ * before. `title` and `description` stay what the page *displays*; these are
+ * what it tells a search engine and a share preview, which are allowed to
+ * disagree with the headline.
+ */
+export type TermMeta = {
+  /** The <title>, when the term's name is the wrong length for a result. */
+  metaTitle?: string;
+  metaDescription?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
+  /** A hero image for the archive. Same name as an entry's, same meaning. */
+  heroImage?: string;
+  heroImageAlt?: string;
+  /** Must stay on this origin (rule C-07), like an entry's. */
+  canonical?: string;
+  /** Keep a thin archive out of the index without deleting it. */
+  noindex?: boolean;
+};
+export type TopicDef = TermMeta & {
   title: string;
   description: string;
   /** Which strategic pillar this topic serves. Must be a key of `pillars`. */
@@ -31,11 +64,33 @@ export type TopicDef = {
   /** When false: a valid category, but no topic page and hidden from listings. */
   listed?: boolean;
 };
-export type SeriesDef = {
+export type SeriesDef = TermMeta & {
   title: string;
   description: string;
   /** Must be a key of `topics`. */
   topic: string;
+};
+
+/**
+ * A tag, keyed by the **name** articles write in their frontmatter.
+ *
+ * Tags are the one taxonomy that arrives from the content rather than from the
+ * plan: `tags: [重试, 延迟]` is a list of names, and a name is not a URL. So
+ * unlike topics and series, the key here is what an author typed and `slug` is
+ * the part that may need declaring.
+ *
+ * Every field is optional. A tag whose name is already kebab-case needs no
+ * entry in this file at all — that is what makes the taxonomy work out of the
+ * box for a Ghost migration, where the tags exist and nobody has planned them
+ * yet.
+ */
+export type TagDef = TermMeta & {
+  /** URL segment. Defaults to a slugified name; required when that is empty. */
+  slug?: string;
+  /** Shown on the archive. Defaults to the name itself. */
+  title?: string;
+  /** The archive's own prose. Without it the page is a slug and a list. */
+  description?: string;
 };
 
 /**
@@ -53,6 +108,42 @@ export type SeriesSlug = string;
 export const pillars = (raw.pillars ?? {}) as Record<string, PillarDef>;
 export const topics = (raw.topics ?? {}) as Record<string, TopicDef>;
 export const series = (raw.series ?? {}) as Record<string, SeriesDef>;
+export const tags = (raw.tags ?? {}) as Record<string, TagDef>;
+
+/**
+ * A tag name reduced to a URL segment: lowercase, ASCII, hyphenated.
+ *
+ * Deliberately the same shape rule C-19 enforces on every URL segment, so a
+ * slug this produces can never be one the gate then rejects. A name with no
+ * ASCII letters or digits in it — which is every Chinese tag — reduces to the
+ * empty string, and that is the signal that the site has to declare one.
+ */
+export function slugifyTag(name: string) {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+/**
+ * The URL segment for a tag name, or `undefined` when it has no address.
+ *
+ * No address is a real state, not an error. Failing the build would mean every
+ * existing Chinese site stops deploying the day it upgrades, for a feature it
+ * did not ask for; silently dropping the tag would leave a taxonomy that is
+ * half there, which is the defect class this whole change came from. So the
+ * integration reports each one by name at build time and the tag renders as
+ * plain text until somebody gives it a slug.
+ */
+export function tagSlug(name: string): string | undefined {
+  const declared = tags[name]?.slug;
+  if (typeof declared === 'string' && declared.trim() !== '') return declared.trim();
+  const derived = slugifyTag(name);
+  return derived === '' ? undefined : derived;
+}
 
 /* ------------------------------------------------------------------ *
  * Derived values. Never hand-maintained.
@@ -103,7 +194,10 @@ export function categoryLabel(slug: string, locale: string = defaultLocale) {
  * card is a deep merge a few thousand times per build.
  * ------------------------------------------------------------------ */
 
-const cache = new Map<string, { topics: Record<string, TopicDef>; series: Record<string, SeriesDef> }>();
+const cache = new Map<
+  string,
+  { topics: Record<string, TopicDef>; series: Record<string, SeriesDef>; tags: Record<string, TagDef> }
+>();
 
 function viewFor(locale: string) {
   const cached = cache.get(locale);
@@ -112,6 +206,7 @@ function viewFor(locale: string) {
   const view = {
     topics: (merged.topics ?? {}) as Record<string, TopicDef>,
     series: (merged.series ?? {}) as Record<string, SeriesDef>,
+    tags: (merged.tags ?? {}) as Record<string, TagDef>,
   };
   cache.set(locale, view);
   return view;
@@ -123,6 +218,23 @@ export function topicsFor(locale: string = defaultLocale) {
 
 export function seriesFor(locale: string = defaultLocale) {
   return viewFor(locale).series;
+}
+
+export function tagsFor(locale: string = defaultLocale) {
+  return viewFor(locale).tags;
+}
+
+/**
+ * What an archive calls itself, in one locale.
+ *
+ * A tag with no declared copy is titled with the name the articles wrote. That
+ * is the honest default: a page called `重试` listing three articles about
+ * retries is thin, but it is not *wrong*, and the site can improve it by adding
+ * three lines rather than by re-tagging its back catalogue.
+ */
+export function tagCopyFor(name: string, locale: string = defaultLocale) {
+  const declared = tagsFor(locale)[name];
+  return { title: declared?.title ?? name, description: declared?.description };
 }
 
 /** Topics that get their own page, in one locale's copy. */
@@ -161,6 +273,28 @@ for (const [slug, item] of Object.entries(series)) {
   if (!isCategory(item?.topic)) {
     problems.push(`series "${slug}" references unknown topic "${item?.topic}". Valid: ${categorySlugs.join(', ')}`);
   }
+}
+
+/**
+ * A declared tag slug has to be a URL segment, because C-19 will say so later
+ * and "the gate rejected a page you did not write" is a worse message than
+ * this one. Two tags claiming one slug is the other half: it would build two
+ * pages at one address and let the loader pick.
+ */
+const tagSlugs = new Map<string, string>();
+for (const [name, tag] of Object.entries(tags)) {
+  const declared = tag?.slug;
+  if (declared !== undefined && !KEBAB_CASE.test(declared)) {
+    problems.push(`tag "${name}" has slug "${declared}", which is not kebab-case.`);
+    continue;
+  }
+  const slug = tagSlug(name);
+  if (slug === undefined) continue;
+  const previous = tagSlugs.get(slug);
+  if (previous !== undefined) {
+    problems.push(`tags "${previous}" and "${name}" both resolve to /tags/${slug}/. Give one of them its own slug.`);
+  }
+  tagSlugs.set(slug, name);
 }
 
 // A pillar owning no topic is strategy that never reached the site. It is the

@@ -1,6 +1,6 @@
-import { hasPage, localeOfPath, localeStaticPaths, seriesPath, topicPath } from '@config/routes';
+import { hasPage, localeOfPath, localeStaticPaths, seriesPath, tagPath, topicPath } from '@config/routes';
 import { siteFor } from '@config/site';
-import { getActiveSeries, getActiveTopics } from '@lib/taxonomy';
+import { getActiveSeries, getActiveTags, getActiveTopics } from '@lib/taxonomy';
 import { entryPath, listPath, llmsTypesFor } from '@content-types/index';
 import { getEntries } from '@lib/content';
 import type { APIRoute } from 'astro';
@@ -25,6 +25,10 @@ export const GET: APIRoute = async (context) => {
   // at pages the build never produced is worse than a shorter summary.
   const topicList = hasPage('topics') ? await getActiveTopics(locale) : [];
   const seriesList = hasPage('series') ? await getActiveSeries(locale) : [];
+  // Tags were absent from this file entirely while they were decorative. They
+  // are the finest-grained index the site has, which is exactly what a crawler
+  // asking "what is on this site" can use.
+  const tagList = hasPage('tags') ? await getActiveTags(locale) : [];
   const sections = await Promise.all(
     llmsTypes.map(async (type) => {
       const entries = (await getEntries(type, locale)).slice(0, type.surfaces.llms!.limit);
@@ -60,6 +64,15 @@ export const GET: APIRoute = async (context) => {
       : []),
     ...(seriesList.length > 0
       ? ['', '## Series', ...seriesList.map((item) => `- [${item.title}](${seriesPath(item.slug, locale)}): ${item.description}`)]
+      : []),
+    ...(tagList.length > 0
+      ? [
+          '',
+          '## Tags',
+          ...tagList.map(
+            (tag) => `- [${tag.title}](${tagPath(tag.slug, locale)})${tag.description ? `: ${tag.description}` : ''}`,
+          ),
+        ]
       : []),
     ...sections.flat(),
     '',

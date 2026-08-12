@@ -199,6 +199,7 @@ resets the URLs search engines have indexed.
 ## Next
 
 - [`recipes/add-content-type.md`](./recipes/add-content-type.md) — a new kind of content
+- [`recipes/migrate-from-ghost.md`](./recipes/migrate-from-ghost.md) — bringing a Ghost blog across
 - [`recipes/add-theme.md`](./recipes/add-theme.md) — restyle
 - [`recipes/add-locale.md`](./recipes/add-locale.md) — another language
 - [`playbooks/ai-first-workflow.md`](./playbooks/ai-first-workflow.md) — the AI loop

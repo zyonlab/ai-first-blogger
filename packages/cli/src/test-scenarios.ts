@@ -22,6 +22,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import matter from 'gray-matter';
 
 const run = promisify(execFile);
 const root = process.cwd();
@@ -30,13 +31,26 @@ const SNAPSHOT = path.join(root, '.scenario-snapshot');
 // site owner would change — `engine({ mount })`. Driving the option through the
 // real config is the difference between testing the feature and testing a
 // private helper that happens to agree with it.
-const MUTABLE = ['site', 'content', 'public', 'astro.config.mjs', '.github/workflows/cloudflare-pages.yml'];
+// `migration/` is in here because the Ghost scenarios put an export in it and
+// `migrate:ghost` writes a report back next to it.
+const MUTABLE = ['site', 'content', 'public', 'migration', 'astro.config.mjs', '.github/workflows/cloudflare-pages.yml'];
 
 /** The path data in the mark this framework ships; mirrors src/brand.ts. */
 const FRAMEWORK_MARK = 'M17 19h31L27 45h21';
 
 type Result = { name: string; ok: boolean; detail?: string };
 const results: Result[] = [];
+
+/**
+ * `pnpm test:scenarios --only <text>` runs the scenarios whose name contains
+ * <text>. Every scenario drives a real build, so the whole suite is minutes;
+ * iterating on one of them should not be. CI passes no filter and therefore
+ * runs everything — the count in the summary says which of the two happened,
+ * so a filtered run can never be mistaken for a green suite.
+ */
+const onlyFlag = process.argv.indexOf('--only');
+const only = onlyFlag === -1 ? undefined : process.argv[onlyFlag + 1]?.toLowerCase();
+let skipped = 0;
 
 /* ------------------------------------------------------------------ *
  * Harness
@@ -59,6 +73,7 @@ async function sh(command: string, args: string[], env: Record<string, string> =
 const build = (env: Record<string, string> = {}) => sh('pnpm', ['build'], env);
 const validate = () => sh('pnpm', ['validate']);
 const analyze = (target?: string) => sh('pnpm', ['analyze', ...(target ? [target] : [])]);
+const migrateGhost = () => sh('pnpm', ['migrate:ghost'], { LEGACY_CONTENT_DOMAIN: 'https://legacy.example.com' });
 
 /**
  * Copy, tolerating a source that is not there.
@@ -143,12 +158,40 @@ async function edit(file: string, replacements: [string, string][]) {
 }
 
 /**
+ * Put the Ghost fixture where `migrate:ghost` looks for it.
+ *
+ * The fixture is the **admin export** shape (Settings → Migration → Export):
+ * posts, tags and posts_tags as three sibling tables. That distinction is the
+ * whole point of it — the Content API hands you `post.tags` already joined, and
+ * a migrator written against that shape reads `undefined` from every post in a
+ * real export without failing.
+ */
+async function loadGhostExport() {
+  await fs.mkdir(path.join(root, 'migration'), { recursive: true });
+  await fs.cp(
+    path.join(root, 'packages/cli/src/__fixtures__/ghost-admin-export.json'),
+    path.join(root, 'migration/ghost-export.json'),
+  );
+}
+
+/** Frontmatter of a migrated file, or undefined if it was never written. */
+async function migrated(slug: string) {
+  const file = path.join(root, 'content/posts', `${slug}.mdx`);
+  const text = await fs.readFile(file, 'utf8').catch(() => undefined);
+  return text === undefined ? undefined : (matter(text).data as Record<string, any>);
+}
+
+/**
  * Each scenario mutates real files, so each one restores the snapshot on its
  * way out — pass or fail. Without that a failing scenario leaves the site in a
  * broken state and every scenario after it fails for the wrong reason, which is
  * exactly how a harness starts lying about where the defect is.
  */
 async function scenario(name: string, body: () => Promise<void>) {
+  if (only !== undefined && !name.toLowerCase().includes(only)) {
+    skipped += 1;
+    return;
+  }
   process.stdout.write(`  ${name} … `);
   try {
     await body();
@@ -446,7 +489,7 @@ try {
     const siteYaml = path.join(root, 'site/site.yaml');
     const withoutDeclined = (await fs.readFile(siteYaml, 'utf8'))
       .split('\n')
-      .filter((line) => !/href: \/(about|work-with-me|uses|newsletter)\//.test(line))
+      .filter((line) => !/href: \/(about|work-with-me|uses|newsletter|tags)\//.test(line))
       .join('\n');
     await fs.writeFile(siteYaml, withoutDeclined);
 
@@ -706,6 +749,9 @@ try {
         '    topics:',
         '      title: By topic',
         '      description: Filed by the problem rather than by the date, so the articles about one problem can be read together.',
+        '    tags:',
+        '      title: By tag',
+        '      description: Finer than a topic, and never planned — these come from the articles themselves, so the count beside each one is what it is worth.',
         '    series:',
         '      title: Reading paths',
         '      description: The ones meant to be read in order. Each says where it starts and what you should already know.',
@@ -1107,6 +1153,698 @@ try {
     expect(result.out.includes('at least 9'), 'the message should quote the configured floor');
   });
 
+  /* ---------------------------------------------------------------- *
+   * The content model a reader can perceive
+   *
+   * ADR 0007 draws the parity line at exactly that: what a reader can see, and
+   * what a search engine is told about it. Every scenario here is a field an
+   * author fills in, asserted against the page it is supposed to change —
+   * because the defect this group exists for is the one where filling it in
+   * changes nothing and the build still says green (#22, #23 §4, §5).
+   * ---------------------------------------------------------------- */
+  console.log('\ncontent model');
+
+  /** The example's newest post, which is the one every listing puts first. */
+  const NEWEST = 'why-retries-made-it-worse';
+
+  /** Add frontmatter keys to an example post, above the closing `---`. */
+  async function addFrontmatter(slug: string, lines: string[]) {
+    const file = path.join(root, 'content/posts', `${slug}.mdx`);
+    const text = await fs.readFile(file, 'utf8');
+    const end = text.indexOf('\n---', 4);
+    expect(end > 0, `scenario setup: no frontmatter in ${slug}.mdx`);
+    await fs.writeFile(file, `${text.slice(0, end)}\n${lines.join('\n')}${text.slice(end)}`);
+  }
+
+  const head = (html: string) => html.slice(0, html.indexOf('</head>') === -1 ? html.length : html.indexOf('</head>'));
+  const meta = (html: string, attribute: string, name: string) =>
+    new RegExp(`<meta ${attribute}="${name}" content="([^"]*)"`).exec(html)?.[1];
+
+  await scenario('a hero image reaches the page, with its alt text and caption', async () => {
+    await loadExample();
+    await addFrontmatter(NEWEST, [
+      'heroImage: /content/images/hero.png',
+      'heroImageAlt: 限流计数在事故当天跳满的那一分钟',
+      'heroImageCaption: 限流计数比吞吐曲线早了大概九十秒。',
+    ]);
+    expect((await build()).code === 0, 'a hero image should build');
+
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    const body = article.slice(article.indexOf('<body'));
+    expect(body.includes('/content/images/hero.png'), 'the hero image should be on the page, not only in og:image');
+    expect(body.includes('限流计数在事故当天跳满的那一分钟'), 'the alt text should reach the img');
+    expect(body.includes('限流计数比吞吐曲线早了大概九十秒。'), 'the caption should be rendered');
+
+    // …and C-32 agrees, which is what stops the next field from going missing.
+    const result = await validate();
+    const report = JSON.parse(await fs.readFile(path.join(root, 'validate-report.json'), 'utf8'));
+    expect(report.errors === 0, `a rendered hero should leave the gate clean:\n${result.out.slice(-700)}`);
+  });
+
+  await scenario('a hero image with no alt text is reported', async () => {
+    await loadExample();
+    await addFrontmatter(NEWEST, ['heroImage: /content/images/hero.png']);
+    await build();
+    const result = await validate();
+    // An image with no alt is an accessibility defect first and an SEO one
+    // second. Ghost has feature_image_alt; a migration that drops it ships 61
+    // images no screen reader can describe.
+    expect(/heroImageAlt/.test(result.out), `the report should name the missing field:\n${result.out.slice(-700)}`);
+  });
+
+  await scenario('an author is shown to the reader, not only to the crawler', async () => {
+    await loadExample();
+    await addFrontmatter(NEWEST, ['author: 一位客座作者']);
+    expect((await build()).code === 0, 'an explicit author should build');
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    const body = article.slice(article.indexOf('<body'));
+    expect(body.includes('一位客座作者'), 'the author should appear on the article, not only in JSON-LD');
+  });
+
+  await scenario('per-entry SEO overrides are what the head says', async () => {
+    await loadExample();
+    await addFrontmatter(NEWEST, [
+      'metaTitle: 重试从 3 提到 5 的真实代价',
+      'metaDescription: P99 从 2.1s 涨到 6.8s，月账单多 40 美元。完整的取舍过程。',
+      'ogTitle: 一次看起来该做的调参',
+      'ogDescription: 成功率涨了 3 个点，延迟涨了 4.7 秒。',
+      'ogImage: /content/images/card.png',
+    ]);
+    expect((await build()).code === 0, 'per-entry SEO should build');
+
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    const inHead = head(article);
+    const title = /<title>([^<]*)<\/title>/.exec(inHead)?.[1] ?? '';
+    expect(title.includes('重试从 3 提到 5 的真实代价'), `the <title> should be metaTitle, got "${title}"`);
+    expect(
+      meta(inHead, 'name', 'description') === 'P99 从 2.1s 涨到 6.8s，月账单多 40 美元。完整的取舍过程。',
+      `the meta description should be metaDescription, got "${meta(inHead, 'name', 'description')}"`,
+    );
+    expect(meta(inHead, 'property', 'og:title') === '一次看起来该做的调参', 'og:title should be written for social');
+    expect(
+      meta(inHead, 'property', 'og:description') === '成功率涨了 3 个点，延迟涨了 4.7 秒。',
+      'og:description should be written for social',
+    );
+    expect(
+      (meta(inHead, 'property', 'og:image') ?? '').includes('/content/images/card.png'),
+      'og:image should be the card, not the hero',
+    );
+
+    // The overrides are for the head. The page still says what it says.
+    const body = article.slice(article.indexOf('<body'));
+    expect(body.includes('把重试从 3 次提到 5 次'), 'the on-page headline must not be replaced by metaTitle');
+  });
+
+  await scenario('an entry with no overrides keeps the behaviour it had', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the untouched example should build');
+    const before = head(await dist(`writing/${NEWEST}/index.html`));
+
+    // Overriding one entry must not move the head of another. This is the half
+    // of an optional field that nobody writes a test for and everybody relies
+    // on: absent means today's behaviour, byte for byte.
+    await addFrontmatter('backend-instincts-that-broke', ['metaTitle: 转型时最先扔掉的三个直觉']);
+    expect((await build()).code === 0, 'a neighbour override should build');
+    const after = head(await dist(`writing/${NEWEST}/index.html`));
+    expect(before === after, 'an entry with no overrides should produce the same head as before');
+  });
+
+  await scenario('featured pins an entry to the front of its list', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the untouched example should build');
+    const order = (html: string) =>
+      [...html.matchAll(/href="\/writing\/([^"/]+)\//g)].map((match) => match[1]!);
+    const before = order(await dist('writing/index.html'));
+    expect(before.length >= 2, `the list needs at least two entries to have an order, got ${before.join(', ')}`);
+
+    // Pin whichever one is *not* already leading, so the assertion measures the
+    // pin rather than the sort the list happened to have. The two example posts
+    // share a pubDate, so "the newest leads" is not a fact to build on.
+    const pinned = before[before.length - 1]!;
+    await addFrontmatter(pinned, ['featured: true']);
+    expect((await build()).code === 0, 'a featured entry should build');
+    const after = order(await dist('writing/index.html'));
+    expect(after[0] === pinned, `featured should lead the list, got ${after[0]} (${after.join(', ')})`);
+    expect(after.length === before.length, 'pinning must not add or drop entries');
+  });
+
+  /* ---------------------------------------------------------------- *
+   * Tags as a taxonomy
+   *
+   * `tags` was four dead ends: two rows of <span>, an article:tag meta and a
+   * JSON-LD keyword. A reader who saw them tried to click them. A Ghost site
+   * whose posts carried two or three of them kept whichever one a migration
+   * rule matched first and lost the rest. ADR 0007 puts taxonomy inside the
+   * parity line, so a tag is a place now, not a decoration.
+   * ---------------------------------------------------------------- */
+  console.log('\ntags');
+
+  /**
+   * A tag's URL slug, declared in site/taxonomy.yaml.
+   *
+   * A tag is written in frontmatter as a *name* — `tags: [重试, 延迟]` — and a
+   * name is not a URL. C-19 requires every URL segment to be lowercase
+   * kebab-case, so a Chinese tag has no address until the site gives it one.
+   * That is the one thing the site must declare; title and description stay
+   * optional.
+   */
+  const declareTags = (yaml: string[]) => fs.appendFile(path.join(root, 'site/taxonomy.yaml'), ['', 'tags:', ...yaml, ''].join('\n'));
+
+  await scenario('a declared tag has an archive that lists what carries it', async () => {
+    await loadExample();
+    // The example's newest post carries 重试 / 延迟 / 成本.
+    await declareTags([
+      '  重试:',
+      '    slug: retries',
+      '    title: 重试与退避',
+      '    description: 重试次数、退避策略，以及它们在延迟和账单上各自的代价。',
+      '  没人用过的:',
+      '    slug: never-used',
+      '    title: 没人用过的标签',
+      '    description: 声明了，但没有任何一篇文章使用它。',
+    ]);
+    expect((await build()).code === 0, 'a site with tags should build');
+
+    expect(await exists('dist/tags/index.html'), 'the tag index should be built');
+    const archive = await dist('tags/retries/index.html');
+    expect(archive.includes('把重试从 3 次提到 5 次'), 'the archive should list the entry that carries the tag');
+    // Copy is the site's, the way a topic's is. Otherwise every archive is a
+    // slug with a list under it, which is the thin page C-21 exists to stop.
+    expect(archive.includes('重试与退避'), 'the declared title should be the page title');
+    expect(archive.includes('重试次数、退避策略'), 'the declared description should reach the page');
+
+    // …and the chip on the article is the way in. Four dead ends is what this
+    // field was; a reader who sees it will try to click it.
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    expect(/href="\/tags\/retries\/"/.test(article), 'the tag on an article should link to its archive');
+
+    // Declared and unused is still no page: an empty archive is thin content
+    // that lands in the sitemap anyway.
+    expect(!(await exists('dist/tags/never-used/index.html')), 'a tag nobody uses should have no page');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a site with tag archives should pass the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a tag whose name is already a slug needs no declaration', async () => {
+    await loadExample();
+    await edit(`content/posts/${NEWEST}.mdx`, [['tags: [重试, 延迟, 成本]', 'tags: [重试, 延迟, 成本, agent-runtime]']]);
+    expect((await build()).code === 0, 'an undeclared Latin tag should build');
+    const archive = await dist('tags/agent-runtime/index.html');
+    expect(archive.includes('agent-runtime'), 'an undeclared tag is titled with its own name');
+    expect(archive.includes('把重试从 3 次提到 5 次'), 'and still lists what carries it');
+  });
+
+  await scenario('a tag that cannot produce a URL is named, not silently dropped', async () => {
+    await loadExample();
+    const result = await build();
+    expect(result.code === 0, 'a tag with no slug must not break the build');
+    // 重试 slugifies to nothing. Failing the build would mean every existing
+    // Chinese site stops deploying the day it upgrades; saying nothing would
+    // mean the taxonomy is quietly half-missing, which is §6a all over again.
+    expect(result.out.includes('重试'), `the build should name the tag it could not address:\n${result.out.slice(-600)}`);
+    expect(result.out.includes('slug'), 'and should say what to declare');
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    expect(!/href="\/tags\/[^"]*"[^>]*>重试/.test(article), 'a tag with no page must not be rendered as a link');
+  });
+
+  await scenario('a tag archive exists per language', async () => {
+    await localiseExample();
+    await writeTranslation();
+    expect((await build()).code === 0, 'a two-language site with tags should build');
+    // The English translation carries retries / latency / cost; the Chinese
+    // original's tags have no slug, so they have no archive in either language.
+    expect(await exists('dist/en/tags/retries/index.html'), 'the English tag should be under the locale prefix');
+    expect(!(await exists('dist/tags/retries/index.html')), 'an English-only tag has no page in the default language');
+    const gate = await validate();
+    expect(gate.code === 0, `a translated site with tags should pass the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a site that declines tags is left with no links to them', async () => {
+    await loadExample();
+    await declareTags(['  重试:', '    slug: retries']);
+    await edit('astro.config.mjs', [
+      ['    engine(),', "    engine({ pages: ['about', 'newsletter', 'series', 'topics', 'uses', 'work-with-me'] }),"],
+    ]);
+    // The nav is the site's own claim that a URL exists, and the whitelist has
+    // just withdrawn it. Leaving the entry is a dead link the gate reports —
+    // correctly, and not what this scenario is about.
+    const siteYaml = path.join(root, 'site/site.yaml');
+    await fs.writeFile(
+      siteYaml,
+      (await fs.readFile(siteYaml, 'utf8')).split('\n').filter((line) => !/href: \/tags\//.test(line)).join('\n'),
+    );
+    expect((await build()).code === 0, 'declining tags should build');
+    expect(!(await exists('dist/tags/index.html')), 'a declined page must not be published');
+
+    // The half that is easy to forget: the chips are still rendered, and a link
+    // to a page the site declined is a 404 the gate would have to catch later.
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    expect(!article.includes('href="/tags/'), 'nothing should link at a taxonomy the site declined');
+    expect((await validate()).code === 0, 'and the site should still pass the gate');
+  });
+
+  /* ---------------------------------------------------------------- *
+   * The promised imports
+   *
+   * ADR 0004 makes a short list of engine imports public API and says the
+   * examples are what proves the promise holds. They cover cards, components
+   * and a flat page — and covered neither a **detail component** nor a
+   * **taxonomy archive**, which are the two overrides that need the most help
+   * from the engine to clear the gate.
+   *
+   * These are contract tests rather than bug regressions: nothing is broken
+   * today. What they buy is that a signature change to `@lib/taxonomy` or
+   * `DetailProps` fails here, naming the public API, instead of failing in
+   * somebody's site months later.
+   * ---------------------------------------------------------------- */
+  console.log('\npromised imports');
+
+  await scenario('a site replaces a taxonomy archive using only promised imports', async () => {
+    await loadExample();
+    await fs.mkdir(path.join(root, 'site/templates/pages/topics'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/topics/[slug].astro'),
+      [
+        '---',
+        "import PageLayout from '@layouts/PageLayout.astro';",
+        "import { homePath, localeOfPath, localeParam, localeParams, locales, pagePath, topicPath } from '@config/routes';",
+        "import { topicsFor } from '@config/taxonomy';",
+        "import { getActiveTopics } from '@lib/taxonomy';",
+        "import { entryPath, registryFor } from '@content-types/index';",
+        "import { alternatesForPath } from '@lib/alternates';",
+        "import { assertSameOrigin, seoFromFields } from '@lib/seo';",
+        "import { findEntries } from '@lib/content';",
+        "import { cardFor } from '@lib/renderers';",
+        "import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';",
+        '',
+        'export async function getStaticPaths() {',
+        '  const perLocale = await Promise.all(',
+        '    localeParams().map(async ({ locale, param }) =>',
+        '      (await getActiveTopics(locale)).map((topic) => ({ params: { ...localeParam(param), slug: topic.slug } })),',
+        '    ),',
+        '  );',
+        '  return perLocale.flat();',
+        '}',
+        '',
+        'const locale = localeOfPath(Astro.url.pathname);',
+        'const slug = Astro.params.slug;',
+        'const topic = topicsFor(locale)[slug];',
+        'const canonical = assertSameOrigin(topic.canonical, topicPath(slug, locale), `topics/${slug}`);',
+        'const matches = await findEntries(registryFor(locale), (entry) => entry.data.category === slug, locale);',
+        'const built = (await Promise.all(',
+        '  locales.map(async (tag) => ((await getActiveTopics(tag)).some((item) => item.slug === slug) ? tag : undefined)),',
+        ')).filter((tag) => tag !== undefined);',
+        'const jsonLd = [',
+        '  collectionPageSchema(topic.title, topic.description, canonical, locale),',
+        '  itemListSchema(topic.title, matches.map(({ type, entry }) => ({',
+        '    name: entry.data.title, description: entry.data.description,',
+        '    url: entryPath(type, entry.data.slug, locale),',
+        '  }))),',
+        '  breadcrumbSchema([',
+        "    { name: 'Home', url: homePath(locale) },",
+        "    { name: 'Topics', url: pagePath('topics', locale) },",
+        '    { name: topic.title, url: canonical },',
+        '  ]),',
+        '];',
+        '---',
+        '',
+        '<PageLayout',
+        '  title={topic.title}',
+        '  description={topic.description}',
+        '  eyebrow="Topic"',
+        '  canonical={canonical}',
+        '  jsonLd={jsonLd}',
+        "  breadcrumbs={[{ href: pagePath('topics', locale), label: 'Topics' }, { href: canonical, label: topic.title }]}",
+        '  alternates={alternatesForPath(`/topics/${slug}/`, built)}',
+        '  seo={seoFromFields(topic)}',
+        '  heroImage={topic.heroImage}',
+        '  heroImageAlt={topic.heroImageAlt}',
+        '>',
+        '  <section data-item-list class="section grid two">',
+        '    {matches.map(({ type, entry }) => {',
+        '      const Card = cardFor(type.card);',
+        '      return <Card entry={entry} type={type} headingLevel={2} />;',
+        '    })}',
+        '  </section>',
+        '  <p data-site-topic>Rendered by the site.</p>',
+        '</PageLayout>',
+        '',
+      ].join('\n'),
+    );
+
+    const result = await build();
+    expect(result.code === 0, `a taxonomy override should build:\n${result.out.slice(-800)}`);
+    const page = await dist('topics/llm-reliability/index.html');
+    expect(page.includes('data-site-topic'), "the site's markup should be what shipped");
+
+    // The point of the promised list: an override built from it clears the gate
+    // without the site hand-assembling JSON-LD, breadcrumbs or the head.
+    const gate = await validate();
+    expect(gate.code === 0, `and should pass every rule:\n${gate.out.slice(-800)}`);
+  });
+
+  await scenario('a site replaces a detail component using only promised imports', async () => {
+    await loadExample();
+    await fs.mkdir(path.join(root, 'site/templates/details'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/details/PostDetail.astro'),
+      [
+        '---',
+        "import Breadcrumbs from '@components/Breadcrumbs.astro';",
+        "import { listPath } from '@content-types/index';",
+        "import { localeOf } from '@lib/content';",
+        "import { formatDate } from '@lib/dates';",
+        "import type { DetailProps } from '@components/details/detail-props';",
+        '',
+        'const { entry, type, Content, canonical } = Astro.props as DetailProps;',
+        'const Body = Content;',
+        '---',
+        '',
+        '<article class="article-shell" data-site-detail>',
+        '  <Breadcrumbs items={[',
+        '    { href: listPath(type, localeOf(entry)), label: type.listTitle },',
+        '    { href: canonical, label: entry.data.title },',
+        '  ]} />',
+        '  <h1>{entry.data.title}</h1>',
+        '  <p>{entry.data.description}</p>',
+        '  <time datetime={entry.data.pubDate.toISOString()}>{formatDate(entry.data.pubDate, localeOf(entry))}</time>',
+        '  {entry.data.heroImage && <img src={entry.data.heroImage} alt={entry.data.heroImageAlt ?? ""} />}',
+        '  <div class="prose"><Body /></div>',
+        '</article>',
+        '',
+      ].join('\n'),
+    );
+
+    const result = await build();
+    expect(result.code === 0, `a detail override should build:\n${result.out.slice(-800)}`);
+    const article = await dist(`writing/${NEWEST}/index.html`);
+    expect(article.includes('data-site-detail'), "the site's detail should be what shipped");
+    expect(!article.includes('ReadingProgress'), "and the engine's should be gone");
+  });
+
+  /* ---------------------------------------------------------------- *
+   * Taxonomy metadata
+   *
+   * An archive is a page, and until now it was the one kind of page that could
+   * not write its own head: PageLayout used `title` for both the <h1> and the
+   * <title>, so a topic called 可靠性与降级 had exactly that as its search
+   * result and no way to say anything else.
+   *
+   * Shared across topics, series and tags on purpose. Ghost has one taxonomy
+   * and this engine has three, so "per-tag metadata" that skipped topics would
+   * mean a tag archive could set its OG image and a topic archive could not —
+   * a difference nobody chose, on the two pages that sit next to each other.
+   * ---------------------------------------------------------------- */
+  console.log('\ntaxonomy metadata');
+
+  /** Add keys under a term already declared in the example's taxonomy.yaml. */
+  const describeTopic = (lines: string[]) =>
+    edit('site/taxonomy.yaml', [
+      ['  llm-reliability:\n', `  llm-reliability:\n${lines.map((line) => `    ${line}`).join('\n')}\n`],
+    ]);
+
+  await scenario('a taxonomy archive writes its own head', async () => {
+    await loadExample();
+    await describeTopic([
+      'metaTitle: LLM 可靠性工程：超时、限流与降级',
+      'metaDescription: 模型会超时、会改主意、会编。这一组文章是把它当成不确定下游服务之后的具体做法。',
+      'ogTitle: 当模型开始不讲道理',
+      'ogDescription: 超时、改主意、编。三种失败，三种接法。',
+      'ogImage: /content/images/topic-card.png',
+    ]);
+    await declareTags(['  重试:', '    slug: retries', '    metaTitle: 重试策略与退避：完整取舍', '    twitterTitle: 重试翻车合集']);
+    expect((await build()).code === 0, 'archive metadata should build');
+
+    const topic = await dist('topics/llm-reliability/index.html');
+    const inHead = head(topic);
+    expect(
+      (/<title>([^<]*)<\/title>/.exec(inHead)?.[1] ?? '').includes('LLM 可靠性工程'),
+      `the <title> should be metaTitle, got "${/<title>([^<]*)<\/title>/.exec(inHead)?.[1]}"`,
+    );
+    expect(meta(inHead, 'property', 'og:title') === '当模型开始不讲道理', 'og:title should be the archive card');
+    expect((meta(inHead, 'property', 'og:image') ?? '').includes('/content/images/topic-card.png'), 'og:image should be the declared one');
+    // The overrides are for the head. The page still says what it says.
+    const body = topic.slice(topic.indexOf('<body'));
+    expect(body.includes('可靠性与降级'), 'the on-page H1 must stay the term title');
+
+    const tag = head(await dist('tags/retries/index.html'));
+    expect((/<title>([^<]*)<\/title>/.exec(tag)?.[1] ?? '').includes('重试策略与退避'), 'a tag archive gets the same treatment');
+    expect(meta(tag, 'name', 'twitter:title') === '重试翻车合集', 'and its own twitter card');
+
+    expect((await validate()).code === 0, 'archive metadata should pass the gate');
+  });
+
+  await scenario('a taxonomy archive can carry a feature image', async () => {
+    await loadExample();
+    await describeTopic([
+      'heroImage: /content/images/topic-hero.png',
+      'heroImageAlt: 三种失败模式在同一张时序图上的对照',
+    ]);
+    expect((await build()).code === 0, 'an archive feature image should build');
+    const topic = await dist('topics/llm-reliability/index.html');
+    const body = topic.slice(topic.indexOf('<body'));
+    expect(body.includes('/content/images/topic-hero.png'), 'the feature image should be on the page');
+    expect(body.includes('三种失败模式'), 'with the alt text it declared');
+    expect((await validate()).code === 0, 'and should pass the gate');
+  });
+
+  await scenario('an archive canonical must stay on this origin', async () => {
+    await loadExample();
+    // Same rule as an entry's (C-07). An archive is where it would be easiest to
+    // get wrong — pointing a topic at the "same" topic on an old domain reads
+    // like tidying up and donates the page.
+    await describeTopic(['canonical: https://elsewhere.example.com/topic/reliability/']);
+    const result = await build();
+    expect(result.code !== 0, 'a cross-origin archive canonical should fail the build');
+    expect(result.out.includes('elsewhere.example.com'), `the error should name the origin:\n${result.out.slice(-500)}`);
+  });
+
+  await scenario('an archive with no metadata keeps the behaviour it had', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the untouched example should build');
+    const before = head(await dist('topics/llm-reliability/index.html'));
+
+    // Describing one term must not move another's head.
+    await edit('site/taxonomy.yaml', [['  from-backend:\n', '  from-backend:\n    metaTitle: 从后端到 Agent 的迁移笔记\n']]);
+    expect((await build()).code === 0, 'a neighbour override should build');
+    const after = head(await dist('topics/llm-reliability/index.html'));
+    expect(before === after, 'an archive with no metadata should produce the same head as before');
+  });
+
+  /* ---------------------------------------------------------------- *
+   * Ghost migration
+   *
+   * `migrate:ghost` had no coverage at all until this group existed, which is
+   * how it came to read one export shape and map another. It is also the one
+   * command in the pipeline whose output nobody reviews line by line — it
+   * writes sixty files at once and prints a success count — so a defect in it
+   * is a defect that reports itself as green. Every scenario here asserts
+   * against the frontmatter it actually wrote, not against what it said.
+   * ---------------------------------------------------------------- */
+  console.log('\nghost migration');
+
+  await scenario("an admin export's tags reach the migrated frontmatter", async () => {
+    await loadExample();
+    await loadGhostExport();
+    const result = await migrateGhost();
+    expect(result.code === 0, `the migration should succeed:\n${result.out.slice(-500)}`);
+
+    const post = await migrated('the-storm-we-caused');
+    expect(post !== undefined, 'the published post should have been written');
+    const tags: string[] = post!.tags ?? [];
+    // Both tags live in posts_tags, which is the only place an admin export
+    // records them. Reading `post.tags` instead finds nothing and reports
+    // success anyway — the site's whole taxonomy, dropped silently.
+    expect(tags.includes('可靠性'), `expected the 可靠性 tag, got ${JSON.stringify(tags)}`);
+    expect(tags.includes('Agents'), `expected the Agents tag, got ${JSON.stringify(tags)}`);
+    // Ghost's internal tags are front-end-hidden by definition; migrating
+    // #featured as a visible keyword publishes an editorial marker as content.
+    expect(!tags.some((tag) => tag.startsWith('#')), `internal tags must not migrate: ${JSON.stringify(tags)}`);
+  });
+
+  await scenario("an admin export's per-entry SEO reaches the migrated frontmatter", async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+
+    const post = await migrated('the-storm-we-caused');
+    expect(post !== undefined, 'the published post should have been written');
+
+    /**
+     * `posts_meta` is the second sibling table, and it is the same trap as
+     * `posts_tags`: the Content API hands these ten fields back flattened onto
+     * the post, an admin export keeps them in a table of their own, and a
+     * migrator written against the first shape reads `undefined` from every
+     * post in the second without failing. Ten hand-written SEO overrides,
+     * dropped, with a success message.
+     */
+    expect(post!.metaTitle === '并发调到 32 的代价', `metaTitle should survive, got ${post!.metaTitle}`);
+    expect(post!.metaDescription?.startsWith('一次看起来该做的并发调参'), 'metaDescription should survive');
+    expect(post!.ogTitle === '并发从 8 提到 32，然后呢', 'ogTitle should survive');
+    expect(post!.ogDescription?.startsWith('吞吐没涨'), 'ogDescription should survive');
+    expect(post!.twitterTitle === '并发调参翻车实录', 'twitterTitle should survive');
+    expect(post!.twitterDescription?.startsWith('8 → 32'), 'twitterDescription should survive');
+    expect(post!.heroImageAlt?.includes('限流计数'), 'feature_image_alt should become heroImageAlt');
+    expect(post!.heroImageCaption?.includes('14:02'), 'feature_image_caption should become heroImageCaption');
+    // Legacy image URLs are rewritten wherever they appear, not only on the hero.
+    expect(post!.ogImage === '/content/images/2026/03/storm-og.png', `ogImage should be local, got ${post!.ogImage}`);
+    expect(post!.featured === true, 'a Ghost featured post should stay pinned');
+
+    // `canonical_url` is on the post itself, and is the one field of the set a
+    // wrong join would have found anyway. It survives while it stays on this
+    // site's own origin.
+    expect(
+      post!.canonical === 'https://agent-notes.example.dev/writing/why-retries-made-it-worse/',
+      `a same-origin canonical should survive, got ${post!.canonical}`,
+    );
+
+    /**
+     * The other direction, where Ghost and this engine genuinely disagree.
+     * Ghost lets a canonical point at another domain — that is how a syndicated
+     * post credits where it first ran. This engine refuses one outright (C-07),
+     * because the same tag on a post that was not syndicated donates its
+     * ranking away. Migrating it would fail the build on a file the migration
+     * wrote; dropping it silently would lose a publishing decision. So it is
+     * reported, with both ways out.
+     */
+    const note = await migrated('an-unverified-note');
+    expect(note?.canonical === undefined, `a cross-origin canonical must not be written, got ${note?.canonical}`);
+    const report = await fs.readFile(path.join(root, 'migration/report.md'), 'utf8');
+    expect(report.includes('https://elsewhere.example.com/the-original/'), `the report should name it:\n${report}`);
+    expect(report.includes('PUBLIC_SITE_URL'), 'and should name the way out that keeps it');
+  });
+
+  await scenario('a guest author survives, and the site owner is not repeated', async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+
+    // posts_authors → users, the third sibling table. Multi-author *management*
+    // is out of scope (ADR 0007) — a byline is not an author archive, and the
+    // name is already rendered.
+    const guest = await migrated('the-storm-we-caused');
+    expect(guest?.author === '一位客座作者', `a guest byline should survive, got ${guest?.author}`);
+
+    // The other post is by the Ghost account that owns the blog — the same
+    // person site.yaml already names. `author` defaults to them and renders
+    // only when stated, so writing it into every file would be 61 lines saying
+    // what site.yaml says once.
+    const own = await migrated('an-unverified-note');
+    expect(own?.author === undefined, `the site owner should not be repeated, got ${own?.author}`);
+  });
+
+  await scenario("Ghost's tag slugs are handed over, not thrown away", async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+
+    /**
+     * Ghost already knows every tag's URL slug and description — that is what
+     * `/tag/{slug}/` was built from. The engine needs exactly those to give a
+     * tag an archive, and a name like 可靠性 cannot produce one on its own. So
+     * the migration writes the block rather than leaving the site to hand-copy
+     * it out of an export it is not supposed to read.
+     */
+    const report = await fs.readFile(path.join(root, 'migration/report.md'), 'utf8');
+    expect(report.includes('可靠性:'), `the report should offer a tags: block:\n${report}`);
+    expect(report.includes('slug: reliability'), "Ghost's own slug is the one its old URLs used");
+    expect(report.includes('超时、限流、降级'), "and Ghost's own tag description");
+    expect(!report.includes('#featured'), 'an internal tag has no archive to declare');
+
+    // Ghost's `tags` table carries the same metadata columns as `posts_meta`,
+    // and the engine's archives now accept every one of them.
+    expect(report.includes('metaTitle: 可靠性工程：超时、限流与降级'), `tag meta_title should be offered:\n${report}`);
+    expect(report.includes('ogTitle: 当模型开始不讲道理'), 'and its social card');
+    // accent_color is the one column left behind, and it says so rather than
+    // vanishing — colour belongs to the theme, not to a five-year-old tag.
+    expect(report.includes('accent_color'), `the report should say why the accent was dropped:\n${report}`);
+    expect(report.includes('heroImage: /content/images/2026/02/tag-reliability.png'), 'and its feature image, rewritten local');
+  });
+
+  await scenario('what Ghost knows about the site is handed over too', async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+
+    /**
+     * `settings` is the sixth table in Ghost's export allowlist, and it holds
+     * the site title, description, navigation, social handles and share image
+     * — all of which have a home in site/site.yaml. Discarding them left the
+     * owner to retype their own nav out of a JSON dump.
+     */
+    const report = await fs.readFile(path.join(root, 'migration/report.md'), 'utf8');
+    expect(report.includes('并发与重试笔记'), `the site title should be offered:\n${report}`);
+    expect(report.includes('一个后端工程师把 LLM'), 'and the description');
+    expect(report.includes('https://x.com/chenchi_dev'), 'a bare Twitter handle should become a URL');
+    expect(report.includes('href: /about/'), "Ghost's navigation should become nav: entries");
+    expect(report.includes('/content/images/2026/01/card.png'), 'and the share image should be rewritten local');
+
+    // Offered, never written: site/ is the intent plane.
+    const siteYaml = await fs.readFile(path.join(root, 'site/site.yaml'), 'utf8');
+    expect(!siteYaml.includes('并发与重试笔记'), 'a migration must not write into site/site.yaml');
+  });
+
+  await scenario('a Ghost page is not migrated as an article', async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+
+    // Ghost keeps pages in the same table as posts, separated only by `type`.
+    // Migrated as a post, About lands in the archive, the feed and the sitemap
+    // as though it were an article.
+    expect((await migrated('about')) === undefined, 'a type: page entry must not become a post');
+    expect((await migrated('half-written')) === undefined, 'a draft must not be migrated');
+
+    const report = await fs.readFile(path.join(root, 'migration/report.md'), 'utf8');
+    expect(/page/i.test(report), `the report should account for the skipped page:\n${report}`);
+  });
+
+  await scenario('which keyword means which category is a site decision', async () => {
+    await loadExample();
+    await loadGhostExport();
+    // The mapping is site intent, so it belongs in site/. Held in
+    // packages/cli/src/category-map.ts it is unreachable from a site running a
+    // published aifb-cli, which gets the fallback category for every post.
+    //
+    // The rule deliberately matches a *tag name* and nothing else: neither the
+    // title nor the slug contains it, so this passes only if the tags were
+    // read.
+    await fs.writeFile(
+      path.join(root, 'site/migration.yaml'),
+      [
+        '# Keyword → category mapping for `pnpm migrate:ghost`.',
+        'fallbackCategory: notes',
+        'rules:',
+        '  - match: [可靠性]',
+        '    category: llm-reliability',
+        '',
+      ].join('\n'),
+    );
+    const result = await migrateGhost();
+    expect(result.code === 0, `the migration should succeed:\n${result.out.slice(-500)}`);
+
+    const mapped = await migrated('the-storm-we-caused');
+    expect(mapped?.category === 'llm-reliability', `expected the mapped category, got ${mapped?.category}`);
+
+    // The other direction: a rule that fires on everything is worth nothing.
+    const unmapped = await migrated('an-unverified-note');
+    expect(unmapped?.category === 'notes', `expected the fallback category, got ${unmapped?.category}`);
+    const report = await fs.readFile(path.join(root, 'migration/report.md'), 'utf8');
+    expect(/unmapped/i.test(report), `the report should name what matched nothing:\n${report}`);
+  });
+
+  await scenario('a migrated site clears the gate', async () => {
+    await loadExample();
+    await loadGhostExport();
+    expect((await migrateGhost()).code === 0, 'the migration should succeed');
+    const built = await build();
+    expect(built.code === 0, `the migrated site should build:\n${built.out.slice(-900)}`);
+    const result = await validate();
+    const report = JSON.parse(await fs.readFile(path.join(root, 'validate-report.json'), 'utf8'));
+    expect(report.errors === 0, `a migration that does not clear the gate has not migrated:\n${result.out.slice(-900)}`);
+  });
+
   console.log('\ndeployment');
 
   await scenario('a redirect to a missing page fails the build', async () => {
@@ -1151,5 +1889,8 @@ try {
 const failed = results.filter((result) => !result.ok);
 console.log('');
 for (const result of failed) console.log(`✗ ${result.name}\n    ${result.detail}`);
-console.log(`${results.length - failed.length}/${results.length} scenario(s) passed.`);
+console.log(
+  `${results.length - failed.length}/${results.length} scenario(s) passed` +
+    (skipped > 0 ? `, ${skipped} skipped by --only ${only}.` : '.'),
+);
 process.exit(failed.length > 0 ? 1 : 0);

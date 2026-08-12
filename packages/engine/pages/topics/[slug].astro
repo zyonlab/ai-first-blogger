@@ -6,6 +6,7 @@ import { seriesListFor, topicsFor, type TopicSlug } from '@config/taxonomy';
 import { getActiveTopics } from '@lib/taxonomy';
 import { entryPath, registryFor } from '@content-types/index';
 import { alternatesForPath } from '@lib/alternates';
+import { assertSameOrigin, seoFromFields } from '@lib/seo';
 import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
 import { messages } from '@i18n/index';
@@ -31,7 +32,10 @@ const topic = topicsFor(locale)[slug]!;
 // Collects from every content type that carries a `category`, not just posts.
 const matches = await findEntries(registryFor(locale), (entry) => entry.data.category === slug, locale);
 const matchedSeries = hasPage('series') ? seriesListFor(locale).filter((item) => item.topic === slug) : [];
-const canonical = topicPath(slug, locale);
+// An archive may override its canonical, and is held to the same rule an
+// entry is (C-07): a cross-origin one hands this page's ranking away, and
+// on an archive that reads like tidying up after a domain move.
+const canonical = assertSameOrigin(topic.canonical, topicPath(slug, locale), 'topics/' + slug);
 
 // A topic page exists in a locale when that locale has an entry in the topic,
 // which is the same question getStaticPaths asked. Asking it again here rather
@@ -70,6 +74,9 @@ const jsonLd = [
   jsonLd={jsonLd}
   breadcrumbs={[{ href: pagePath('topics', locale), label: 'Topics' }, { href: canonical, label: topic.title }]}
   alternates={alternates}
+  seo={seoFromFields(topic)}
+  heroImage={topic.heroImage}
+  heroImageAlt={topic.heroImageAlt}
 >
   {matchedSeries.length > 0 && (
     <section class="section">

@@ -36,7 +36,52 @@ series:
     title: …
     description: …
     topic: vue-react-internals   # must be a key of `topics`
+
+tags:                       # optional, and keyed by the *name* articles write
+  重试:
+    slug: retries           # the URL segment. Required for a name with no ASCII
+    title: 重试与退避        # optional; defaults to the name itself
+    description: …          # optional; the archive's own prose
 ```
+
+### What an archive can say about itself
+
+Topics, series and tags all accept the same optional block. `title` and
+`description` are what the page **displays**; these are what it tells a search
+engine and a share preview, which are allowed to disagree with the headline.
+
+```yaml
+topics:
+  llm-reliability:
+    title: 可靠性与降级        # the <h1>
+    description: …            # the paragraph under it
+    pillar: foundations
+
+    metaTitle: …              # the <title>, when the name is the wrong length
+    metaDescription: …
+    ogTitle: …                # the social card, written for social
+    ogDescription: …
+    ogImage: /og/topic.png
+    twitterTitle: …           # each falls back to its og:* twin
+    twitterDescription: …
+    twitterImage: …
+    heroImage: /hero.png      # an image for the archive itself
+    heroImageAlt: …
+    canonical: …              # must stay on this origin — rule C-07
+    noindex: true             # keep a thin archive out of the index
+```
+
+Every field optional, and an archive that declares none renders byte-for-byte
+what it rendered before. Shared across the three because an archive is an
+archive: they go through the same layout and sit next to each other in the
+sitemap, so a tag that could set its OG image while a topic could not would be
+a difference nobody chose.
+
+Ghost's `tags` table carries this same column set, and `pnpm migrate:ghost`
+hands it over — see [migrating from Ghost](../recipes/migrate-from-ghost.md).
+Its one column with no home here is `accent_color`: colour on this site comes
+from a theme, so that every value is one somebody chose and both modes account
+for it (rules C-12 and C-13, [theming](./theming.md)).
 
 ### Titles and descriptions in another language
 
@@ -70,6 +115,42 @@ A catch-all bucket such as `notes` or `career` is a legitimate category but does
 deserve a topic page competing for the same queries as real topics. `listed: false`
 keeps it valid for content while removing it from `/topics/`, the home page and
 `llms.txt`. `categoryLabel()` still resolves its display name.
+
+## Tags are the taxonomy that comes from the content
+
+Topics and series are planned: a site decides them, and an article picks one of
+each. Tags arrive the other way round — an article writes `tags: [重试, 延迟]`
+and the vocabulary is whatever the articles say it is. Three consequences, and
+all three are why `tags:` in this file looks different from `topics:`.
+
+**The key is a name, not a slug.** `topics.llm-reliability` is a URL; `tags.重试`
+is what somebody typed. So `slug` is a field here rather than the key.
+
+**Declaring a tag is optional.** A name that is already kebab-case gets its
+archive with no entry in this file at all — `agent-runtime` becomes
+`/tags/agent-runtime/`, titled with its own name. That is what makes the
+taxonomy work the moment a Ghost export lands, before anyone has planned it.
+
+**A name with no ASCII in it has no address.** `重试` reduces to an empty slug,
+and rule C-19 requires every URL segment to be lowercase kebab-case, so there is
+no honest URL to invent. Those tags render as plain text and the build names
+each one:
+
+```
+[aifb] 3 tag(s) in zh-CN have no URL and render as plain text: 重试, 延迟, 成本.
+Give each one a slug in site/taxonomy.yaml under `tags:` — e.g. `重试: { slug: retries }`.
+```
+
+A warning rather than a failure, deliberately: failing would stop every existing
+zh-* site from deploying the day it upgrades, for a feature it did not ask for.
+Silence was the old behaviour and is what this change exists to end.
+
+**An archive exists only where there are entries.** `getActiveTags` counts per
+locale, the same way `getActiveTopics` does, so a tag used only in Chinese has no
+English page to advertise over `hreflang`. The `/tags/` index itself is a fixed
+page like `/topics/` — always published while `tags` is in `engine({ pages })`,
+showing its empty state when there is nothing to list. Link it from `nav:` or
+decline it; a published page nothing links to is rule C-04.
 
 ## Derived exports
 

@@ -32,7 +32,18 @@ export default defineContentType({
     tags: z.array(z.string()).default([]),
     series: seriesRef.optional(),
     seriesOrder: z.number().optional(),
-    author: z.string().default(site.author.name),
+    /**
+     * Who wrote this one, when it is not whoever owns the site.
+     *
+     * It used to default to `site.author.name`, which made every entry carry a
+     * value nothing could distinguish from an authored one — so the byline
+     * could not be rendered without printing the site owner's name on all of
+     * them, and the field stayed invisible instead (#23 §5). Optional means an
+     * article with no `author:` has nothing to say about its author, and one
+     * with an `author:` says it on the page. The JSON-LD falls back to the site
+     * owner exactly as before.
+     */
+    author: z.string().optional(),
     youtubeId: z.string().optional(),
     legacySlug: z.string().optional(),
     canonical: z.string().optional(),
@@ -62,7 +73,7 @@ export default defineContentType({
       description: string;
       pubDate: Date;
       updatedDate?: Date;
-      author: string;
+      author?: string;
       tags: string[];
       category: string;
     };
@@ -74,7 +85,7 @@ export default defineContentType({
         description: data.description,
         datePublished: data.pubDate.toISOString(),
         dateModified: (data.updatedDate ?? data.pubDate).toISOString(),
-        author: { '@type': 'Person', name: data.author, url: site.url },
+        author: { '@type': 'Person', name: data.author ?? site.author.name, url: site.url },
         publisher: { '@type': 'Person', name: site.author.name, url: site.url },
         mainEntityOfPage: absoluteUrl(canonical),
         inLanguage: locale,

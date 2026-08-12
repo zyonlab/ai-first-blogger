@@ -51,6 +51,12 @@ type Props = {
   publishedTime?: Date | string;
   modifiedTime?: Date | string;
   tags?: string[];
+  /** Social-card overrides. Each falls back outward; see SEO.astro. */
+  ogTitle?: string;
+  ogDescription?: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
   /** The same page in other languages. See @lib/alternates. */
   alternates?: Alternate[];
 };
@@ -66,6 +72,11 @@ const {
   publishedTime,
   modifiedTime,
   tags,
+  ogTitle,
+  ogDescription,
+  twitterTitle,
+  twitterDescription,
+  twitterImage,
   alternates,
 } = Astro.props;
 
@@ -97,6 +108,11 @@ const defaultJsonLd = [websiteSchema(locale), personSchema(true, locale)];
       publishedTime={publishedTime}
       modifiedTime={modifiedTime}
       tags={tags}
+      ogTitle={ogTitle}
+      ogDescription={ogDescription}
+      twitterTitle={twitterTitle}
+      twitterDescription={twitterDescription}
+      twitterImage={twitterImage}
       alternates={alternates}
     />
     <JsonLd data={jsonLd ?? defaultJsonLd} />

@@ -427,11 +427,62 @@ h4 {
   row-gap: var(--space-2xs);
 }
 
-.tags span {
+/* A chip is a chip whether or not it is a link — the tag taxonomy is opt-out
+   (engine({ pages })), and the two states must not look like two designs. */
+.tags span,
+.tags a {
   padding: 0.3em 0.7em;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--chip-bg);
+}
+
+.tags a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.tags a:hover,
+.tags a:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* How many entries a tag gathers. Quieter than the name above it: it is how you
+   compare two tags, not what either one is called. */
+.tag-card .tag-count {
+  margin: var(--space-3xs) 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The author, when an entry names one. Bolder than the dates beside it because
+   it is the only part of the meta row that changes what the article *is*. */
+.meta .byline {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* The entry's hero image. Full bleed to the article column, never wider — an
+   image that overflows the measure is the one thing on the page that can
+   introduce a horizontal scrollbar on a phone. */
+.hero-image {
+  margin: var(--space-lg) 0 0;
+}
+
+.hero-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+.hero-image figcaption {
+  margin-top: var(--space-2xs);
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .topic-orb,

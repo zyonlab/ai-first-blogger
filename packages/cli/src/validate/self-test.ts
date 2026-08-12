@@ -12,13 +12,14 @@ import { linkRules } from './rules/links';
 import { localeRules } from './rules/locale';
 import { sourceLinkRules } from './rules/links-source';
 import { seoRules } from './rules/seo';
+import { surfaceRules } from './rules/surfaces';
 import { typographyRules } from './rules/typography';
 import { onPageRules } from './rules/onpage';
 import { qualityRules, styleFloorViolations } from './rules/quality';
 import { colourScanTargets, hardcodedColours, missingTokens, themeFiles, themeRules } from './rules/theme';
 import type { BuiltPage, Rule, RuleContext, SourceEntry } from './types';
 
-const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules];
+const rules: Rule[] = [...contentRules, ...seoRules, ...linkRules, ...localeRules, ...themeRules, ...onPageRules, ...typographyRules, ...sourceLinkRules, ...qualityRules, ...surfaceRules];
 const ORIGIN = 'https://example.test';
 
 function entry(overrides: Partial<SourceEntry> = {}): SourceEntry {
@@ -261,6 +262,34 @@ const cases: Record<string, { bad: RuleContext; good: RuleContext }> = {
       ],
     }),
     good: ctx({ pages: translationPair('/writing/post/', 'en') }),
+  },
+  /**
+   * The page shows the title and the description but not the hero image, which
+   * is the exact shape of #22: a field the schema accepts, JSON-LD carries and
+   * no reader ever sees. The `good` case renders it, and nothing else changes.
+   */
+  'C-32': {
+    bad: ctx({
+      entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', heroImage: '/hero.png' } })],
+      pages: [page('/writing/good-post/', { title: 'Good', body: '<p>Good description</p>' })],
+    }),
+    good: ctx({
+      entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', heroImage: '/hero.png' } })],
+      pages: [
+        page('/writing/good-post/', { title: 'Good', body: '<p>Good description</p><img src="/hero.png" alt="the hero">' }),
+      ],
+    }),
+  },
+  'C-33': {
+    bad: ctx({ entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', metaTitle: 'x'.repeat(80) } })] }),
+    good: ctx({ entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', metaTitle: 'A workable meta title' } })] }),
+  },
+  // An empty heroImageAlt is the `good` case on purpose: "decorative, skip it"
+  // is an answer, and a rule that demanded prose would push people to write
+  // "image" into the alt of every decorative graphic.
+  'C-34': {
+    bad: ctx({ entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', heroImage: '/hero.png' } })] }),
+    good: ctx({ entries: [entry({ data: { title: 'Good', description: 'Good description', slug: 'good-post', heroImage: '/hero.png', heroImageAlt: '' } })] }),
   },
   'C-31': {
     bad: ctx({ pages: translationPair('/writing/post/', 'en') }),

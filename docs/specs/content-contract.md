@@ -118,6 +118,9 @@ anyone reading the report.
 | C-29 | Rendered heading order | no level skipped in the built outline | error | `dist/` | `rules/onpage.ts` |
 | C-30 | hreflang is true and reciprocal | every alternate was built, the set includes the page itself, both sides claim each other, `x-default` is in the set | error | `dist/` | `rules/locale.ts` |
 | C-31 | A translation says something different | two languages of one page do not share a `<title>` | warn | `dist/` | `rules/locale.ts` |
+| C-32 | Frontmatter reaches a surface | every value an author wrote is visible on the entry's page | error | `content/` + `dist/` | `rules/surfaces.ts` |
+| C-33 | Meta title fits a search result | `metaTitle` ≤ `seo.titleMaxWidth` display columns | warn | `content/` | `rules/surfaces.ts` |
+| C-34 | Hero image has alt text | `heroImage` is accompanied by `heroImageAlt` | warn | `content/` | `rules/surfaces.ts` |
 
 ### Display columns, not characters
 
@@ -150,6 +153,45 @@ failed a bilingual site on every page it translated. They now skip a reciprocal
 `hreflang` pair, and C-30 proves the pair is real while C-31 reports the one
 whose copy was never translated — so "not a duplicate" cannot quietly become
 "not checked".
+
+### Per-entry presentation and SEO
+
+Every content type accepts these, all optional, each falling back to today's
+behaviour when absent. They are added to every schema in one place
+(`content.config.ts`), for the same reason `locale` is: a field declared per
+type could not be used by a type whose engine module a site cannot edit.
+
+| Field | What it changes | Ghost equivalent |
+|---|---|---|
+| `metaTitle` | the `<title>`, not the on-page headline | `meta_title` |
+| `metaDescription` | the meta description, not the on-page summary | `meta_description` |
+| `ogTitle` / `ogDescription` | the social card | `og_title` / `og_description` |
+| `ogImage` | the card image, which need not be the hero | `og_image` |
+| `twitterTitle` / `twitterDescription` / `twitterImage` | the Twitter card; each falls back to its `og:*` twin | `twitter_*` |
+| `heroImageAlt` | the hero image's alt text — C-34 | `feature_image_alt` |
+| `heroImageCaption` | the caption under it | `feature_image_caption` |
+| `noindex` | keeps this entry out of the index | — |
+| `featured` | pins it to the front of its listings | `featured` |
+| `author` (posts) | a byline, when it is not the site owner | `authors` |
+
+Scope and rationale: [ADR 0007](../adr/0007-ghost-parity-scope.md).
+
+### C-32, and why structured data does not count
+
+C-32 asks one question per value an author wrote: is any trace of it on the
+page? The rendered body only — `<head>`, `<script>` and `<style>` are stripped
+before the check.
+
+That exclusion is the rule. `heroImage` and `posts.author` both reached JSON-LD
+and a meta tag while no template rendered either, so an author filled them in,
+the build went green, and nothing changed. A check that accepted structured data
+would have passed both defects it was written for.
+
+A field that is genuinely addressing rather than content — `slug`, `draft`,
+`canonical`, and the head-only overrides in the table above — is exempt through
+`NOT_CONTENT` in `rules/surfaces.ts`, where each entry carries the reason it is
+not something to render. Adding to that list is a claim, and it should read like
+one; a field that is neither content nor addressing does not belong in a schema.
 
 ### Notes on specific rules
 

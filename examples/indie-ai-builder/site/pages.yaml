@@ -13,6 +13,10 @@ topics:
   title: Topics
   description: 按问题归档，而不是按时间。同一类问题的文章是能连着读的。
 
+tags:
+  title: Tags
+  description: 比主题更细的入口。一篇文章可以带好几个，用来把散落在不同主题下的同类记录串起来。
+
 series:
   title: Series
   description: 需要按顺序读的放这里。每个系列有明确起点，也说清楚读之前该会什么。

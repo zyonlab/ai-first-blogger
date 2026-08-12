@@ -17,6 +17,8 @@ Read the one file your task needs, not the directory. Reading all of it costs
 | Publish in a second language | `locales:` in `site.yaml`, then an `i18n:` block wherever the copy is |
 | Rewrite About / Uses / Newsletter / Work-with-me | `pages.yaml` |
 | Change topics, series or strategy pillars | `taxonomy.yaml` |
+| Give a tag an archive URL, a title or a description | `taxonomy.yaml` (`tags:`) |
+| Map Ghost tags onto this site's topics before migrating | `migration.yaml` |
 | Add or rename a content type, move it in the nav | `content-types.yaml` |
 | Change what counts as publishable | `policy.yaml` |
 | Change how the site sounds | `voice.md` |
@@ -38,10 +40,11 @@ pnpm context status    # validate + analyze + metrics merged into one to-do list
 | File | Holds | Validated by |
 |---|---|---|
 | `site.yaml` | name, url, locale, `locales`, author, social, hero, services, theme choice, static nav | build — key + fix named |
-| `taxonomy.yaml` | pillars, topics, series; the category vocabulary is derived from the topic keys | build — unknown pillar, dangling series, unclaimed pillar |
+| `taxonomy.yaml` | pillars, topics, series, tags; the category vocabulary is derived from the topic keys | build — unknown pillar, dangling series, unclaimed pillar, two tags claiming one URL |
 | `content-types.yaml` | route, label, list copy, surfaces per type | build — must pair with `engine/content-types/<name>.ts` |
 | `policy.yaml` | thresholds and switches; every value has an engine default | overrides reported in the run |
 | `pages.yaml` | copy for the static pages | build |
+| `migration.yaml` | optional — Ghost keyword → category rules for `pnpm migrate:ghost` | the migration refuses to run if a rule names an unknown category |
 | `voice.md` | writing style — frontmatter for `pnpm analyze`, prose for the writing agent | `pnpm analyze` |
 | `themes/*.css` | design token sets | rules C-12, C-13 |
 

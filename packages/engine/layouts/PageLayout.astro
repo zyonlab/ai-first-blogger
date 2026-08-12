@@ -1,8 +1,22 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import Breadcrumbs from '@components/Breadcrumbs.astro';
+import HeroImage from '@components/HeroImage.astro';
 import type { Alternate } from '@lib/alternates';
+import type { PresentationSeo } from '@lib/seo';
 
+/**
+ * `title` and `description` are what the page *displays*.
+ *
+ * They used to be what it told a search engine as well — this layout handed the
+ * same two strings to the `<h1>` and to `<SEO>`, so a topic archive called
+ * 可靠性与降级 had exactly that as its result and no way to say anything else.
+ * That was the one page kind in the engine that could not write its own head,
+ * and it was three page kinds: topics, series and tags all render through here.
+ *
+ * `seo` carries the overrides when they should differ. Absent, this renders
+ * byte-for-byte what it rendered before.
+ */
 type Props = {
   title: string;
   description: string;
@@ -16,17 +30,47 @@ type Props = {
   breadcrumbs?: { href: string; label: string }[];
   /** The same page in other languages. See @lib/alternates. */
   alternates?: Alternate[];
+  /** Head and social-card overrides. See `seoFromFields` in @lib/seo. */
+  seo?: PresentationSeo;
+  /** A hero image for the page, with the alt text it was given. */
+  heroImage?: string;
+  heroImageAlt?: string;
 };
 
-const { title, description, eyebrow, canonical, jsonLd, breadcrumbs, alternates } = Astro.props;
+const {
+  title,
+  description,
+  eyebrow,
+  canonical,
+  jsonLd,
+  breadcrumbs,
+  alternates,
+  seo = {},
+  heroImage,
+  heroImageAlt,
+} = Astro.props;
 ---
 
-<BaseLayout title={title} description={description} canonical={canonical} jsonLd={jsonLd} alternates={alternates}>
+<BaseLayout
+  title={seo.title ?? title}
+  description={seo.description ?? description}
+  canonical={canonical}
+  image={seo.image}
+  noindex={seo.noindex}
+  jsonLd={jsonLd}
+  ogTitle={seo.ogTitle}
+  ogDescription={seo.ogDescription}
+  twitterTitle={seo.twitterTitle}
+  twitterDescription={seo.twitterDescription}
+  twitterImage={seo.twitterImage}
+  alternates={alternates}
+>
   {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
   <section class="page-hero narrow">
     {eyebrow && <p class="eyebrow">{eyebrow}</p>}
     <h1>{title}</h1>
     <p>{description}</p>
+    {heroImage && <HeroImage src={heroImage} alt={heroImageAlt} />}
   </section>
   <slot />
 </BaseLayout>

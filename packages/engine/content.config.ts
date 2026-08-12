@@ -33,6 +33,26 @@ const localeFields = {
   translationKey: z.string().optional(),
 };
 
+/**
+ * Per-entry presentation and SEO, on every type for the same reason `locale`
+ * is. See PRESENTATION_FIELDS in content-types/types.ts for what each one does
+ * and which Ghost field it answers.
+ */
+const presentationFields = {
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  ogTitle: z.string().optional(),
+  ogDescription: z.string().optional(),
+  ogImage: z.string().optional(),
+  twitterTitle: z.string().optional(),
+  twitterDescription: z.string().optional(),
+  twitterImage: z.string().optional(),
+  heroImageAlt: z.string().optional(),
+  heroImageCaption: z.string().optional(),
+  noindex: z.boolean().optional(),
+  featured: z.boolean().default(false),
+};
+
 export const collections = Object.fromEntries(
   registry.map((type) => [
     type.name,
@@ -57,7 +77,7 @@ export const collections = Object.fromEntries(
          */
         generateId: ({ entry }) => entry.replace(/\.mdx?$/, ''),
       }),
-      schema: (type.schema as Extendable).extend(localeFields) as never,
+      schema: (type.schema as Extendable).extend({ ...localeFields, ...presentationFields }) as never,
     }),
   ]),
 );
