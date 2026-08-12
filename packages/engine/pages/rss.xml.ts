@@ -26,7 +26,10 @@ export async function GET(context: APIContext) {
         description: entry.data.description as string,
         pubDate: entry.data.pubDate ?? new Date(0),
         link: entryPath(type, entry.data.slug, locale),
-        categories: [type.listTitle],
+        // The type, then the entry's own tags. A reader filtering a feed by
+        // category was previously offered one value per section — which is the
+        // same information the section link already carried.
+        categories: [type.listTitle, ...(Array.isArray(entry.data.tags) ? (entry.data.tags as string[]) : [])],
       })),
     )
     .sort((a, b) => b.pubDate.valueOf() - a.pubDate.valueOf());

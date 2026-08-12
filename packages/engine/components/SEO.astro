@@ -17,6 +17,19 @@ type Props = {
   modifiedTime?: Date | string;
   tags?: string[];
   /**
+   * What the social card says, when it should not be what the head says.
+   *
+   * Each falls back to the next thing out — twitter to og, og to the page —
+   * so a page that overrides one of the six is not silently blanking the other
+   * five. Absent everywhere is the behaviour every page had before these
+   * existed.
+   */
+  ogTitle?: string;
+  ogDescription?: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
+  /**
    * The same page in other languages, including this one. Empty on a
    * single-language site and on a page that exists in one language only —
    * see @lib/alternates for why nothing here infers the set.
@@ -37,6 +50,11 @@ const {
   publishedTime,
   modifiedTime,
   tags = [],
+  ogTitle,
+  ogDescription,
+  twitterTitle,
+  twitterDescription,
+  twitterImage,
   alternates = [],
 } = Astro.props;
 
@@ -54,6 +72,20 @@ const pageTitle =
     : site.titleTemplate.replace('{title}', title).replace('{name}', site.name);
 const canonicalUrl = absoluteUrl(canonical);
 const imageUrl = absoluteUrl(image);
+
+/**
+ * The card, resolved outward: twitter → og → the page.
+ *
+ * `pageTitle` rather than `title` on purpose — a card that skipped the site's
+ * titleTemplate would be the one string on the page not wearing the site's
+ * name, which is a difference nobody chose and everybody notices in a share
+ * preview.
+ */
+const cardTitle = ogTitle ?? pageTitle;
+const cardDescription = ogDescription ?? description;
+const twitterCardTitle = twitterTitle ?? cardTitle;
+const twitterCardDescription = twitterDescription ?? cardDescription;
+const twitterImageUrl = twitterImage ? absoluteUrl(twitterImage) : imageUrl;
 ---
 
 <title>{pageTitle}</title>
@@ -65,8 +97,8 @@ const imageUrl = absoluteUrl(image);
   <link rel="alternate" hreflang={alternate.locale} href={absoluteUrl(alternate.href)} />
 ))}
 {defaultHref && <link rel="alternate" hreflang="x-default" href={absoluteUrl(defaultHref)} />}
-<meta property="og:title" content={pageTitle} />
-<meta property="og:description" content={description} />
+<meta property="og:title" content={cardTitle} />
+<meta property="og:description" content={cardDescription} />
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:image" content={imageUrl} />
@@ -80,6 +112,6 @@ const imageUrl = absoluteUrl(image);
 {type === 'article' && <meta property="article:author" content={site.author.name} />}
 {type === 'article' && tags.map((tag) => <meta property="article:tag" content={tag} />)}
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content={pageTitle} />
-<meta name="twitter:description" content={description} />
-<meta name="twitter:image" content={imageUrl} />
+<meta name="twitter:title" content={twitterCardTitle} />
+<meta name="twitter:description" content={twitterCardDescription} />
+<meta name="twitter:image" content={twitterImageUrl} />

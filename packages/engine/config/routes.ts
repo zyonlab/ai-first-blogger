@@ -74,7 +74,7 @@
 import { defaultLocale, isMultiLocale, siteLocales } from './site';
 
 /** Fixed pages a site can decline via `engine({ pages })`. Names are the URL segment. */
-export const OPTIONAL_PAGES = ['about', 'newsletter', 'series', 'topics', 'uses', 'work-with-me'] as const;
+export const OPTIONAL_PAGES = ['about', 'newsletter', 'series', 'tags', 'topics', 'uses', 'work-with-me'] as const;
 
 export type OptionalPage = (typeof OPTIONAL_PAGES)[number];
 
@@ -341,4 +341,8 @@ export function topicPath(slug: string, locale: Locale = defaultLocale) {
 
 export function seriesPath(slug: string, locale: Locale = defaultLocale) {
   return withLocale(`/series/${slug}/`, locale);
+}
+
+export function tagPath(slug: string, locale: Locale = defaultLocale) {
+  return withLocale(`/tags/${slug}/`, locale);
 }

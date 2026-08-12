@@ -5,6 +5,7 @@ import { seriesFor } from '@config/taxonomy';
 import { getActiveSeries } from '@lib/taxonomy';
 import { entryPath, registryFor } from '@content-types/index';
 import { alternatesForPath } from '@lib/alternates';
+import { assertSameOrigin, seoFromFields } from '@lib/seo';
 import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
 import { messages } from '@i18n/index';
@@ -27,7 +28,10 @@ const item = seriesFor(locale)[slug]!;
 const matches = (await findEntries(registryFor(locale), (entry) => entry.data.series === slug, locale)).sort(
   (a, b) => ((a.entry.data.seriesOrder as number) ?? 999) - ((b.entry.data.seriesOrder as number) ?? 999),
 );
-const canonical = seriesPath(slug, locale);
+// An archive may override its canonical, and is held to the same rule an
+// entry is (C-07): a cross-origin one hands this page's ranking away, and
+// on an archive that reads like tidying up after a domain move.
+const canonical = assertSameOrigin(item.canonical, seriesPath(slug, locale), 'series/' + slug);
 
 const built = (
   await Promise.all(
@@ -62,6 +66,9 @@ const jsonLd = [
   jsonLd={jsonLd}
   breadcrumbs={[{ href: pagePath('series', locale), label: 'Series' }, { href: canonical, label: item.title }]}
   alternates={alternates}
+  seo={seoFromFields(item)}
+  heroImage={item.heroImage}
+  heroImageAlt={item.heroImageAlt}
 >
   <section data-item-list class="section">
     <div class="section-head">

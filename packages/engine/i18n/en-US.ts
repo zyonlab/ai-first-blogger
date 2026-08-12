@@ -58,6 +58,8 @@ const messages: MessageTable = {
   'taxonomy.relatedContent': 'Related content',
   'taxonomy.readingOrder': 'Suggested reading order',
   'taxonomy.readingOrderHint': 'Read them in this order. More will be added.',
+  'taxonomy.tagEntryCount': '{count} entries',
+  'taxonomy.tagFallbackDescription': 'Everything tagged {tag} — {count} entries from across the site, newest first.',
 
   'home.viewAll': 'All {label}',
   'home.empty': 'Coming soon.',

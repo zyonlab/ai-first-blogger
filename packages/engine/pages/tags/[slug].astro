@@ -1,0 +1,137 @@
+---
+/**
+ * One tag's archive.
+ *
+ * The page `tags:` never had (#23 §1). Until now a tag reached four surfaces —
+ * two rows of `<span>`, an `article:tag` meta and a JSON-LD keyword — and none
+ * of them was a place. A reader who saw a chip tried to click it, and a Ghost
+ * site whose posts each carried two or three tags kept whichever one a
+ * migration rule matched first and lost the rest.
+ *
+ * Built per locale from the entries in that locale, the same way
+ * pages/topics/[slug].astro is and for the same reason: a tag whose three
+ * articles are all in Chinese has nothing to show an English reader, and
+ * building the page anyway would advertise an empty one over hreflang.
+ */
+import PageLayout from '@layouts/PageLayout.astro';
+import { homePath, localeOfPath, localeParam, localeParams, locales, pagePath, tagPath } from '@config/routes';
+import { entryPath, registryFor } from '@content-types/index';
+import { alternatesForPath } from '@lib/alternates';
+import { assertSameOrigin, seoFromFields } from '@lib/seo';
+import { findEntries } from '@lib/content';
+import { cardFor } from '@lib/renderers';
+import { getActiveTags, getUnaddressableTags } from '@lib/taxonomy';
+import { messages } from '@i18n/index';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+export async function getStaticPaths() {
+  /**
+   * Tags in use that have no URL, reported once while the archives are decided.
+   *
+   * Here rather than on the index because the index no longer builds when
+   * nothing is addressable — which is precisely the site this report is for: a
+   * site whose every tag reduces to an empty slug would otherwise hear
+   * nothing at all. Not an error: failing would stop every existing such site
+   * from deploying the day it upgrades, for a feature it did not ask for.
+   * Not silence either — a taxonomy that is quietly half-present is the defect
+   * this whole change came from (#23 §6a).
+   */
+  for (const { locale } of localeParams()) {
+    const missing = await getUnaddressableTags(locale);
+    if (missing.length === 0) continue;
+    console.warn(
+      `[aifb] ${missing.length} tag(s) in ${locale} have no URL and render as plain text: ${missing.join(', ')}. ` +
+        'Give each one a slug in site/taxonomy.yaml under `tags:` — `<the tag name>: { slug: <kebab-case> }` — to publish its archive.',
+    );
+  }
+
+  const perLocale = await Promise.all(
+    localeParams().map(async ({ locale, param }) =>
+      (await getActiveTags(locale)).map((tag) => ({
+        params: { ...localeParam(param), slug: tag.slug },
+        // The name is carried through rather than re-derived: the slug is a
+        // one-way function of it, and two names can be declared onto slugs no
+        // reverse lookup would agree about.
+        props: { name: tag.name },
+      })),
+    ),
+  );
+  return perLocale.flat();
+}
+
+const locale = localeOfPath(Astro.url.pathname);
+const t = messages(locale);
+const slug = Astro.params.slug as string;
+const { name } = Astro.props as { name: string };
+
+const tag = (await getActiveTags(locale)).find((item) => item.slug === slug)!;
+const matches = await findEntries(
+  registryFor(locale),
+  (entry) => Array.isArray(entry.data.tags) && (entry.data.tags as string[]).includes(name),
+  locale,
+);
+// An archive may override its canonical, and is held to the same rule an
+// entry is (C-07): a cross-origin one hands this page's ranking away, and
+// on an archive that reads like tidying up after a domain move.
+const canonical = assertSameOrigin(tag.canonical, tagPath(slug, locale), 'tags/' + slug);
+
+// Which locales built this tag, asked rather than assumed — same argument as
+// the topic archive: an hreflang set, not an hreflang guess.
+const built = (
+  await Promise.all(
+    locales.map(async (tagLocale) =>
+      (await getActiveTags(tagLocale)).some((item) => item.slug === slug) ? tagLocale : undefined,
+    ),
+  )
+).filter((item): item is string => item !== undefined);
+const alternates = alternatesForPath(`/tags/${slug}/`, built);
+
+/**
+ * The archive's own prose, which is also its meta description.
+ *
+ * The fallback says how many entries and in what order rather than merely
+ * restating the tag name, because a listing page whose only text is its own
+ * title is the thin page C-21 and C-06 both exist to report — and a default
+ * that trips two rules on every archive is a default that would get the whole
+ * taxonomy switched off. A site that writes its own `description:` under
+ * `tags:` in site/taxonomy.yaml replaces this entirely.
+ */
+const description = tag.description ?? t('taxonomy.tagFallbackDescription', { tag: tag.title, count: tag.count });
+
+const jsonLd = [
+  collectionPageSchema(tag.title, description, canonical, locale),
+  itemListSchema(
+    `${tag.title} Content`,
+    matches.map(({ type, entry }) => ({
+      name: entry.data.title as string,
+      description: entry.data.description as string,
+      url: entryPath(type, entry.data.slug, locale),
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: homePath(locale) },
+    { name: 'Tags', url: pagePath('tags', locale) },
+    { name: tag.title, url: canonical },
+  ]),
+];
+---
+
+<PageLayout
+  title={tag.title}
+  description={description}
+  eyebrow="Tag"
+  canonical={canonical}
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: pagePath('tags', locale), label: 'Tags' }, { href: canonical, label: tag.title }]}
+  alternates={alternates}
+  seo={seoFromFields(tag)}
+  heroImage={tag.heroImage}
+  heroImageAlt={tag.heroImageAlt}
+>
+  <section data-item-list class="section grid two">
+    {matches.map(({ type, entry }) => {
+      const Card = cardFor(type.card);
+      return <Card entry={entry} type={type} headingLevel={2} />;
+    })}
+  </section>
+</PageLayout>

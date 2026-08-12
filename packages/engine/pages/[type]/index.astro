@@ -13,7 +13,8 @@
  * reader did not ask for.
  */
 import PageLayout from '@layouts/PageLayout.astro';
-import { homePath, localeOfPath, localeParam, localeParams, defaultLocale } from '@config/routes';
+import { hasPage, homePath, localeOfPath, localeParam, localeParams, defaultLocale, tagPath } from '@config/routes';
+import { tagCopyFor, tagSlug } from '@config/taxonomy';
 import { siteFor } from '@config/site';
 import { getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
 import { alternatesForPath } from '@lib/alternates';
@@ -89,7 +90,12 @@ const jsonLd = [
   {tags.length > 0 && (
     <section class="section">
       <div class="tags">
-        {tags.map((tag) => <span>{tag}</span>)}
+        {tags.map((tag) => {
+          // Same rule as the chips on an article: a link only where there is a
+          // page. See ArticleHeader.astro.
+          const slug = hasPage('tags') ? tagSlug(tag) : undefined;
+          return slug ? <a href={tagPath(slug, locale)}>{tagCopyFor(tag, locale).title}</a> : <span>{tag}</span>;
+        })}
       </div>
     </section>
   )}

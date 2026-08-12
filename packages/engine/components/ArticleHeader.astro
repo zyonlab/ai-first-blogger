@@ -1,6 +1,7 @@
 ---
-import { hasPage, localeOfPath, seriesPath } from '@config/routes';
-import { seriesFor, topicsFor } from '@config/taxonomy';
+import HeroImage from '@components/HeroImage.astro';
+import { hasPage, localeOfPath, seriesPath, tagPath } from '@config/routes';
+import { seriesFor, tagCopyFor, tagSlug, topicsFor } from '@config/taxonomy';
 import { messages } from '@i18n/index';
 import { formatDate } from '@lib/dates';
 
@@ -13,9 +14,33 @@ type Props = {
   tags: string[];
   seriesSlug?: string;
   readingMinutes?: number;
+  /**
+   * Who wrote it. `posts.author` has always been accepted, has always defaulted
+   * to the site owner, and until now reached only the Article JSON-LD — so a
+   * guest post said the site owner's name to every reader and the guest's name
+   * to Google (#23 §5). Shown only when it is not the site's own author, since
+   * a byline that repeats the site name on every article is noise.
+   */
+  author?: string;
+  heroImage?: string;
+  heroImageAlt?: string;
+  heroImageCaption?: string;
 };
 
-const { title, description, pubDate, updatedDate, category, tags, seriesSlug, readingMinutes } = Astro.props;
+const {
+  title,
+  description,
+  pubDate,
+  updatedDate,
+  category,
+  tags,
+  seriesSlug,
+  readingMinutes,
+  author,
+  heroImage,
+  heroImageAlt,
+  heroImageCaption,
+} = Astro.props;
 const locale = localeOfPath(Astro.url.pathname);
 const t = messages(locale);
 const topic = topicsFor(locale)[category];
@@ -28,6 +53,7 @@ const seriesItem = seriesSlug ? seriesFor(locale)[seriesSlug] : undefined;
     <h1>{title}</h1>
     <p>{description}</p>
     <div class="meta">
+      {author && <span class="byline">{author}</span>}
       <time datetime={pubDate.toISOString()}>{t('article.publishedOn', { date: formatDate(pubDate, locale) })}</time>
       {updatedDate && <time datetime={updatedDate.toISOString()}>{t('article.updatedOn', { date: formatDate(updatedDate, locale) })}</time>}
       {readingMinutes && <span>{t('article.readingTime', { minutes: readingMinutes })}</span>}
@@ -37,8 +63,19 @@ const seriesItem = seriesSlug ? seriesFor(locale)[seriesSlug] : undefined;
     </div>
     {tags.length > 0 && (
       <div class="tags">
-        {tags.map((tag) => <span>{tag}</span>)}
+        {tags.map((tag) => {
+          /**
+           * A chip is a link when there is somewhere to go, and plain text
+           * otherwise. Two things can remove the destination and both are
+           * legitimate: the site declined the `tags` page in `engine({ pages })`,
+           * or the tag's name produces no URL and nobody declared one. Rendering
+           * a link either way is how a taxonomy ships 404s.
+           */
+          const slug = hasPage('tags') ? tagSlug(tag) : undefined;
+          return slug ? <a href={tagPath(slug, locale)}>{tagCopyFor(tag, locale).title}</a> : <span>{tag}</span>;
+        })}
       </div>
     )}
   </div>
+  {heroImage && <HeroImage src={heroImage} alt={heroImageAlt} caption={heroImageCaption} />}
 </header>

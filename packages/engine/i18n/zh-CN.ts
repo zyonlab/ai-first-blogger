@@ -60,6 +60,8 @@ export default {
   'taxonomy.relatedContent': '相关内容',
   'taxonomy.readingOrder': '推荐阅读顺序',
   'taxonomy.readingOrderHint': '建议按这个顺序读。没写完的会继续补。',
+  'taxonomy.tagEntryCount': '{count} 篇',
+  'taxonomy.tagFallbackDescription': '站内所有标记为「{tag}」的内容，共 {count} 篇，按时间倒序排列。',
 
   'home.viewAll': '查看全部{label}',
   'home.empty': '内容即将上线。',

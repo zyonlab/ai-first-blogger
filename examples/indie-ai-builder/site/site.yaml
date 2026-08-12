@@ -72,5 +72,6 @@ services:
 nav:
   - { href: /series/, label: series, order: 20 }
   - { href: /topics/, label: topics, order: 30 }
+  - { href: /tags/, label: Tags, order: 35 }
   - { href: /about/, label: about, order: 80 }
   - { href: /work-with-me/, label: work with me, order: 90 }

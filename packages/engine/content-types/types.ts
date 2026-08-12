@@ -18,6 +18,7 @@
  * Adding a content type must not require editing any of those files.
  * See docs/adr/0001-content-type-registry.md and docs/adr/0002-three-planes.md.
  */
+import { seoFromFields } from '../lib/seo';
 import type { ContentTypeSurfaces, SiteContentType } from '../config/content-types';
 import type { ListLayout } from '../config/content-types';
 
@@ -31,6 +32,22 @@ export type SeoHints = {
   tags?: string[];
   /** Override the canonical path. Must stay on the site origin (rule C-07). */
   canonical?: string;
+  /**
+   * The head's own title and description, when the entry says they should
+   * differ from what the page displays. A `<title>` is a search result and an
+   * `<h1>` is a headline; they are written for different readers and are
+   * allowed to disagree. Absent means the on-page values, as before.
+   */
+  title?: string;
+  description?: string;
+  /** The social card, when it should say something other than the head. */
+  ogTitle?: string;
+  ogDescription?: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
+  /** Keep this one entry out of the index without touching robots.txt. */
+  noindex?: boolean;
 };
 
 /**
@@ -98,6 +115,56 @@ export type ContentTypeDef = EngineContentType & SiteContentType;
  *                   article deserves an English slug.
  */
 export const LOCALE_FIELDS = ['locale', 'translationKey'] as const;
+
+/**
+ * Per-entry presentation and SEO, added to every content type's schema in
+ * `content.config.ts` for the same reason `locale` is: a field declared per
+ * type cannot be used by a type whose engine module a site cannot edit, and
+ * every type added later would be the one type that could not override its own
+ * metadata.
+ *
+ * All optional, all falling back to today's behaviour when absent. That is not
+ * politeness — an existing site upgrades without touching a single article, and
+ * a field nobody writes changes no byte of output.
+ *
+ *   metaTitle          the <title>, when the headline is the wrong length or
+ *                      the wrong words for a search result
+ *   metaDescription    the meta description, when the summary is
+ *   ogTitle            the social card, written for social
+ *   ogDescription
+ *   ogImage            the card image, which need not be the hero
+ *   twitterTitle       Ghost keeps a separate Twitter card; so do we, and each
+ *   twitterDescription   one falls back to its og:* twin rather than to nothing
+ *   twitterImage
+ *   heroImageAlt       what the hero image says. Absent is an accessibility
+ *                      defect before it is an SEO one — rule C-34
+ *   heroImageCaption   the caption under it
+ *   noindex            keep this entry out of the index
+ *   featured           pin it to the front of its listings
+ *
+ * Ghost's equivalents map one-to-one, which is the point: `meta_title`,
+ * `meta_description`, `og_*`, `twitter_*`, `feature_image_alt`,
+ * `feature_image_caption`, `featured`. See ADR 0007.
+ */
+export const PRESENTATION_FIELDS = [
+  'metaTitle',
+  'metaDescription',
+  'ogTitle',
+  'ogDescription',
+  'ogImage',
+  'twitterTitle',
+  'twitterDescription',
+  'twitterImage',
+  'heroImageAlt',
+  'heroImageCaption',
+  'noindex',
+  'featured',
+] as const;
+
+/** The head/card overrides an entry declares, as the layout wants them. */
+export function seoFromEntry(entry: ContentEntry): SeoHints {
+  return seoFromFields(entry.data);
+}
 
 /** Narrow a def without losing the literal `name`. */
 export function defineContentType<T extends EngineContentType>(def: T): T {

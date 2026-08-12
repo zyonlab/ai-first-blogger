@@ -13,6 +13,10 @@ topics:
   title: Topics
   description: TODO /topics/ 页的说明：你按什么归档，为什么这样分。
 
+tags:
+  title: Tags
+  description: TODO /tags/ 页的说明：标签比主题更细，说明读者能用它做什么。
+
 series:
   title: Series
   description: TODO /series/ 页的说明。

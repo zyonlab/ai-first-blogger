@@ -1,0 +1,31 @@
+---
+/**
+ * The entry's hero image, on the page.
+ *
+ * It used to be nowhere. `heroImage` was in two schemas, reached `og:image` and
+ * the Article JSON-LD, and no template rendered it (#22) — so an author set it,
+ * the build went green, and the only place the image appeared was a share
+ * preview they were not looking at.
+ *
+ * One component rather than markup inside each detail, because the field is
+ * shared by every content type. A hero rendered in three of four details is the
+ * same defect one type at a time.
+ *
+ * `alt` is required by the props and may be empty. An empty alt is a real
+ * answer — it means decorative, and screen readers skip it — but it has to be
+ * given rather than defaulted, which is what rule C-34 checks in the
+ * frontmatter.
+ */
+type Props = {
+  src: string;
+  alt?: string;
+  caption?: string;
+};
+
+const { src, alt, caption } = Astro.props;
+---
+
+<figure class="hero-image">
+  <img src={src} alt={alt ?? ''} loading="eager" decoding="async" />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

@@ -1,0 +1,78 @@
+---
+/**
+ * The tag index.
+ *
+ * Modelled on pages/topics/index.astro, with one difference that is the whole
+ * character of the taxonomy: topics come from `site/taxonomy.yaml` in the order
+ * a site chose, and tags come from the articles. So this page is sorted by how
+ * much each tag actually organises — `getActiveTags` counts, then sorts — and a
+ * tag with no entries is not here at all.
+ */
+import TagCard from '@components/TagCard.astro';
+import PageLayout from '@layouts/PageLayout.astro';
+import { requirePageCopy } from '@config/pages';
+import { siteFor } from '@config/site';
+import { homePath, localeOfPath, localeStaticPaths, locales, pagePath, tagPath } from '@config/routes';
+import { alternatesForPath } from '@lib/alternates';
+import { getActiveTags } from '@lib/taxonomy';
+import { messages } from '@i18n/index';
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
+
+/**
+ * One per locale, like every other fixed page.
+ *
+ * Gating on "does this locale have tags" was tried and does not work: on a
+ * single-language site the route has no `[...locale]` segment, so it is not a
+ * dynamic route and Astro never calls `getStaticPaths` at all — the page built
+ * regardless, and the gate reported it as an orphan on exactly the sites the
+ * gating was meant to spare.
+ *
+ * So this page behaves like `/topics/`: always published while `tags` is in the
+ * whitelist, rendering its empty state when there is nothing to list, and
+ * linked from the site's own nav. A site that does not want it says so once —
+ * `engine({ pages })` — which is the same sentence it would use to decline any
+ * other fixed page, and is a decision rather than a side effect of what its
+ * articles happen to be tagged with.
+ */
+export const getStaticPaths = localeStaticPaths;
+
+const locale = localeOfPath(Astro.url.pathname);
+const site = siteFor(locale);
+const t = messages(locale);
+const { title, description } = requirePageCopy('tags', locale);
+const canonical = pagePath('tags', locale);
+const tagList = await getActiveTags(locale);
+const alternates = alternatesForPath('/tags/', locales);
+
+
+const jsonLd = [
+  collectionPageSchema(title, description, canonical, locale),
+  itemListSchema(
+    `${site.name} Tags`,
+    tagList.map((tag) => ({
+      name: tag.title,
+      description: tag.description ?? t('taxonomy.tagEntryCount', { count: tag.count }),
+      url: tagPath(tag.slug, locale),
+    })),
+  ),
+  breadcrumbSchema([
+    { name: 'Home', url: homePath(locale) },
+    { name: title, url: canonical },
+  ]),
+];
+---
+
+<PageLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  jsonLd={jsonLd}
+  breadcrumbs={[{ href: canonical, label: title }]}
+  alternates={alternates}
+>
+  <section data-item-list class="section grid">
+    {tagList.length > 0
+      ? tagList.map((tag) => <TagCard tag={tag} headingLevel={2} />)
+      : <p>{t('taxonomy.empty')}</p>}
+  </section>
+</PageLayout>
