@@ -595,6 +595,61 @@ try {
     expect((await dist(`${MOUNT}/index.html`)).includes(`href="${MOUNT}/topics/"`), 'a nav entry should be moved with the engine');
   });
 
+  /**
+   * The three URL-shaped outputs that are invisible from the rendered page.
+   * Canonical and og:url were mount-aware from the start; these were missed,
+   * and nothing catches a wrong URL inside a JSON-LD block by looking at it.
+   */
+  await scenario('what the engine says it is carries the mount too', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+
+    const home = await dist(`${MOUNT}/index.html`);
+    const blocks = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].flatMap((match) => {
+      const parsed = JSON.parse(match[1]!);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    });
+
+    const website = blocks.find((block: { '@type'?: string }) => block['@type'] === 'WebSite') as
+      | { url: string; publisher?: { url?: string } }
+      | undefined;
+    expect(website !== undefined, 'the home page should carry a WebSite block');
+    expect(
+      new URL(website!.url).pathname.startsWith(`${MOUNT}/`),
+      `WebSite.url claims the origin root, which the host already owns: ${website!.url}`,
+    );
+    expect(
+      website!.publisher?.url !== undefined && new URL(website!.publisher!.url!).pathname.startsWith(`${MOUNT}/`),
+      `Person.url points outside the mount: ${website!.publisher?.url}`,
+    );
+
+    const llms = await dist(`${MOUNT}/llms.txt`);
+    const declared = /^URL: (.+)$/m.exec(llms)?.[1] ?? '';
+    expect(
+      new URL(declared).pathname.startsWith(`${MOUNT}/`),
+      `llms.txt announces itself as the description of the whole origin: ${declared}`,
+    );
+  });
+
+  /**
+   * A favicon is one per host. Mounting presupposes a host that already exists,
+   * and one that already exists already declared its own — often as `.ico`, so
+   * the engine's `/favicon.svg` is a link to a file the origin does not serve.
+   */
+  await scenario('a mounted engine does not claim the origin favicon', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+    const mounted = await dist(`${MOUNT}/index.html`);
+    expect(!mounted.includes('rel="icon"'), 'a mounted page should leave the favicon to the host');
+  });
+
+  await scenario('at the root the engine still ships its own favicon', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'an unmounted build should succeed');
+    const rooted = await dist('index.html');
+    expect(rooted.includes('href="/favicon.svg"'), 'an unmounted site owns the origin, and its icon');
+  });
+
   await scenario('the gate measures a mounted build from the mount', async () => {
     await mountExample();
     expect((await build()).code === 0, 'a mounted build should succeed');

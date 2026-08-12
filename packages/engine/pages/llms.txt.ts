@@ -3,6 +3,7 @@ import { siteFor } from '@config/site';
 import { getActiveSeries, getActiveTags, getActiveTopics } from '@lib/taxonomy';
 import { entryPath, listPath, llmsTypesFor } from '@content-types/index';
 import { getEntries } from '@lib/content';
+import { engineRootUrl } from '@lib/seo';
 import type { APIRoute } from 'astro';
 
 /**
@@ -52,7 +53,7 @@ export const GET: APIRoute = async (context) => {
     site.description,
     '',
     `Author: ${site.author.name} — ${site.author.title}`,
-    `URL: ${site.url}`,
+    `URL: ${engineRootUrl()}`,
     '',
     '## Focus',
     ...site.brand.keywords.map((item) => `- ${item}`),

@@ -1,6 +1,6 @@
 import { defaultLocale, type Locale } from '@config/routes';
 import { siteFor } from '@config/site';
-import { absoluteUrl } from './seo';
+import { absoluteUrl, engineRootUrl } from './seo';
 
 type ListItem = {
   name: string;
@@ -22,10 +22,11 @@ export function websiteSchema(locale: Locale = defaultLocale) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: site.name,
-    // The origin, not the locale's root. It is the identity of the site rather
-    // than the address of one of its translations, and every version of this
-    // engine has published it that way — including under a mount.
-    url: site.url,
+    // The engine's root, not the locale's. It is the identity of the site
+    // rather than the address of one of its translations — but it does carry
+    // the mount, because a mounted engine *is* a section of the host and
+    // claiming the origin would collide with the host's own WebSite entity.
+    url: engineRootUrl(),
     description: site.description,
     inLanguage: locale,
     publisher: personSchema(false, locale),
@@ -38,7 +39,7 @@ export function personSchema(withContext = true, locale: Locale = defaultLocale)
     ...(withContext ? { '@context': 'https://schema.org' } : {}),
     '@type': 'Person',
     name: site.author.name,
-    url: site.url,
+    url: engineRootUrl(),
     jobTitle: site.author.title,
     description: site.author.bio,
     sameAs: Object.values(site.social),
@@ -90,7 +91,7 @@ export function collectionPageSchema(
     isPartOf: {
       '@type': 'WebSite',
       name: site.name,
-      url: site.url,
+      url: engineRootUrl(),
     },
   };
 }

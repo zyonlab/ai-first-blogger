@@ -1,3 +1,4 @@
+import { mount } from '@config/routes';
 import { site } from '@config/site';
 
 /**
@@ -52,6 +53,29 @@ export function seoFromFields(data: Record<string, any> = {}): PresentationSeo {
 export function absoluteUrl(path = '/') {
   if (path.startsWith('http')) return path;
   return new URL(path, site.url).toString();
+}
+
+/**
+ * The engine's own root, absolute. The origin when the engine owns it, the
+ * origin plus the mount when it does not.
+ *
+ * This is the mirror image of ROOT_ONLY_PAGES. ADR 0005 settled which things
+ * belong to the *origin* and must not move under a mount — `404`, `robots.txt`,
+ * the favicon. These are the opposite case: things that describe the engine,
+ * and therefore have to carry the prefix. A mounted engine that calls itself
+ * `https://example.com` puts a second `WebSite` entity on an origin that
+ * already has one, both claiming the same URL and neither saying which is
+ * authoritative.
+ *
+ * Deliberately not locale-aware: this is the identity of the site, not the
+ * address of one of its translations. See `websiteSchema`.
+ *
+ * At the root this returns `site.url` untouched rather than the equivalent
+ * `absoluteUrl('/')` — the unmounted output stays byte-identical instead of
+ * merely equivalent, which is the same rule `normaliseMount` follows.
+ */
+export function engineRootUrl() {
+  return mount === '' ? site.url : absoluteUrl(`${mount}/`);
 }
 
 /**
