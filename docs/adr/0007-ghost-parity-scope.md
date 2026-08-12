@@ -83,17 +83,17 @@ it is pressure.
 
 Two in-scope items are deferred with their own reasons, not left ambiguous:
 
-- **A configurable URL space.** Ghost puts permalinks, taxonomy prefixes and
-  arbitrary routes in `routes.yaml`; the engine hardcodes `/topics/{slug}/`,
-  `/series/{slug}/` and requires a kebab-case `route` segment per content type,
-  so Ghost's default `/{slug}/` permalink cannot be expressed and a migrating
-  site cannot keep its URLs. This overlaps issue #21 and is URL-space
-  architecture — it belongs in its own ADR.
-- **Declarable standalone pages.** A Ghost page is a post at `/{slug}/` that
-  stays out of collections and feeds. `OPTIONAL_PAGES` is a fixed list of six and
-  `site/templates/pages/` can only *override* a route the engine already injects,
-  so there is no way to declare a new one. The whitelist logic is right; what is
-  missing is a way to add to it. Also its own ADR.
+- **A configurable URL space** — issue #26. Ghost puts permalinks, taxonomy
+  prefixes and arbitrary routes in `routes.yaml`; the engine hardcodes
+  `/topics/{slug}/`, `/series/{slug}/`, `/tags/{slug}/` and requires a
+  kebab-case `route` segment per content type, so Ghost's default `/{slug}/`
+  permalink cannot be expressed and a migrating site cannot keep its URLs. This
+  overlaps issue #21 and is URL-space architecture — it belongs in its own ADR.
+- **Declarable standalone pages** — issue #27. A Ghost page is a post at
+  `/{slug}/` that stays out of collections and feeds. `OPTIONAL_PAGES` is a
+  fixed list and `site/templates/pages/` can only *override* a route the engine
+  already injects, so there is no way to declare a new one. The whitelist logic
+  is right; what is missing is a way to add to it. Also its own ADR.
 
 Until those land, `migrate:ghost` skips `type: 'page'` entries and reports the
 count rather than importing them as articles — a page silently filed as a post
