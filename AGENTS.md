@@ -151,8 +151,10 @@ pnpm context status   # the three reports above merged, with staleness flagged
 <!-- repo-only:start -->
 ## Releasing the packages
 - The three packages share one version; `create-aifb` pins the others at its own.
-- Bump all three, run `pnpm release:check`, then tag `v<version>`. The tag
-  publishes; a push to main does not.
+- Bump all three, run `pnpm release:check`, then tag `v<version>`. A push to
+  main never publishes. **Nor does the tag right now** — `NPM_TOKEN` is not set,
+  so the workflow passes every check and then fails at `Publish`. Read the
+  contract before releasing.
 - Never publish from a working tree the release check rejects. Contract:
   `docs/specs/releasing.md`.
 <!-- repo-only:end -->

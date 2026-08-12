@@ -45,6 +45,26 @@ git tag v0.2.0 && git push origin v0.2.0
 The tag triggers `.github/workflows/release.yml`, which runs the framework's own
 tests, re-runs the release check against the tag, then publishes.
 
+> **The tag path does not work today.** `NPM_TOKEN` is not set on this
+> repository — `gh secret list` shows only the two Cloudflare secrets. Tagging
+> runs the whole workflow, passes every check, and then fails at `Publish` with
+> an auth error, leaving a tag behind that published nothing.
+>
+> Until the secret exists, release from a machine that is logged in:
+>
+> ```bash
+> npm whoami                 # must be the account that owns the three packages
+> pnpm release:check         # same gate CI would run
+> pnpm build:packages
+> pnpm publish -r --access public
+> git tag v0.5.0 && git push origin v0.5.0   # after, as the record
+> ```
+>
+> The local path loses `--provenance`, which is the signed record of the commit
+> and workflow that built each package. That is a real difference, not a
+> formality: it is the thing that lets someone verify a tarball on npm came from
+> this repository. Adding the secret and re-running the tag is the better fix.
+
 `pnpm publish -r` walks the workspace in dependency order and skips any package
 whose version is already on npm — so re-running a failed release is safe, and
 publishing order is not something anyone has to remember.
@@ -65,7 +85,13 @@ publishing order is not something anyone has to remember.
 
 CI needs `NPM_TOKEN` as a repository secret — a **granular access token with
 "bypass 2FA" enabled**, because the account requires 2FA for publishing and a
-workflow cannot answer an OTP prompt.
+workflow cannot answer an OTP prompt. **It is not currently set**, which is why
+the box above exists; check with `gh secret list` before trusting a tag to
+publish anything.
+
+A failed publish is recoverable and does not need a new version: `pnpm publish
+-r` skips any package already on npm, so adding the secret and re-running the
+workflow on the same tag finishes the job.
 
 Locally, the token belongs in `~/.npmrc`, never in the repository. `.npmrc` is
 in `.gitignore` so a project-local one cannot be committed by accident.
@@ -76,9 +102,10 @@ attaches a signed record of the commit and workflow that built each package.
 ## Versioning
 
 `0.x` while the known limitations stand — a packaged site cannot add a content
-type, adding a locale still means touching the engine, and themes are copied
-rather than depended on. Those are interface-shaped gaps, and `0.x` says the
-interface can still move.
+type (#24), cannot declare a standalone page (#27), cannot move a taxonomy
+prefix (#26), adding a locale still means touching the engine, and themes are
+copied rather than depended on. Those are interface-shaped gaps, and `0.x` says
+the interface can still move.
 
 ## Related
 
