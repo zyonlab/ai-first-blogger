@@ -77,6 +77,8 @@ publishing order is not something anyone has to remember.
 | Nothing is `private` | a private package fails at the registry, after the tag exists |
 | `author` / `license` / `repository` / `files` present | `files` especially — without it, everything in the directory ships |
 | No placeholders | `Your Name`, `TODO`, `REPLACE_ME`, `example.com`. A previous package by this author shipped `author: "Your Name"` to npm; this product refuses to publish a site full of placeholders and should hold itself to the same rule |
+| Every bare import is declared | reads the specifiers out of each package's own source and fails on one the manifest does not account for. `aifb-engine` shipped 0.4.0 importing `@astrojs/rss` and `mermaid` while declaring neither: this repository builds anyway, because the root installs both, so nothing else can catch it |
+| A locale table is in its locale | flags a value in a non-Latin message table containing no character from that script. `zh-CN.ts` shipped ten English values — the keys were all present, which is the only thing the type system sees |
 | What is already on npm | reports which versions the publish step would actually create |
 | Changes since the last tag | `packages/` changed but the version did not → the release would ship nothing while looking successful |
 | The tag matches | only when a tag argument is passed, i.e. in CI |

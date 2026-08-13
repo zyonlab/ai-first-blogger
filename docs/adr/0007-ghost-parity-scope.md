@@ -95,9 +95,27 @@ Two in-scope items are deferred with their own reasons, not left ambiguous:
   already injects, so there is no way to declare a new one. The whitelist logic
   is right; what is missing is a way to add to it. Also its own ADR.
 
-Until those land, `migrate:ghost` skips `type: 'page'` entries and reports the
+### Both landed in 0.6.0, partly
+
+- **The URL space** — `routes:` in `site/taxonomy.yaml` moves the three archive
+  prefixes, so `/tag/{slug}/` is expressible and a Ghost tag URL survives the
+  migration intact. `routeAtRoot` lets the single content type on a one-type
+  site serve entries at `/{slug}/`, which is Ghost's default permalink and
+  issue #21. **Not** settled: date-based permalink templates
+  (`/{year}/{month}/{slug}/`), which parity does not need.
+- **Standalone pages** — `own:` in `site/pages.yaml` declares one, rendered by
+  `site/templates/pages/<name>.astro`. The whitelist logic is unchanged, which
+  was the point: declaring creates the URL, a file alone still does not, and a
+  declaration with no template fails the build. **Not** settled: the
+  content-entry shape (`content/pages/*.mdx`), which is closer to what a Ghost
+  page actually is and needs its own answers about surfaces and which gate
+  rules apply to a page that is not an article.
+
+`migrate:ghost` therefore still skips `type: 'page'` entries and reports the
 count rather than importing them as articles — a page silently filed as a post
-appears in the archive, the feed and the sitemap as one.
+appears in the archive, the feed and the sitemap as one. What changed is the
+advice it prints: each skipped page can now be declared under `own:` at the URL
+Ghost served it at, instead of waiting for a feature that had not shipped.
 
 ## Rejected alternatives
 

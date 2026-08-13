@@ -88,18 +88,23 @@ examples/   参考站点（构建时不读取）
 
 | 文件 | 装什么 |
 |---|---|
-| `site/site.yaml` | 品牌、作者、社交、hero、主题选择、`titleTemplate`、静态导航 |
-| `site/taxonomy.yaml` | **pillars + topics + series + tags 四合一**；category 从 topic key 派生 |
+| `site/site.yaml` | 品牌、作者、社交、hero、`home`（首页分区顺序 / 面板开关）、主题选择、`titleTemplate`、静态导航 |
+| `site/taxonomy.yaml` | **pillars + topics + series + tags 四合一**；category 从 topic key 派生；`routes:` 改归档前缀 |
 | `site/content-types.yaml` | 每个类型的 route、标签、surfaces |
-| `site/pages.yaml` | 静态页文案 |
+| `site/pages.yaml` | 静态页文案，以及 `own:`——本站自己加的页面 |
 | `site/redirects.yaml` | URL 历史 |
 
 **pillar 没有 topic 认领 = 构建失败**。策略和站点是同一份文件，漂不开——这正是被它取代的
 `content-plans/site-plan.yaml` 的失败模式：写了没人读。
 
-**内容类型是两半**：yaml 管路由/标签/surfaces，`packages/engine/content-types/` 管
-schema/JSON-LD/组件。语义是**菜单**：引擎提供四种，yaml 决定发布哪几种。没被声明的
-不发布（路由、导航、llms.txt 分区全部消失）；声明了引擎没有的仍然报错并列出可选项。
+**内容类型是两半**：yaml 管路由/标签/surfaces，`.ts` 管 schema/JSON-LD/组件。语义是
+**菜单**：引擎提供四种，yaml 决定发布哪几种。没被声明的不发布（路由、导航、llms.txt
+分区全部消失）。
+
+0.6.0 起**菜单可以加菜**：`site/templates/content-types/<name>.ts` 会被自动并入，
+同名文件覆盖引擎自带的那一份。两半仍然都要有——放文件不等于发布，`site/content-types.yaml`
+才决定发不发；声明了哪儿都没有的类型仍然报错，并说明站点自己的那一份该放哪。
+决策：ADR 0001 的修订章节。
 
 `titleTemplate` 决定页面标题怎么拼。站名长的站可以设成 `'{title}'` —— 后缀吃掉的是
 SERP 的 60 列预算，这是站点的选择，不是布局的。
@@ -115,10 +120,16 @@ site/templates/components/Footer.astro    覆盖引擎的同名组件
 site/templates/cards/ArticleCard.astro    覆盖，或新增一种卡片
 site/templates/layouts/BaseLayout.astro   连布局一起接管
 site/templates/pages/index.astro          整页替换，URL 不变
+site/templates/pages/privacy.astro        本站自己的页面（先在 pages.yaml 的 own: 里声明）
+site/templates/content-types/notes.ts     新增，或覆盖引擎自带的内容类型
 ```
 
-存在即生效，不用注册。这是 WordPress/Ghost 子主题那套，但有一个区别：**闸门不管
-markup 是谁写的**。实测覆盖一个跳过 `BaseLayout` 的首页 → C-01/C-07/C-16 三条同时报错、
+存在即生效，不用注册——**除了最后两行**：URL 要先被声明才存在。放一个
+`pages/privacy.astro` 而不在 `own:` 里声明它，什么都不会发生；反过来声明了却没有文件，
+构建直接失败并报出它要哪个文件。这是 `engine({ pages })` 白名单的同一条规则：一个
+覆盖能悄悄撤销的白名单不算白名单。
+
+这是 WordPress/Ghost 子主题那套，但有一个区别：**闸门不管 markup 是谁写的**。实测覆盖一个跳过 `BaseLayout` 的首页 → C-01/C-07/C-16 三条同时报错、
 构建阻断。**随便改，但改坏了发不出去**——这才是敢把覆盖层交给用户的原因。
 契约：`docs/specs/templates.md`。
 
@@ -268,7 +279,6 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 | 项 | 状态 | 说明 |
 |---|---|---|
 | **`aifb` 这个包名用不了** | 已绕开 | npm 防仿冒过滤判定它与 `ai`/`idb`/`diff` 太像。包名是 `aifb-cli`，**命令仍是 `aifb`** |
-| **打包后的站点无法新增内容类型** | 架构限制 | 能从菜单点，加不了新菜——引擎那一半没地方放。`engine({ contentTypes: [...] })` 是答案，未做 |
 | **加语言仍要动引擎** | 有意为之，可重议 | 随框架发布的翻译属于产品，只有「选哪个语言」是意图（ADR 0002） |
 | **主题不随版本升级** | 「主题归站点」的代价 | 脚手架复制而非依赖 |
 | 内容 AST 校验 | 未做 | C-02/C-09 用正则读 MDX，JSX 形式的链接与标题不计入 |
@@ -276,9 +286,9 @@ T3 闸门覆盖 · 内链密度 · 孤儿页 · GEO 覆盖。零内容时打 `�
 | 单篇 OG 图 | 可声明，不生成 | `ogImage` 每篇可写；自动生成仍未做，C-01 只验格式不验尺寸 |
 | 无障碍规则 | 部分 | C-29 查渲染后的标题层级（无需真 DOM）；对比度、焦点顺序这类仍靠 Lighthouse 独立 job |
 | `engine/lib` 单元测试 | 零覆盖 | `assertSameOrigin` 这类函数直接决定 SEO 正确性 |
-| **站点加不了内容类型** | 只能拒绝，不能新增 | `engineTypes` 是硬编码数组，npm 安装的站点改不到（#24） |
-| 独立页面（Ghost `type: page`） | 未做 | `OPTIONAL_PAGES` 是固定列表，迁移只能跳过并计数（#27、ADR 0007） |
-| URL 空间可配置 | 未做 | permalink 模板、taxonomy 前缀、根路径都写死；Ghost 站保不住原 URL（#26、#21、ADR 0007） |
+| 独立页面的**内容形态** | 半做 | 0.6.0 能声明模板页（`own:`）；`content/pages/*.mdx` 那种「页面就是一篇不进归档的文章」仍未做 |
+| permalink 模板 | 未做 | 0.6.0 能改 taxonomy 前缀、能让唯一类型占根，但 `/{year}/{month}/{slug}/` 这类模板仍不支持（ADR 0007） |
+| 内容类型的 schema 仍是代码 | 有意为之 | 0.6.0 起站点可以自带一份放进 `site/templates/content-types/`，但它是 `.ts` 不是 YAML（ADR 0001 修订） |
 | 流量 / 排名 | 不测 | 在仓库之外——这套工具衡量的是**结构上是否具备**排名能力 |
 
 ---
