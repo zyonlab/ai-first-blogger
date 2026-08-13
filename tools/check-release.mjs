@@ -171,6 +171,165 @@ for (const entry of FORBIDDEN_IN_TEMPLATE) {
 }
 
 /* ---------------------------------------------------------------- *
+ * 7. Every bare import a package makes is a dependency it declares
+ * ---------------------------------------------------------------- *
+ *
+ * The workspace site links the packages, so it builds with whatever the *root*
+ * package.json happens to install. `aifb-engine` shipped 0.4.0 importing
+ * `@astrojs/rss` and `mermaid` while declaring neither, and nothing here could
+ * tell: the root had both. A consumer under pnpm's strict layout had neither,
+ * and the build died in Rollup resolution — the one failure mode packaging the
+ * engine was meant to remove.
+ *
+ * So the check is not "did someone remember `@astrojs/rss`" but "does the
+ * manifest account for every specifier the code reaches for".
+ */
+
+/** Resolved by the bundler or the runtime, never from node_modules. */
+const NOT_A_PACKAGE = [/^node:/, /^astro:/, /^virtual:/];
+/** The engine's own alias map — `ALIASES` in packages/engine/integration.ts. */
+const ENGINE_ALIASES = ['@components', '@layouts', '@lib', '@i18n', '@config', '@content-types'];
+
+/**
+ * Import statements only.
+ *
+ * An earlier version matched any `from` followed by a quote, and read the
+ * package name ` and ` out of the string `needs both "from" and "to"`. Anchoring
+ * to a statement start was not enough on its own — a lazy gap will happily run
+ * from an `export function` down into that template literal. So the gap is
+ * restricted to what can legally appear in an import clause: names, braces,
+ * commas, `*`, whitespace. A `(` or a `?` in between means this is code that
+ * merely contains the word `from`.
+ */
+const IMPORT_PATTERNS = [
+  /^[ \t]*(?:import|export)\s+[\w{}*,\s]*?\bfrom\s*['"]([^'"]+)['"]/gm,
+  /^[ \t]*import\s+['"]([^'"]+)['"]/gm,
+  /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+];
+
+const SOURCE_FILE = /\.(ts|tsx|astro|js|mjs)$/;
+// `template/` is a site's source, not the package's: the scaffolded site
+// declares those itself. `dist/` is generated from `src/`, which is scanned.
+const NOT_OUR_CODE = new Set(['template', 'dist', 'node_modules']);
+
+async function sourceFiles(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
+  const found = await Promise.all(
+    entries.map(async (entry) => {
+      if (NOT_OUR_CODE.has(entry.name)) return [];
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(full);
+      return SOURCE_FILE.test(entry.name) ? [full] : [];
+    }),
+  );
+  return found.flat();
+}
+
+for (const [dir, manifest] of Object.entries(manifests)) {
+  const base = path.join(root, 'packages', dir);
+  // The engine publishes its TypeScript as-is, so its `files` are its source.
+  // The other two bundle from `src/`.
+  const hasSrc = await fs.access(path.join(base, 'src')).then(() => true).catch(() => false);
+  const scanned = hasSrc ? [path.join(base, 'src')] : (manifest.files ?? []).map((entry) => path.join(base, entry));
+
+  const declared = new Set([
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ]);
+
+  /** package name → the files that import it */
+  const imported = new Map();
+  for (const target of scanned) {
+    const stat = await fs.stat(target).catch(() => undefined);
+    if (!stat) continue;
+    for (const file of stat.isDirectory() ? await sourceFiles(target) : [target]) {
+      const text = await fs.readFile(file, 'utf8');
+      for (const pattern of IMPORT_PATTERNS) {
+        for (const match of text.matchAll(pattern)) {
+          const specifier = match[1];
+          if (specifier.startsWith('.')) continue;
+          if (NOT_A_PACKAGE.some((shape) => shape.test(specifier))) continue;
+          if (ENGINE_ALIASES.some((alias) => specifier === alias || specifier.startsWith(`${alias}/`))) continue;
+          const name = specifier.startsWith('@')
+            ? specifier.split('/').slice(0, 2).join('/')
+            : specifier.split('/')[0];
+          if (name === manifest.name) continue;
+          if (!imported.has(name)) imported.set(name, new Set());
+          imported.get(name).add(path.relative(root, file));
+        }
+      }
+    }
+  }
+
+  for (const [name, files] of [...imported].sort()) {
+    if (declared.has(name)) continue;
+    problems.push(
+      `${manifest.name} imports "${name}" but does not declare it.\n` +
+        `  Reached from: ${[...files].slice(0, 3).join(', ')}${files.size > 3 ? `, +${files.size - 3} more` : ''}\n` +
+        '  This repository builds anyway — the root package.json installs it. An install from npm\n' +
+        '  does not, and fails in Rollup resolution. Add it to dependencies, or to peerDependencies\n' +
+        '  with peerDependenciesMeta.optional if the code degrades without it.',
+    );
+  }
+}
+
+/* ---------------------------------------------------------------- *
+ * 8. A locale's message table is actually in that locale
+ * ---------------------------------------------------------------- *
+ *
+ * `zh-CN.ts` shipped ten entries whose values were plain English — `Menu`,
+ * `Focus Map`, `Featured Topics`, `Built with Astro.` — so a site publishing
+ * only Chinese rendered English chrome on its own home page. Nothing caught it:
+ * the keys were all present, which is the only thing the type system can see.
+ *
+ * A value in a non-Latin locale that contains no character from that locale's
+ * script is either untranslated or a proper noun. Proper nouns are rare enough
+ * to name here; untranslated values are not.
+ */
+
+/** Locale tag prefix → the script its own words are written in. */
+const SCRIPTS = {
+  zh: /\p{Script=Han}/u,
+  ja: /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u,
+  ko: /\p{Script=Hangul}/u,
+  ru: /\p{Script=Cyrillic}/u,
+  ar: /\p{Script=Arabic}/u,
+};
+
+/**
+ * Values that are a name rather than a translation. A brand keeps its spelling
+ * in every language, so requiring one here would be the wrong fix.
+ */
+const PROPER_NOUNS = [/^Astro$/, /^RSS$/, /^JSON$/];
+
+const i18nDir = path.join(root, 'packages/engine/i18n');
+for (const file of (await fs.readdir(i18nDir).catch(() => [])).filter((name) => /^[a-z]{2}-[A-Z]{2}\.ts$/.test(name))) {
+  const tag = file.replace(/\.ts$/, '');
+  const script = SCRIPTS[tag.split('-')[0]];
+  if (!script) continue;
+
+  const text = await fs.readFile(path.join(i18nDir, file), 'utf8');
+  const untranslated = [];
+  // `'key': 'value',` — the single-line entries. Multi-line arrays (the AI
+  // prompts) are skipped: one English line inside a Chinese block is normal.
+  for (const entry of text.matchAll(/^\s*'([\w.]+)':\s*'((?:[^'\\]|\\.)*)',?\s*$/gm)) {
+    const [, key, value] = entry;
+    if (value.trim() === '' || script.test(value)) continue;
+    if (PROPER_NOUNS.some((noun) => noun.test(value.trim()))) continue;
+    untranslated.push(`${key} = ${value}`);
+  }
+
+  if (untranslated.length > 0) {
+    problems.push(
+      `packages/engine/i18n/${file} has ${untranslated.length} value(s) with no ${tag.split('-')[0]} characters in them:\n` +
+        untranslated.map((line) => `    ${line}`).join('\n') +
+        '\n  A site publishing only this language would render them as English chrome. Translate them,\n' +
+        '  or add the value to PROPER_NOUNS in tools/check-release.mjs if it is a name.',
+    );
+  }
+}
+
+/* ---------------------------------------------------------------- *
  * 6. A tag, if one was given, must match
  * ---------------------------------------------------------------- */
 

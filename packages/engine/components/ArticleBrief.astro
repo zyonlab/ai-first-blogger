@@ -32,18 +32,18 @@ const seriesItem = seriesSlug ? seriesFor(locale)[seriesSlug] : undefined;
     <p>{description}</p>
     <dl>
       <div>
-        <dt>Topic</dt>
+        <dt>{t('article.topic')}</dt>
         <dd>{topic?.title ?? category}</dd>
       </div>
       {readingMinutes && (
         <div>
-          <dt>Read</dt>
-          <dd>{readingMinutes} min</dd>
+          <dt>{t('article.read')}</dt>
+          <dd>{t('article.readingMinutes', { minutes: readingMinutes })}</dd>
         </div>
       )}
       {seriesItem && (
         <div>
-          <dt>Series</dt>
+          <dt>{t('article.series')}</dt>
           <dd>{hasPage('series') && seriesSlug
             ? <a href={seriesPath(seriesSlug, locale)}>{seriesItem.title}</a>
             : seriesItem.title}</dd>

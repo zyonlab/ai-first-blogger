@@ -17,24 +17,46 @@
  * is a list that will be wrong.
  */
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 import { cloudflarePages } from './deploy/cloudflare';
 import { fail } from './config/load';
-import { pageCopyProblems } from './config/pages';
+import { ownPages, pageCopyProblems } from './config/pages';
 import {
   LOCALE_SEGMENT,
   OPTIONAL_PAGES,
   ROOT_ONLY_PAGES,
+  TAXONOMY_PAGES,
   configureRoutes,
   defaultLocale,
   isMultiLocale,
+  segmentFor,
   type OptionalPage,
+  type TaxonomyPage,
 } from './config/routes';
+import { rootRoutedTypeName } from './config/content-types';
 import { site, siteLocales } from './config/site';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Whether the site can render Mermaid diagrams — i.e. whether it installed the
+ * optional peer.
+ *
+ * Asked from the *project's* root rather than the engine's, because that is
+ * where the site's `node_modules` is and pnpm's layout will not hoist a package
+ * the site never declared into ours.
+ */
+function mermaidInstalled(root: string) {
+  try {
+    createRequire(path.join(root, 'package.json')).resolve('mermaid');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Aliases the engine's own modules use. Resolved to this package, wherever it lives. */
 const ALIASES = ['components', 'layouts', 'lib', 'i18n', 'config', 'content-types'] as const;
@@ -124,6 +146,7 @@ const BUILD_INFO = path.join('.aifb', 'build.json');
 
 const THEMES_MODULE = 'virtual:aifb/themes';
 const RENDERERS_MODULE = 'virtual:aifb/renderers';
+const SITE_TYPES_MODULE = 'virtual:aifb/site-content-types';
 
 /**
  * Directories a site may shadow, mirroring the engine's own layout.
@@ -208,10 +231,10 @@ function overrideFor(overrides: string, absolute: string) {
  * after the prefix has been substituted — the one place in the resolve pipeline
  * that sees an aliased import before it becomes a fixed path.
  */
-function aliases(root: string, templatesDir: string) {
+function aliases(root: string, templatesDir: string, hasMermaid: boolean) {
   const overrides = path.resolve(root, templatesDir);
 
-  return ALIASES.map((name) => {
+  const engineAliases = ALIASES.map((name) => {
     const replacement = path.join(here, name);
     if (!OVERRIDABLE.includes(name as (typeof OVERRIDABLE)[number])) {
       return { find: `@${name}`, replacement };
@@ -222,6 +245,59 @@ function aliases(root: string, templatesDir: string) {
       customResolver: (updatedId: string) => overrideFor(overrides, updatedId) ?? updatedId,
     };
   });
+
+  // Exact match, not a prefix: an alias on the bare string would also catch
+  // `mermaid/dist/...`, and the stub answers for the package entry only.
+  const optionalMermaid = hasMermaid
+    ? []
+    : [{ find: /^mermaid$/, replacement: path.join(here, 'lib', 'mermaid-absent.ts') }];
+
+  return [...engineAliases, ...optionalMermaid];
+}
+
+/**
+ * Content types the site brought with it: `<templatesDir>/content-types/*.ts`.
+ *
+ * A site could always *decline* an engine type by leaving it out of
+ * site/content-types.yaml, and never add one. `content-types/index.ts` said why
+ * the declining direction had to work — "a site cannot delete a file inside
+ * node_modules" — and the same sentence is true of adding, which nobody
+ * noticed. A Ghost migration with a content shape that is not a post, a video,
+ * a project or a case study had three options: patch node_modules, fork the
+ * engine, or reuse a type whose schema is wrong.
+ *
+ * The schema half genuinely is mechanism — a zod schema, JSON-LD and component
+ * keys are code, and ADR 0001/0002 are right that it does not belong in YAML.
+ * What was missing was a way to *register* that code from outside the package,
+ * which is what this is.
+ *
+ * A virtual module rather than an `engine({ contentTypes })` option, because
+ * these modules import `z` from `astro:content`: astro.config is evaluated
+ * before that module graph exists, so a config that imported one could not
+ * load at all. The same reason `renderersPlugin` exists, and it works the same
+ * way — the site's directory is read second, so a site file named after an
+ * engine type replaces it.
+ */
+function siteTypesPlugin(root: string, templatesDir: string) {
+  const resolved = `\0${SITE_TYPES_MODULE}`;
+  const dir = path.resolve(root, templatesDir, 'content-types');
+
+  return {
+    name: 'aifb:site-content-types',
+    resolveId: (id: string) => (id === SITE_TYPES_MODULE ? resolved : undefined),
+    load(id: string) {
+      if (id !== resolved) return undefined;
+      if (!fs.existsSync(dir)) return 'export const siteTypes = [];\n';
+
+      const files = fs
+        .readdirSync(dir)
+        .filter((name) => /\.(ts|js|mjs)$/.test(name))
+        .sort();
+
+      const imports = files.map((file, index) => `import t${index} from ${JSON.stringify(path.join(dir, file))};`);
+      return `${imports.join('\n')}\nexport const siteTypes = [${files.map((_, index) => `t${index}`).join(', ')}];\n`;
+    },
+  };
 }
 
 /**
@@ -452,6 +528,37 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
     return routing.mount === '' ? localised : `${routing.mount}${localised === '/' ? '' : localised}`;
   };
 
+  /**
+   * The file tree's pattern → the URL the site actually asked for.
+   *
+   * Route patterns are derived from the engine's own directory names, which
+   * made two of them unmovable: `pages/tags/[slug].astro` could only ever be
+   * `/tags/[slug]`, and `pages/[type]/[slug].astro` could only ever carry a
+   * type segment. Both are the site's URL space, not the engine's filing
+   * system, so the mapping happens here — once, on the way into `injectRoute`.
+   *
+   * Deliberately *not* applied before `pageGroup()`: the whitelist, the copy
+   * check and the override lookup all key off the page's canonical name, and a
+   * site that renamed its tag archive did not rename `pages: ['tags']`.
+   */
+  const publicPattern = (pattern: string) => {
+    const segments = pattern.split('/');
+    const first = segments[1];
+
+    if ((TAXONOMY_PAGES as readonly string[]).includes(first ?? '')) {
+      segments[1] = segmentFor(first as TaxonomyPage);
+      return segments.join('/');
+    }
+
+    // The list page keeps its route; only entry URLs move to the root. See
+    // `routeAtRoot` in config/content-types.ts for why the archive stays.
+    if (rootRoutedTypeName !== undefined && first === '[type]' && segments[2] === '[slug]') {
+      return '/[slug]';
+    }
+
+    return pattern;
+  };
+
   /** Astro tells the integration where the project is; the build hook needs it too. */
   let projectRoot = process.cwd();
 
@@ -459,6 +566,13 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
     name: 'aifb-engine',
     hooks: {
       'astro:config:setup': ({ injectRoute, updateConfig, config, logger }) => {
+        const hasMermaid = mermaidInstalled(fileURLToPath(config.root));
+        // Said out loud, because the alternative is a site that used to render
+        // diagrams quietly serving code blocks after an unrelated install.
+        if (!hasMermaid) {
+          logger.info('mermaid is not installed — ```mermaid blocks will render as code. `npm i mermaid` to draw them.');
+        }
+
         updateConfig({
           // The canonical origin comes from the intent layer, and reading the
           // intent layer is the engine's job. A site's astro.config had to
@@ -476,10 +590,15 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
               themesPlugin(fileURLToPath(config.root), themesDir),
               templatesPlugin(fileURLToPath(config.root), templatesDir),
               renderersPlugin(fileURLToPath(config.root), templatesDir),
+              siteTypesPlugin(fileURLToPath(config.root), templatesDir),
             ],
             resolve: {
-              alias: aliases(fileURLToPath(config.root), templatesDir),
+              alias: aliases(fileURLToPath(config.root), templatesDir, hasMermaid),
             },
+            // The diagram renderer's one guard. False here means the site did
+            // not install the optional peer, and a ```mermaid block stays a
+            // readable code block instead of becoming an empty figure.
+            define: { __AIFB_MERMAID__: JSON.stringify(hasMermaid) },
           },
         });
 
@@ -539,7 +658,7 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
         let overridden = 0;
 
         for (const route of selected) {
-          const pattern = routePattern(route.pattern);
+          const pattern = routePattern(publicPattern(route.pattern));
           // A page the site provides replaces the engine's, at the same URL.
           const own = ownFile(route);
           if (fs.existsSync(own)) {
@@ -550,10 +669,42 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
           }
         }
 
+        /**
+         * Pages the site declared in `site/pages.yaml`.
+         *
+         * Declared, not discovered: a file alone still injects nothing, which
+         * is the same rule that makes `engine({ pages })` a whitelist rather
+         * than a suggestion. The file is required, though — a declaration with
+         * nothing to render it is a URL that would 404 on a site that believes
+         * it published a page.
+         */
+        const missingTemplates = ownPages
+          .map((page) => ({ page, file: path.join(siteRoutes, `${page.name}.astro`) }))
+          .filter((item) => !fs.existsSync(item.file));
+        if (missingTemplates.length > 0) {
+          fail(
+            'site/pages.yaml',
+            missingTemplates.map(
+              ({ page, file }) =>
+                `own."${page.name}" is declared but ${path.relative(projectRoot, file)} does not exist. ` +
+                'Add the template, or remove the declaration — a declared page with nothing to render is a 404.',
+            ),
+          );
+        }
+
+        for (const page of ownPages) {
+          injectRoute({
+            pattern: routePattern(`/${page.name}`),
+            entrypoint: path.join(siteRoutes, `${page.name}.astro`),
+            prerender: true,
+          });
+        }
+
         logger.info(
-          `${selected.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
+          `${selected.length + ownPages.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
             `${isMultiLocale ? ` in ${siteLocales.length} locales (${siteLocales.map((locale) => locale.tag).join(', ')})` : ''}` +
             `${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}` +
+            `${ownPages.length > 0 ? `, ${ownPages.length} declared by site/pages.yaml` : ''}` +
             `${declined.length > 0 ? `, ${declined.length} declined` : ''}`,
         );
 

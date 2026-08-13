@@ -3,7 +3,7 @@ import { siteFor } from '@config/site';
 import TopicCard from '@components/TopicCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { requirePageCopy } from '@config/pages';
-import { homePath, localeOfPath, localeStaticPaths, locales, pagePath, topicPath } from '@config/routes';
+import { localeOfPath, localeStaticPaths, locales, pagePath, topicPath } from '@config/routes';
 import { getActiveTopics } from '@lib/taxonomy';
 import { alternatesForPath } from '@lib/alternates';
 import { messages } from '@i18n/index';
@@ -28,10 +28,7 @@ const jsonLd = [
       url: topicPath(topic.slug, locale),
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: title, url: canonical },
-  ]),
+  breadcrumbSchema([{ name: title, url: canonical }], locale),
 ];
 ---
 

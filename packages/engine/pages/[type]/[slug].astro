@@ -17,8 +17,8 @@
  * vouching for it.
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
-import { homePath, localeOfPath, localeParam, localeParams } from '@config/routes';
-import { entryPath, getContentTypeByRoute, listPath, registryFor } from '@content-types/index';
+import { localeOfPath, localeParam, localeParams } from '@config/routes';
+import { entryPath, getContentTypeByRoute, listPath, registryFor, rootRoutedTypeFor, rootSlugCollisions } from '@content-types/index';
 import { seoFromEntry } from '@content-types/types';
 import { alternatesForEntry } from '@lib/alternates';
 import { bySlug, getEntries, translationsOf } from '@lib/content';
@@ -34,19 +34,47 @@ export async function getStaticPaths() {
         registryFor(locale).map(async (type) => {
           const entries = await getEntries(type, locale);
           return entries.map((entry) => ({
-            params: { ...localeParam(param), type: type.route, slug: entry.data.slug },
+            // Under `routeAtRoot` the integration injects this route without a
+            // `[type]` segment, so emitting the param would produce a path the
+            // pattern has nowhere to put.
+            params: {
+              ...localeParam(param),
+              ...(type.routeAtRoot === true ? {} : { type: type.route }),
+              slug: entry.data.slug,
+            },
           }));
         }),
       );
       return groups.flat();
     }),
   );
-  return perLocale.flat();
+
+  const paths = perLocale.flat();
+
+  /**
+   * Every slug is a top-level segment under `routeAtRoot`, so one that matches
+   * an archive or a fixed page would shadow it. Astro would build both and
+   * serve whichever it sorted first, which is the quiet version of this
+   * failure — the page is simply gone and nothing says so.
+   */
+  const collisions = rootSlugCollisions([...new Set(paths.map((path) => path.params.slug as string))]);
+  if (collisions.length > 0) {
+    throw new Error(
+      'Invalid content slugs:\n' +
+        collisions.map(({ slug, taken }) => `- "${slug}" is already ${taken}.`).join('\n') +
+        '\n  This site serves entries at the root (routeAtRoot), so a slug is a top-level URL segment.' +
+        '\n  Rename the entry, or move the page it collides with.',
+    );
+  }
+
+  return paths;
 }
 
 const locale = localeOfPath(Astro.url.pathname);
 const { type: route, slug } = Astro.params;
-const type = getContentTypeByRoute(route!, locale);
+// No `[type]` segment means this is the root-routed site, where there is
+// exactly one published type and therefore no ambiguity about which.
+const type = route === undefined ? rootRoutedTypeFor(locale) : getContentTypeByRoute(route, locale);
 if (!type) throw new Error(`No content type registered for route "${route}"`);
 
 const entries = await getEntries(type, locale);
@@ -79,11 +107,13 @@ const alternates = alternatesForEntry(type, await translationsOf(type, entry));
 
 const jsonLd = [
   ...(type.jsonLd?.(entry as never, { canonical, locale }) ?? []),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: type.listTitle, url: listPath(type, locale) },
-    { name: entry.data.title as string, url: canonical },
-  ]),
+  breadcrumbSchema(
+    [
+      { name: type.listTitle, url: listPath(type, locale) },
+      { name: entry.data.title as string, url: canonical },
+    ],
+    locale,
+  ),
 ];
 ---
 

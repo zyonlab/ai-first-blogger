@@ -3,7 +3,7 @@ import { siteFor } from '@config/site';
 import SeriesCard from '@components/SeriesCard.astro';
 import PageLayout from '@layouts/PageLayout.astro';
 import { requirePageCopy } from '@config/pages';
-import { homePath, localeOfPath, localeStaticPaths, locales, pagePath, seriesPath } from '@config/routes';
+import { localeOfPath, localeStaticPaths, locales, pagePath, seriesPath } from '@config/routes';
 import { getActiveSeries } from '@lib/taxonomy';
 import { alternatesForPath } from '@lib/alternates';
 import { messages } from '@i18n/index';
@@ -28,10 +28,7 @@ const jsonLd = [
       url: seriesPath(item.slug, locale),
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: title, url: canonical },
-  ]),
+  breadcrumbSchema([{ name: title, url: canonical }], locale),
 ];
 ---
 

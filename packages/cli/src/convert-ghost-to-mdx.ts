@@ -106,7 +106,22 @@ function uniqueSlug(base: string, used: Set<string>) {
   return slug;
 }
 
-function normalizeImageUrl(value = '') {
+/**
+ * A Ghost image URL, rewritten to the local path — and tolerant of `null`.
+ *
+ * The guard used to be a default parameter, which only fires for `undefined`.
+ * Ghost writes `"feature_image": null` for any post without one, so the first
+ * such post crashed the run on `null.startsWith`. Every other call site had
+ * grown a `?? undefined` to compensate and exactly one had not, which is the
+ * shape of defect that comes back the next time a nullable Ghost column
+ * reaches this function. So the guard belongs inside it.
+ *
+ * `''` is the right answer rather than `undefined`: the existing empty-key
+ * filter drops it, so a post with no feature image gets no `heroImage` key
+ * instead of one holding nothing.
+ */
+function normalizeImageUrl(value?: string | null) {
+  if (!value) return '';
   if (domainImagePattern.test(value)) {
     return value.replace(domainImagePattern, '/content/images/');
   }
@@ -342,6 +357,8 @@ async function main() {
    * address quietly 404s.
    */
   const redirects: { from: string; to: string }[] = [];
+  /** Files to write, held until every post has converted. See below. */
+  const converted: { file: string; output: string }[] = [];
   let unmapped = 0;
 
   for (const post of posts) {
@@ -423,10 +440,21 @@ async function main() {
       Object.entries(frontmatter).filter(([, value]) => value !== undefined && value !== null && value !== ''),
     );
 
-    const output = matter.stringify(body.trim() + '\n', cleaned);
-    await fs.writeFile(path.join(postsOutput, `${slug}.mdx`), output);
+    converted.push({ file: path.join(postsOutput, `${slug}.mdx`), output: matter.stringify(body.trim() + '\n', cleaned) });
     migrated.push(`- ${title} → /writing/${slug}/ (${taxonomy.category}${taxonomy.matched ? '' : ', unmapped'})`);
   }
+
+  /**
+   * Written only once every post has converted.
+   *
+   * The loop used to write each file as it went, so one bad row — a `null`
+   * where a string was expected — left the site in a state no command produced
+   * deliberately: seven posts out of sixty-four, no report, no redirects, and
+   * nothing in the output saying the run was partial. Converting first and
+   * writing after makes a failed run leave nothing behind, which is the only
+   * outcome a re-run can safely follow.
+   */
+  for (const item of converted) await fs.writeFile(item.file, item.output);
 
   if (offOrigin.length > 0) {
     warnings.push(
@@ -442,10 +470,10 @@ async function main() {
   if (pages.length > 0) {
     warnings.push(
       `- ${pages.length} Ghost page(s) skipped — ${pages.map((page) => `/${page.slug ?? 'untitled'}/`).join(', ')}. ` +
-        'The engine has no standalone page type yet (ADR 0007), and a page migrated into content/posts/ ' +
-        'would appear in the archive, the feed and the sitemap as an article. Rebuild them as templates ' +
-        'under site/templates/pages/ for a URL the engine already publishes, or keep the export until ' +
-        'declarable pages land.',
+        'A page migrated into content/posts/ would appear in the archive, the feed and the sitemap as an ' +
+        'article, which is why they are skipped rather than converted. Declare each one under `own:` in ' +
+        'site/pages.yaml and write its markup as site/templates/pages/<slug>.astro — that keeps the URL ' +
+        'Ghost served it at, and keeps the page out of the surfaces an article belongs to.',
     );
   }
 

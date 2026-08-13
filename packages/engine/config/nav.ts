@@ -14,9 +14,11 @@ import {
   homePath,
   llmsPath,
   rssPath,
+  segmentFor,
   withLocale,
   type Locale,
 } from './routes';
+import { ownPages } from './pages';
 import { staticNavItems, staticNavItemsFor } from './site';
 
 export { staticNavItems };
@@ -45,14 +47,37 @@ export function engineHref(href: string, locale: Locale = defaultLocale): string
   if (href === '/rss.xml') return rssPath(locale);
   if (href === '/llms.txt') return llmsPath(locale);
 
-  // Section roots, so `/topics/llm-reliability/` moves with `/topics/`.
-  const roots = [
-    ...OPTIONAL_PAGES.filter((name) => hasPage(name)).map((name) => `/${name}/`),
-    // Routes are not localised — `/writing/` is `/writing/` in every language,
-    // only the prefix in front of it moves. See siteContentTypesFor().
-    ...registry.map((type) => `/${type.route}/`),
-  ];
-  return roots.some((root) => href.startsWith(root)) ? withLocale(href, locale) : href;
+  /**
+   * A page's key is what a site writes; its segment is where the page is.
+   *
+   * Those are the same string until a site sets `routes:` in taxonomy.yaml and
+   * its tag archive moves to `/tag/`. The site keeps writing `/tags/` — the key
+   * is the stable name, the same one `engine({ pages })` and `site/pages.yaml`
+   * use — and the rewrite happens here, for the same reason the mount does: a
+   * site should not have to restate a decision the engine already holds.
+   *
+   * The segment form is accepted too, so a site that writes where the page
+   * actually is does not get a link left behind at the origin root.
+   */
+  for (const name of OPTIONAL_PAGES.filter((page) => hasPage(page))) {
+    const segment = segmentFor(name);
+    if (href === `/${name}/` || href.startsWith(`/${name}/`)) {
+      return withLocale(segment === name ? href : href.replace(`/${name}/`, `/${segment}/`), locale);
+    }
+    if (segment !== name && href.startsWith(`/${segment}/`)) return withLocale(href, locale);
+  }
+
+  // A page the site declared is an engine route like any other: it moves with
+  // the mount, which is the whole reason declaring it beats putting it in the
+  // host's own src/pages/.
+  for (const page of ownPages) {
+    if (href === `/${page.name}/` || href.startsWith(`/${page.name}/`)) return withLocale(href, locale);
+  }
+
+  // Routes are not localised — `/writing/` is `/writing/` in every language,
+  // only the prefix in front of it moves. See siteContentTypesFor().
+  const typeRoots = registry.map((type) => `/${type.route}/`);
+  return typeRoots.some((root) => href.startsWith(root)) ? withLocale(href, locale) : href;
 }
 
 /**

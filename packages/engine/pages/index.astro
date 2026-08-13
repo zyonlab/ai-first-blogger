@@ -82,58 +82,71 @@ const jsonLd = [
         ))}
       </div>
     </div>
+    {site.home.panel && (
     <div class="hero-panel">
       <p class="eyebrow">{t('home.focusMap')}</p>
       <div class="signal-grid">
         {site.hero.signals.map((signal) => <span>{signal}</span>)}
       </div>
     </div>
+    )}
   </section>
 
-  {topicList.length > 0 && (
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">{t('home.topics.eyebrow')}</p>
-        <h2>{t('home.topics.title')}</h2>
-      </div>
-      <p>{t('home.topics.description')}</p>
-    </div>
-    <div class="grid">
-      {topicList.map((topic) => <TopicCard topic={topic} />)}
-    </div>
-  </section>
-  )}
+  {/*
+    Order comes from `home.sections` in site/site.yaml, not from the order these
+    blocks happen to be written in. A product blog puts `content` first; a
+    creator homepage leaves the default and gets the page it had.
+  */}
+  {site.home.sections.map((section) => {
+    if (section === 'topics') {
+      return topicList.length > 0 && (
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">{t('home.topics.eyebrow')}</p>
+              <h2>{t('home.topics.title')}</h2>
+            </div>
+            <p>{t('home.topics.description')}</p>
+          </div>
+          <div class="grid">
+            {topicList.map((topic) => <TopicCard topic={topic} />)}
+          </div>
+        </section>
+      );
+    }
 
-  {seriesList.length > 0 && (
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">{t('home.series.eyebrow')}</p>
-        <h2>{t('home.series.title')}</h2>
-      </div>
-      <a class="button" href={pagePath('series', locale)}>{t('home.series.viewAll')}</a>
-    </div>
-    <div class="grid">
-      {seriesList.map((item) => <SeriesCard item={item} />)}
-    </div>
-  </section>
-  )}
+    if (section === 'series') {
+      return seriesList.length > 0 && (
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">{t('home.series.eyebrow')}</p>
+              <h2>{t('home.series.title')}</h2>
+            </div>
+            <a class="button" href={pagePath('series', locale)}>{t('home.series.viewAll')}</a>
+          </div>
+          <div class="grid">
+            {seriesList.map((item) => <SeriesCard item={item} />)}
+          </div>
+        </section>
+      );
+    }
 
-  {sections.map(({ type, Card, entries }) => (
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">{type.label}</p>
-          <h2>{type.listTitle}</h2>
+    return sections.map(({ type, Card, entries }) => (
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">{type.label}</p>
+            <h2>{type.listTitle}</h2>
+          </div>
+          <a class="button" href={listPath(type, locale)}>{t('home.viewAll', { label: type.listTitle })}</a>
         </div>
-        <a class="button" href={listPath(type, locale)}>{t('home.viewAll', { label: type.listTitle })}</a>
-      </div>
-      <div class={type.listLayout ?? 'grid'}>
-        {entries.length > 0
-          ? entries.map((entry) => <Card entry={entry} type={type} />)
-          : <p>{t('home.empty')}</p>}
-      </div>
-    </section>
-  ))}
+        <div class={type.listLayout ?? 'grid'}>
+          {entries.length > 0
+            ? entries.map((entry) => <Card entry={entry} type={type} />)
+            : <p>{t('home.empty')}</p>}
+        </div>
+      </section>
+    ));
+  })}
 </BaseLayout>

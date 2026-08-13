@@ -11,6 +11,7 @@ site/templates/
   components/<Name>.astro    shadows packages/engine/components/<Name>.astro
   cards/<Name>.astro         shadows (or adds to) the card set
   details/<Name>.astro       shadows (or adds to) the detail set
+  content-types/<name>.ts    shadows (or adds to) the content type menu
   layouts/<Name>.astro       shadows BaseLayout / PageLayout
   styles/global.css          shadows the engine's base stylesheet
   pages/<route>.astro        replaces an injected route at the same URL
@@ -20,11 +21,15 @@ Nothing to register. A file that exists wins; a file that does not falls through
 to the engine. `templatesDir` in `astro.config.mjs` moves the directory.
 
 One boundary on the last row: an override replaces the page at a URL the engine
-injects. It cannot create one. A page excluded by `engine({ pages })` is not
-injected even when `site/templates/pages/` has a file for it — the build warns
-and injects nothing, because a whitelist an override can quietly undo is not a
-whitelist. Serve your own page there from the site's own `src/pages/` instead.
-See [`engine-options.md`](./engine-options.md).
+injects. It cannot create one by existing. A page excluded by `engine({ pages })`
+is not injected even when `site/templates/pages/` has a file for it — the build
+warns and injects nothing, because a whitelist an override can quietly undo is
+not a whitelist. See [`engine-options.md`](./engine-options.md).
+
+To add a page the engine does not ship, **declare** it under `own:` in
+`site/pages.yaml` and put the template here under that name. Declaring is what
+creates the URL; the file is what renders it. See
+[`site-config-contract.md`](./site-config-contract.md).
 
 ```astro
 ---
@@ -37,6 +42,13 @@ import { site } from '@config/site';
 Cards and details are merged by name, so `site/templates/cards/TimelineCard.astro`
 both **adds** a card a content type can point at and, if it is called
 `ArticleCard.astro`, **replaces** the shipped one.
+
+`content-types/` is merged the same way, and is the one directory here whose
+files are not markup: a content type's schema, JSON-LD and component keys are
+code, which is why they cannot live in YAML (ADR 0001), and this is where a
+site puts its own. It is also the only entry with a second step — a module here
+offers a type; `site/content-types.yaml` publishes it. See
+[`../recipes/add-content-type.md`](../recipes/add-content-type.md).
 
 ## Before overriding a page, check the intent layer
 

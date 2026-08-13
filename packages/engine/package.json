@@ -1,6 +1,6 @@
 {
   "name": "aifb-engine",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "description": "Rendering mechanism: components, layouts, routes, config loader, deploy integration.",
   "exports": {
@@ -17,8 +17,18 @@
     "./styles/global.css": "./styles/global.css"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.19",
     "gray-matter": "^4.0.3",
     "yaml": "^2.9.0"
+  },
+  "peerDependencies": {
+    "astro": "^7.0.0",
+    "mermaid": "^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "mermaid": {
+      "optional": true
+    }
   },
   "license": "MIT",
   "repository": {

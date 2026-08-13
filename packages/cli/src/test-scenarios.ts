@@ -70,6 +70,11 @@ async function sh(command: string, args: string[], env: Record<string, string> =
   }
 }
 
+/** Did the build emit this path? */
+const exists = (relative: string) => fs.access(path.join(root, relative)).then(() => true).catch(() => false);
+/** One file out of the last build. */
+const dist = (file: string) => fs.readFile(path.join(root, 'dist', file), 'utf8');
+
 const build = (env: Record<string, string> = {}) => sh('pnpm', ['build'], env);
 const validate = () => sh('pnpm', ['validate']);
 const analyze = (target?: string) => sh('pnpm', ['analyze', ...(target ? [target] : [])]);
@@ -145,6 +150,33 @@ async function loadExample(name = EXAMPLES[0]!) {
       .replace('PUBLIC_SITE_URL: https://REPLACE_ME.pages.dev', 'PUBLIC_SITE_URL: https://agent-notes.example.dev'),
   );
   await fs.rm(path.join(root, 'node_modules/.astro'), { recursive: true, force: true });
+}
+
+/**
+ * Trim the loaded example to the one content type, the way a site that
+ * publishes only articles is configured. `routeAtRoot` is only legal there, so
+ * every scenario about it starts here.
+ */
+async function onlyPosts() {
+  const file = path.join(root, 'site/content-types.yaml');
+  let text = await fs.readFile(file, 'utf8');
+  for (const type of ['videos', 'projects', 'case-studies']) {
+    const without = text.replace(new RegExp(`^${type}:\\n(?:[ \\t].*\\n|\\n(?=[ \\t]))*`, 'm'), '');
+    if (without === text) throw new Error(`scenario setup: no "${type}:" block in site/content-types.yaml`);
+    text = without;
+    await fs.rm(path.join(root, 'content', type), { recursive: true, force: true });
+  }
+  await fs.writeFile(file, text);
+
+  // A hero action or nav entry pointing at a section this site no longer
+  // publishes is a dead link, and the gate is right to say so — the same
+  // tidying `mountExample` does for the pages it declines.
+  const siteYaml = path.join(root, 'site/site.yaml');
+  const withoutDeclined = (await fs.readFile(siteYaml, 'utf8'))
+    .split('\n')
+    .filter((line) => !/href: \/(videos|projects|case-studies)\//.test(line))
+    .join('\n');
+  await fs.writeFile(siteYaml, withoutDeclined);
 }
 
 async function edit(file: string, replacements: [string, string][]) {
@@ -313,6 +345,91 @@ try {
    * replaced the whole list page to get it. This asserts the cheap path works,
    * so nobody pays 68 lines for it again.
    */
+  /**
+   * The landing page's shape, from the intent layer.
+   *
+   * Both halves were markup before: Topics and Series were written above the
+   * content types, and `.hero-panel` rendered whether or not it had anything in
+   * it. A product blog wanting its articles first had to fork `index.astro`,
+   * which takes the SEO contract with it — the one thing templates.md warns
+   * against.
+   */
+  await scenario('the home page renders its sections in the order the site asked for', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the default home page should build');
+
+    /** The section headings, in document order. */
+    const headings = async () =>
+      [...(await dist('index.html')).matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]!.trim());
+
+    const before = await headings();
+    const topicsAt = before.findIndex((heading) => heading.includes('精选主题'));
+    const writingAt = before.findIndex((heading) => heading === 'Writing');
+    expect(topicsAt !== -1 && writingAt !== -1, `expected both sections by default, got ${JSON.stringify(before)}`);
+    expect(topicsAt < writingAt, 'by default the taxonomy sections come first, as they always have');
+
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, topics]\n\nhero:']]);
+    expect((await build()).code === 0, 'a reordered home page should build');
+
+    const after = await headings();
+    expect(after.indexOf('Writing') < after.findIndex((h) => h.includes('精选主题')), `articles should now come first: ${JSON.stringify(after)}`);
+    expect(!after.some((h) => h.includes('精选系列')), `an omitted section should not render: ${JSON.stringify(after)}`);
+  });
+
+  await scenario('a section named twice, or not at all, is reported by name', async () => {
+    await loadExample();
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, content]\n\nhero:']]);
+    const twice = await build();
+    expect(twice.code !== 0, 'a duplicate section should fail the build');
+    expect(twice.out.includes('twice'), `the failure should say what is wrong:\n${twice.out.slice(-400)}`);
+
+    await loadExample();
+    await edit('site/site.yaml', [['hero:', 'home:\n  sections: [content, prjects]\n\nhero:']]);
+    const typo = await build();
+    expect(typo.code !== 0, 'a misspelled section should fail the build');
+    expect(typo.out.includes('prjects'), `the failure should quote the value:\n${typo.out.slice(-400)}`);
+  });
+
+  await scenario('the hero panel goes away when it has nothing in it', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the example has signals and should build');
+    expect((await dist('index.html')).includes('hero-panel'), 'a site with signals keeps the panel it had');
+
+    // Declining it outright, with the signals still there.
+    await edit('site/site.yaml', [['hero:', 'home:\n  panel: false\n\nhero:']]);
+    expect((await build()).code === 0, 'declining the panel should build');
+    expect(!(await dist('index.html')).includes('hero-panel'), 'home.panel: false should remove it');
+
+    // …and emptying the signals is enough on its own: the panel was an empty
+    // box under a heading before, with no way to say so.
+    await loadExample();
+    await dropYamlKey('site/site.yaml', '  signals');
+    expect((await build()).code === 0, 'a site with no signals should build');
+    expect(!(await dist('index.html')).includes('hero-panel'), 'an empty panel should not render at all');
+  });
+
+  /**
+   * `getActiveSeries()` returns `topic` as the taxonomy key, so a card that
+   * prints it prints a slug. `TopicCard` and the article header both resolve to
+   * a title; `SeriesCard` did not, which put the one English word on an
+   * otherwise Chinese card.
+   */
+  await scenario('a series card shows the topic title, not its slug', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'the example should build');
+
+    for (const page of ['index.html', 'series/index.html']) {
+      const cards = [...(await dist(page)).matchAll(/<article class="card series-card">([\s\S]*?)<\/article>/g)]
+        .map((match) => match[1]!);
+      expect(cards.length > 0, `${page} should render series cards`);
+      for (const card of cards) {
+        const eyebrow = /<div class="eyebrow">([^<]*)<\/div>/.exec(card)?.[1]?.trim() ?? '';
+        expect(!/^[a-z0-9-]+$/.test(eyebrow), `${page} renders the raw topic slug "${eyebrow}"`);
+      }
+    }
+    expect((await dist('series/index.html')).includes('>后端转型<'), 'the eyebrow should be the topic title from taxonomy.yaml');
+  });
+
   await scenario('a site chooses its list layout without touching markup', async () => {
     await loadExample();
     await edit('site/content-types.yaml', [['posts:\n', 'posts:\n  listLayout: stack\n']]);
@@ -464,8 +581,6 @@ try {
    * ---------------------------------------------------------------- */
 
   const MOUNT = '/zh/blog';
-  const exists = (relative: string) => fs.access(path.join(root, relative)).then(() => true).catch(() => false);
-  const dist = (file: string) => fs.readFile(path.join(root, 'dist', file), 'utf8');
 
   /** Remove one top-level block from a YAML file — the key and everything under it. */
   async function dropYamlKey(file: string, key: string) {
@@ -593,6 +708,61 @@ try {
 
     // The site wrote `/topics/` in site.yaml; it must not have to know the mount.
     expect((await dist(`${MOUNT}/index.html`)).includes(`href="${MOUNT}/topics/"`), 'a nav entry should be moved with the engine');
+  });
+
+  /**
+   * The three URL-shaped outputs that are invisible from the rendered page.
+   * Canonical and og:url were mount-aware from the start; these were missed,
+   * and nothing catches a wrong URL inside a JSON-LD block by looking at it.
+   */
+  await scenario('what the engine says it is carries the mount too', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+
+    const home = await dist(`${MOUNT}/index.html`);
+    const blocks = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].flatMap((match) => {
+      const parsed = JSON.parse(match[1]!);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    });
+
+    const website = blocks.find((block: { '@type'?: string }) => block['@type'] === 'WebSite') as
+      | { url: string; publisher?: { url?: string } }
+      | undefined;
+    expect(website !== undefined, 'the home page should carry a WebSite block');
+    expect(
+      new URL(website!.url).pathname.startsWith(`${MOUNT}/`),
+      `WebSite.url claims the origin root, which the host already owns: ${website!.url}`,
+    );
+    expect(
+      website!.publisher?.url !== undefined && new URL(website!.publisher!.url!).pathname.startsWith(`${MOUNT}/`),
+      `Person.url points outside the mount: ${website!.publisher?.url}`,
+    );
+
+    const llms = await dist(`${MOUNT}/llms.txt`);
+    const declared = /^URL: (.+)$/m.exec(llms)?.[1] ?? '';
+    expect(
+      new URL(declared).pathname.startsWith(`${MOUNT}/`),
+      `llms.txt announces itself as the description of the whole origin: ${declared}`,
+    );
+  });
+
+  /**
+   * A favicon is one per host. Mounting presupposes a host that already exists,
+   * and one that already exists already declared its own — often as `.ico`, so
+   * the engine's `/favicon.svg` is a link to a file the origin does not serve.
+   */
+  await scenario('a mounted engine does not claim the origin favicon', async () => {
+    await mountExample();
+    expect((await build()).code === 0, 'a mounted build should succeed');
+    const mounted = await dist(`${MOUNT}/index.html`);
+    expect(!mounted.includes('rel="icon"'), 'a mounted page should leave the favicon to the host');
+  });
+
+  await scenario('at the root the engine still ships its own favicon', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'an unmounted build should succeed');
+    const rooted = await dist('index.html');
+    expect(rooted.includes('href="/favicon.svg"'), 'an unmounted site owns the origin, and its icon');
   });
 
   await scenario('the gate measures a mounted build from the mount', async () => {
@@ -852,6 +1022,50 @@ try {
     expect(!home.includes('rel="alternate"'), 'a single-language site must not emit hreflang at all');
     const info = JSON.parse(await fs.readFile(path.join(root, '.aifb/build.json'), 'utf8'));
     expect(info.locales.length === 1, `one locale should be recorded, got ${JSON.stringify(info.locales)}`);
+  });
+
+  /**
+   * A single-language site is the case where untranslated chrome is loudest:
+   * there is no second language to explain the English away. The three sources
+   * were separate — a literal in a component, an English value sitting in the
+   * zh-CN table, and a literal in the page routes that `templatesDir` cannot
+   * reach — so all three are asserted here.
+   */
+  await scenario('a zh-CN site renders no English chrome', async () => {
+    await loadExample();
+    expect((await build()).code === 0, 'a single-language build should succeed');
+
+    const article = await dist('writing/why-retries-made-it-worse/index.html');
+    const brief = /<aside class="article-brief"[\s\S]*?<\/aside>/.exec(article)?.[0] ?? '';
+    expect(brief !== '', 'the article should carry its brief rail');
+    for (const label of ['>Topic<', '>Read<', '>Series<']) {
+      expect(!brief.includes(label), `the brief still has a hardcoded English label: ${label}`);
+    }
+    expect(/<dt>主题<\/dt>/.test(brief), `the topic label should be translated:\n${brief.slice(0, 400)}`);
+
+    const crumbs = /<nav class="breadcrumbs"[\s\S]*?<\/nav>/.exec(article)?.[0] ?? '';
+    expect(!crumbs.includes('>Home<'), 'the visible breadcrumb root should not be English');
+    expect(crumbs.includes('>首页<'), `the breadcrumb root should be translated:\n${crumbs}`);
+
+    // …and the same word in the structured data, from the same key.
+    const trail = [...article.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .flatMap((match) => {
+        const parsed = JSON.parse(match[1]!);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      })
+      .find((block: { '@type'?: string }) => block['@type'] === 'BreadcrumbList') as
+      | { itemListElement: { name: string }[] }
+      | undefined;
+    expect(trail !== undefined, 'the article should carry a breadcrumb trail');
+    expect(
+      trail!.itemListElement[0]!.name === '首页',
+      `BreadcrumbList tells crawlers the root is called "${trail!.itemListElement[0]!.name}"`,
+    );
+
+    const home = await dist('index.html');
+    for (const english of ['Featured Topics', 'Learning Paths', 'Focus Map', 'Built with Astro.']) {
+      expect(!home.includes(english), `the home page still shows "${english}" on a Chinese site`);
+    }
   });
 
   await scenario('a second language is served under its prefix, the default at the root', async () => {
@@ -1346,6 +1560,338 @@ try {
     expect(gate.code === 0, `a site with tag archives should pass the gate:\n${gate.out.slice(-900)}`);
   });
 
+  /**
+   * A Ghost site arrives with several pages the engine's fixed list of seven
+   * does not have — Privacy, Now, Uses. `site/templates/pages/` could only
+   * override a route the engine already injects; a new file there produced a
+   * warning and no page.
+   */
+  await scenario('a site can declare a page the engine does not ship', async () => {
+    await loadExample();
+
+    // A file alone is still nothing: the URL has to be declared.
+    await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/privacy.astro'),
+      [
+        '---',
+        "import PageLayout from '@layouts/PageLayout.astro';",
+        "import { requireOwnPage } from '@config/pages';",
+        "import { localeOfPath, pagePath } from '@config/routes';",
+        '',
+        'const locale = localeOfPath(Astro.url.pathname);',
+        "const { title, description } = requireOwnPage('privacy', locale);",
+        '---',
+        '',
+        '<PageLayout title={title} description={description} canonical={Astro.url.pathname}>',
+        '  <p>本站不收集任何个人信息，也没有接入统计脚本。评论走邮件。</p>',
+        '</PageLayout>',
+        '',
+      ].join('\n'),
+    );
+    expect((await build()).code === 0, 'an undeclared template should not break the build');
+    expect(!(await exists('dist/privacy')), 'a file on its own must not conjure a URL');
+
+    await fs.appendFile(
+      path.join(root, 'site/pages.yaml'),
+      '\nown:\n  privacy:\n    title: 隐私\n    description: 这个站收集什么、不收集什么，以及为什么没有统计脚本。\n',
+    );
+    await fs.appendFile(path.join(root, 'site/site.yaml'), '  - { href: /privacy/, label: 隐私, order: 95 }\n');
+    expect((await build()).code === 0, 'a declared page should build');
+    const page = await dist('privacy/index.html');
+    expect(page.includes('隐私'), 'the page should render its declared copy');
+    expect(page.includes('rel="canonical"'), 'and it should get the engine head, not a bare document');
+    // An engine route, so a nav entry naming it resolves like any other.
+    expect((await dist('index.html')).includes('href="/privacy/"'), 'the nav entry should resolve');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a declared page should clear the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a declared page moves with the mount, and says so when it cannot render', async () => {
+    await mountExample();
+    await fs.appendFile(
+      path.join(root, 'site/pages.yaml'),
+      '\nown:\n  privacy:\n    title: 隐私\n    description: 这个站收集什么、不收集什么。\n',
+    );
+
+    // Declared with nothing to render it.
+    const orphan = await build();
+    expect(orphan.code !== 0, 'a declaration with no template should fail the build');
+    expect(orphan.out.includes('privacy.astro'), `the failure should name the file it wants:\n${orphan.out.slice(-500)}`);
+
+    await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/privacy.astro'),
+      [
+        '---',
+        "import PageLayout from '@layouts/PageLayout.astro';",
+        "import { requireOwnPage } from '@config/pages';",
+        "import { localeOfPath } from '@config/routes';",
+        '',
+        'const locale = localeOfPath(Astro.url.pathname);',
+        "const { title, description } = requireOwnPage('privacy', locale);",
+        '---',
+        '',
+        '<PageLayout title={title} description={description} canonical={Astro.url.pathname}>',
+        '  <p>本站不收集任何个人信息。</p>',
+        '</PageLayout>',
+        '',
+      ].join('\n'),
+    );
+    expect((await build()).code === 0, 'a mounted declared page should build');
+    expect(await exists(`dist${MOUNT}/privacy/index.html`), 'the page should live inside the mount');
+    expect(!(await exists('dist/privacy')), 'and nowhere at the origin root');
+  });
+
+  await scenario('a declared page cannot take a URL something else owns', async () => {
+    await loadExample();
+    await fs.appendFile(path.join(root, 'site/pages.yaml'), '\nown:\n  writing:\n    title: X\n    description: Y\n');
+    const result = await build();
+    expect(result.code !== 0, 'a page claiming a content type route should fail the build');
+    expect(result.out.includes('collides with'), `the failure should say what it collides with:\n${result.out.slice(-500)}`);
+  });
+
+  /**
+   * A site could always decline an engine content type and never add one.
+   * The registry's own comment explained why declining had to work from
+   * `site/` — "a site cannot delete a file inside node_modules" — and the same
+   * sentence was true of adding, which is what this closes.
+   */
+  await scenario('a site can bring a content type the engine does not ship', async () => {
+    await loadExample();
+
+    await fs.mkdir(path.join(root, 'site/templates/content-types'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/content-types/notes.ts'),
+      [
+        "import { z } from 'astro:content';",
+        "import { defineContentType } from 'aifb-engine/content-types/types';",
+        "import { absoluteUrl } from 'aifb-engine/lib/seo';",
+        '',
+        'export default defineContentType({',
+        "  name: 'notes',",
+        "  card: 'ArticleCard',",
+        "  detail: 'PostDetail',",
+        "  sortBy: 'pubDate',",
+        '  schema: z.object({',
+        '    title: z.string(),',
+        '    description: z.string(),',
+        '    slug: z.string(),',
+        '    pubDate: z.coerce.date(),',
+        '    draft: z.boolean().default(false),',
+        '    category: z.string(),',
+        '    tags: z.array(z.string()).default([]),',
+        '  }),',
+        '  jsonLd: (entry, { canonical }) => [{',
+        "    '@context': 'https://schema.org',",
+        "    '@type': 'CreativeWork',",
+        '    name: entry.data.title,',
+        '    description: entry.data.description,',
+        '    url: absoluteUrl(canonical),',
+        '  }],',
+        '});',
+        '',
+      ].join('\n'),
+    );
+
+    // Declared code is not published code — site/content-types.yaml still decides.
+    expect((await build()).code === 0, 'a type nobody declared should simply not be published');
+    expect(!(await exists('dist/notes')), 'an undeclared type must not produce pages');
+
+    await fs.appendFile(
+      path.join(root, 'site/content-types.yaml'),
+      [
+        '',
+        'notes:',
+        '  route: notes',
+        '  label: Note',
+        '  listTitle: Notes',
+        '  listDescription: 没写成文章的东西，先记在这里，够长了再拆出去。',
+        '  surfaces:',
+        '    nav: 40',
+        '    rss: true',
+        '    llms: { limit: 6 }',
+        '',
+      ].join('\n'),
+    );
+    await fs.mkdir(path.join(root, 'content/notes'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'content/notes/proxy-detection.mdx'),
+      [
+        '---',
+        'title: 判断进程有没有走代理',
+        'description: 一段用来确认某个进程到底有没有经过本地代理的排查笔记，包含两条命令和它们各自的盲区。',
+        'slug: proxy-detection',
+        'pubDate: 2026-03-04',
+        'category: llm-reliability',
+        '---',
+        '',
+        '先确认代理端口在听，再确认这个进程真的连上去了 —— 这两件事经常只成立一半。端口在听只说明代理还活着，',
+        '不说明任何一个进程选择了它；进程建立了连接也不说明它把流量都交了出去，很多客户端只对一部分域名走代理。',
+        '',
+        '`lsof -nP -iTCP -sTCP:ESTABLISHED` 能看到进程当前连到哪里，但它看不到已经结束的短连接，所以对一次性的',
+        '请求基本没用。抓包能看到全部，代价是要先知道抓哪张网卡，而在有虚拟网卡的机器上这一步本身就容易搞错。',
+        '',
+        '两条命令的盲区不一样，所以我一般两条都跑：前者确认长连接的去向，后者确认那些一闪而过的请求有没有绕过去。',
+        '只跑其中一条得到的结论，我后来都推翻过至少一次。',
+        '',
+        '相关的排查思路写在 [重试那篇](/writing/why-retries-made-it-worse/) 里，',
+        '同一个主题下的其他内容在 [可靠性与降级](/topics/llm-reliability/)。',
+        '',
+      ].join('\n'),
+    );
+
+    const built = await build();
+    expect(built.code === 0, `a declared site type should build:\n${built.out.slice(-800)}`);
+    expect(await exists('dist/notes/index.html'), 'the list page should exist');
+    expect(await exists('dist/notes/proxy-detection/index.html'), 'and the detail page');
+    expect((await dist('index.html')).includes('href="/notes/"'), 'and it should register itself in the nav');
+    expect((await dist('rss.xml')).includes('proxy-detection'), 'a declared surface should carry its entries');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a site-defined type should clear the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a type declared in YAML with no module anywhere is still named', async () => {
+    await loadExample();
+    await fs.appendFile(
+      path.join(root, 'site/content-types.yaml'),
+      '\nrecipes:\n  route: recipes\n  label: Recipe\n  listTitle: Recipes\n  listDescription: TODO\n  surfaces:\n    rss: true\n',
+    );
+    const result = await build();
+    expect(result.code !== 0, 'a declared type with no module should fail the build');
+    expect(result.out.includes('recipes'), `the failure should name the type:\n${result.out.slice(-500)}`);
+    expect(
+      result.out.includes('site/templates/content-types/'),
+      `and should say where a site puts its own:\n${result.out.slice(-500)}`,
+    );
+  });
+
+  /* ---------------------------------------------------------------- *
+   * The URL space a site chooses. See #21 and #26.
+   * ---------------------------------------------------------------- */
+
+  await scenario('a site can move its taxonomy prefixes', async () => {
+    await loadExample();
+    // Ghost's tag archive is /tag/{slug}/ — singular — which this engine could
+    // not express, so every migrated tag URL took a redirect hop forever.
+    await edit('site/taxonomy.yaml', [['pillars:', 'routes:\n  tags: tag\n  topics: topic\n\npillars:']]);
+    expect((await build()).code === 0, 'a site with moved prefixes should build');
+
+    expect(await exists('dist/tag/index.html'), 'the tag archive should be served at its new prefix');
+    expect(await exists('dist/topic/index.html'), 'and so should topics');
+    expect(!(await exists('dist/tags')), '/tags/ should not be built at all');
+    expect(!(await exists('dist/topics')), '/topics/ should not be built at all');
+
+    // Both halves of a page move together, or the index is at one prefix and
+    // its detail pages at another.
+    expect(await exists('dist/topic/llm-reliability/index.html'), 'a topic detail page should move with its archive');
+
+    // `series` was left alone and must not have moved with them.
+    expect(await exists('dist/series/index.html'), 'an archive with no routes: entry keeps its prefix');
+
+    // The site still writes /tags/ in its nav — the key is the stable name.
+    const home = await dist('index.html');
+    expect(home.includes('href="/tag/"'), `the nav entry should resolve to the new prefix:\n${/<nav[\s\S]{0,400}/.exec(home)?.[0]}`);
+    expect(!home.includes('href="/tags/"'), 'and must not leave a link at the old one');
+
+    /**
+     * Moving a prefix is a URL change, and the links an author already wrote
+     * into an article are not the engine's to rewrite. The gate says so rather
+     * than letting the site ship them — which is the whole reason a site can be
+     * trusted to make this change.
+     */
+    const stale = await validate();
+    expect(stale.code !== 0, 'links written against the old prefix should be reported');
+    expect(stale.out.includes('/topics/llm-reliability/'), `the report should name the dead link:\n${stale.out.slice(-600)}`);
+
+    for (const file of await fs.readdir(path.join(root, 'content/posts'))) {
+      if (!file.endsWith('.mdx')) continue;
+      const article = path.join(root, 'content/posts', file);
+      await fs.writeFile(article, (await fs.readFile(article, 'utf8')).replaceAll('](/topics/', '](/topic/'));
+    }
+    await build();
+    const gate = await validate();
+    expect(gate.code === 0, `once the links follow, the site should pass:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('two archives cannot claim one prefix', async () => {
+    await loadExample();
+    await edit('site/taxonomy.yaml', [['pillars:', 'routes:\n  tags: topics\n\npillars:']]);
+    const result = await build();
+    expect(result.code !== 0, 'two archives at one prefix should fail the build');
+    expect(result.out.includes('both resolve to'), `the failure should name the collision:\n${result.out.slice(-500)}`);
+  });
+
+  /**
+   * A site that publishes one content type pays for a segment that cannot
+   * disambiguate anything — there is nothing else an entry could be.
+   */
+  await scenario('a single content type can claim the engine root', async () => {
+    await loadExample();
+    await onlyPosts();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+
+    /**
+     * Claiming the root moves every entry URL, so the site's own redirect table
+     * now points at pages that no longer exist. The build refuses rather than
+     * shipping a redirect to a 404 — which is the guard that makes this option
+     * safe to turn on, so it is asserted before the happy path.
+     */
+    const stale = await build();
+    expect(stale.code !== 0, 'a redirect to the old URL should fail the build');
+    expect(stale.out.includes('/writing/why-retries-made-it-worse/'), `the failure should name the dead target:\n${stale.out.slice(-500)}`);
+
+    await edit('site/redirects.yaml', [['/writing/why-retries-made-it-worse/', '/why-retries-made-it-worse/']]);
+    for (const file of await fs.readdir(path.join(root, 'content/posts'))) {
+      if (!file.endsWith('.mdx')) continue;
+      const article = path.join(root, 'content/posts', file);
+      await fs.writeFile(article, (await fs.readFile(article, 'utf8')).replaceAll('](/writing/', '](/'));
+    }
+    expect((await build()).code === 0, 'a root-routed site should build');
+
+    expect(await exists('dist/why-retries-made-it-worse/index.html'), 'an entry should be served at the root');
+    expect(!(await exists('dist/writing/why-retries-made-it-worse')), 'and not also under its route');
+
+    // The archive keeps its own URL: it is what nav, llms.txt and the ItemList
+    // point at, and `/` is the landing page.
+    expect(await exists('dist/writing/index.html'), 'the list page keeps its route');
+
+    const article = await dist('why-retries-made-it-worse/index.html');
+    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(article)?.[1] ?? '';
+    expect(new URL(canonical).pathname === '/why-retries-made-it-worse/', `canonical should be the root URL: ${canonical}`);
+
+    expect((await dist('index.html')).includes('href="/why-retries-made-it-worse/"'), 'the home page should link to the root URL');
+    expect((await dist('llms.txt')).includes('](/why-retries-made-it-worse/'), 'llms.txt should too');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a root-routed site should pass the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('claiming the root needs there to be nothing else at it', async () => {
+    // Two types published, one claiming the root: the segment is the only thing
+    // telling their entries apart.
+    await loadExample();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+    const shared = await build();
+    expect(shared.code !== 0, 'routeAtRoot alongside another type should fail the build');
+    expect(shared.out.includes('routeAtRoot'), `the failure should name the option:\n${shared.out.slice(-600)}`);
+
+    // …and a slug that collides with a page the engine already serves.
+    await loadExample();
+    await onlyPosts();
+    await edit('site/content-types.yaml', [['  route: writing', '  route: writing\n  routeAtRoot: true']]);
+    await fs.rename(
+      path.join(root, 'content/posts/why-retries-made-it-worse.mdx'),
+      path.join(root, 'content/posts/series.mdx'),
+    );
+    await edit('content/posts/series.mdx', [['slug: why-retries-made-it-worse', 'slug: series']]);
+    const collision = await build();
+    expect(collision.code !== 0, 'a slug that shadows an archive should fail the build');
+    expect(collision.out.includes('"series" is already'), `the failure should name the slug:\n${collision.out.slice(-600)}`);
+  });
+
   await scenario('a tag whose name is already a slug needs no declaration', async () => {
     await loadExample();
     await edit(`content/posts/${NEWEST}.mdx`, [['tags: [重试, 延迟, 成本]', 'tags: [重试, 延迟, 成本, agent-runtime]']]);
@@ -1643,6 +2189,28 @@ try {
    * against the frontmatter it actually wrote, not against what it said.
    * ---------------------------------------------------------------- */
   console.log('\nghost migration');
+
+  /**
+   * Ghost writes `"feature_image": null` for any post without one — the column
+   * exists and holds null, which a default parameter does not catch. The
+   * fixture used to omit the key instead, so every scenario here ran the
+   * `undefined` path and the null path was never executed by anything.
+   */
+  await scenario('a post with no feature image does not end the run', async () => {
+    await loadExample();
+    await loadGhostExport();
+    const result = await migrateGhost();
+    expect(result.code === 0, `a null feature_image should not crash the run:\n${result.out.slice(-600)}`);
+
+    // Every published post, not just the ones before the first null.
+    expect((await migrated('the-storm-we-caused')) !== undefined, 'the post with an image should be written');
+    const bare = await migrated('an-unverified-note');
+    expect(bare !== undefined, 'the post without one should be written too');
+    expect(!Object.hasOwn(bare!, 'heroImage'), `a post with no feature image should carry no heroImage: ${JSON.stringify(bare)}`);
+
+    // The run announced itself as finished, which it could not do before.
+    expect(await exists('migration/report.md'), 'a completed run writes its report');
+  });
 
   await scenario("an admin export's tags reach the migrated frontmatter", async () => {
     await loadExample();

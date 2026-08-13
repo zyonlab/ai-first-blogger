@@ -14,9 +14,24 @@ decides which ones this site publishes. Deleting a key removes the type entirely
 videos gets rid of `/videos/`. Declaring a key the engine has no module for is
 still an error.
 
-This recipe adds a type to the engine, so it applies when you own the engine
-(this repository). A site that installs `aifb-engine` as a dependency can
-choose from the menu but cannot yet extend it.
+**A site that installed the engine extends the menu too.** The steps are the
+same; only the location of step 2 differs:
+
+| You are | Step 2 goes in |
+|---|---|
+| working in this repository | `packages/engine/content-types/<name>.ts`, plus a line in `engineTypes` |
+| a site with `aifb-engine` installed | `site/templates/content-types/<name>.ts`, and nothing else |
+
+A file in `site/templates/content-types/` is picked up automatically — the
+directory is read the same way `cards/` and `details/` are, so there is no
+registry line to add. A file named after a type the engine ships (`posts.ts`)
+**replaces** it, which is the escape hatch for a site whose articles need a
+field the shipped schema does not have.
+
+It is still two halves. Dropping the file in does not publish anything;
+`site/content-types.yaml` does. That is what keeps "which types does this site
+publish" one question with one answer, and it is why declaring a key with no
+module anywhere is still an error that names the type.
 
 This walkthrough was executed against the repository; the verification numbers at the
 bottom are measured, not estimated.
@@ -38,6 +53,29 @@ tutorials:
     llms: { limit: 6 }
     sitemap: true
 ```
+
+### `routeAtRoot`, for a site with exactly one type
+
+A site that publishes only articles still pays for the segment:
+
+```
+/writing/apps-ignore-system-proxy/
+ ^^^^^^^ carries no information — there is nothing else an entry could be
+```
+
+```yaml
+posts:
+  route: writing
+  routeAtRoot: true     # entries at /apps-ignore-system-proxy/
+```
+
+`route` is still required and still serves the **list** page: `/writing/`
+keeps the archive, its `ItemList` and its nav entry, and `/` stays the landing
+page. Only the entry URLs move.
+
+Refused at build time if a second type is published — the segment is what tells
+their entries apart — and refused if an entry slug collides with an archive, a
+fixed page or a locale prefix, since every slug is now a top-level URL segment.
 
 ## 2. Declare the half the engine owns
 

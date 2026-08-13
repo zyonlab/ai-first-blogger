@@ -12,11 +12,24 @@
  * emitted by templates, which never appear in any article's source.
  */
 import { siteContentTypes } from 'aifb-engine/config/content-types';
+import { segmentFor } from 'aifb-engine/config/routes';
 import { topics, series } from 'aifb-engine/config/taxonomy';
 import type { Rule, Violation } from '../types';
 
+/**
+ * Where the archives actually are. A site can move them — `routes:` in
+ * site/taxonomy.yaml — so this rule reads the resolved segment rather than the
+ * page's name, which are the same string until they are not.
+ */
+const TOPICS = segmentFor('topics');
+const SERIES = segmentFor('series');
+const TAGS = segmentFor('tags');
+
 /** Pages the engine always renders, regardless of content. */
-const STATIC_PAGES = new Set(['/', '/about/', '/uses/', '/newsletter/', '/work-with-me/', '/topics/', '/series/', '/tags/']);
+const STATIC_PAGES = new Set([
+  '/', '/about/', '/uses/', '/newsletter/', '/work-with-me/',
+  `/${TOPICS}/`, `/${SERIES}/`, `/${TAGS}/`,
+]);
 
 const linkPattern = /\]\((\/[^)\s]*)\)/g;
 
@@ -36,6 +49,14 @@ export const sourceLinkRules: Rule[] = [
 
       // What the site will actually render, derived the same way the pages are.
       const routes = new Map(Object.entries(siteContentTypes).map(([name, def]) => [def.route, name]));
+
+      /**
+       * On a site whose single type claimed the root, `/my-post/` is an entry
+       * and not a section. Without this the rule reads every article link as a
+       * missing section, which is the one shape of link such a site writes
+       * most.
+       */
+      const rootRoute = Object.entries(siteContentTypes).find(([, def]) => def.routeAtRoot === true)?.[1]?.route;
 
       /**
        * Everything below is per language.
@@ -118,10 +139,13 @@ export const sourceLinkRules: Rule[] = [
 
           if (segments.length === 1) {
             if (routes.has(segments[0]!)) continue;
+            if (rootRoute !== undefined && slugsByRoute.get(`${linkPrefix}|${rootRoute}`)?.has(segments[0]!)) continue;
             out.push({
               ...at,
-              message: `Links to "${written}", which is not a section of this site.`,
-              fix: `Sections are: ${[...routes.keys()].map((route) => `${mount}/${route}/`).join(', ')}, plus ${mount}/topics/ and ${mount}/series/.`,
+              message: rootRoute === undefined
+                ? `Links to "${written}", which is not a section of this site.`
+                : `Links to "${written}", which is neither a section nor an entry of this site.`,
+              fix: `Sections are: ${[...routes.keys()].map((route) => `${mount}/${route}/`).join(', ')}, plus ${mount}/${TOPICS}/ and ${mount}/${SERIES}/.`,
             });
             continue;
           }
@@ -129,9 +153,10 @@ export const sourceLinkRules: Rule[] = [
           if (segments.length === 2) {
             const [head, slug] = segments as [string, string];
 
-            if (head === 'topics' || head === 'series') {
-              if (listable(head, slug, linkPrefix)) continue;
-              const declared = head === 'topics' ? Object.hasOwn(topics, slug) : Object.hasOwn(series, slug);
+            if (head === TOPICS || head === SERIES) {
+              const kind = head === TOPICS ? 'topics' : 'series';
+              if (listable(kind, slug, linkPrefix)) continue;
+              const declared = kind === 'topics' ? Object.hasOwn(topics, slug) : Object.hasOwn(series, slug);
               out.push({
                 ...at,
                 message: declared
@@ -139,7 +164,7 @@ export const sourceLinkRules: Rule[] = [
                   : `Links to "${written}", which is not in site/taxonomy.yaml.`,
                 fix: declared
                   ? 'A topic or series page appears once an entry uses it. Publish one first, or link somewhere else — `pnpm context write` lists what exists today.'
-                  : `Valid: ${(head === 'topics' ? Object.keys(topics) : Object.keys(series)).join(', ') || '(none)'}.`,
+                  : `Valid: ${(kind === 'topics' ? Object.keys(topics) : Object.keys(series)).join(', ') || '(none)'}.`,
               });
               continue;
             }

@@ -1,6 +1,6 @@
 ---
 import PageLayout from '@layouts/PageLayout.astro';
-import { homePath, localeOfPath, localeParam, localeParams, locales, pagePath, seriesPath } from '@config/routes';
+import { localeOfPath, localeParam, localeParams, locales, pagePath, seriesPath } from '@config/routes';
 import { seriesFor } from '@config/taxonomy';
 import { getActiveSeries } from '@lib/taxonomy';
 import { entryPath, registryFor } from '@content-types/index';
@@ -9,6 +9,7 @@ import { assertSameOrigin, seoFromFields } from '@lib/seo';
 import { findEntries } from '@lib/content';
 import { cardFor } from '@lib/renderers';
 import { messages } from '@i18n/index';
+import { requirePageCopy } from '@config/pages';
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from '@lib/schema';
 
 export async function getStaticPaths() {
@@ -50,11 +51,13 @@ const jsonLd = [
       url: entryPath(type, entry.data.slug, locale),
     })),
   ),
-  breadcrumbSchema([
-    { name: 'Home', url: homePath(locale) },
-    { name: 'Series', url: pagePath('series', locale) },
-    { name: item.title, url: canonical },
-  ]),
+  breadcrumbSchema(
+    [
+      { name: requirePageCopy('series', locale).title, url: pagePath('series', locale) },
+      { name: item.title, url: canonical },
+    ],
+    locale,
+  ),
 ];
 ---
 

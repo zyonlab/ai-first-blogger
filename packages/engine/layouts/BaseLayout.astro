@@ -3,7 +3,7 @@ import Footer from '@components/Footer.astro';
 import Header from '@components/Header.astro';
 import JsonLd from '@components/JsonLd.astro';
 import SEO from '@components/SEO.astro';
-import { localeOfPath } from '@config/routes';
+import { localeOfPath, mount } from '@config/routes';
 import { siteFor } from '@config/site';
 import { messages } from '@i18n/index';
 import type { Alternate } from '@lib/alternates';
@@ -97,7 +97,20 @@ const defaultJsonLd = [websiteSchema(locale), personSchema(true, locale)];
       data-light={site.theme.colorLight}
     />
     <link rel="stylesheet" href={themeUrl} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {
+      /**
+       * A favicon is a fact about the origin, not about the engine — one per
+       * host, and a host that already exists already declared it. Emitting
+       * `/favicon.svg` from a mounted engine points at a file the origin was
+       * never asked to serve, and the sites most likely to mount are exactly
+       * the ones that ship `.ico` and `.png` instead.
+       *
+       * Same reasoning as ROOT_ONLY_PAGES in config/routes.ts, and the same
+       * conclusion: at the root the engine owns it, under a mount it does not.
+       * See docs/adr/0005-mounting-the-engine.md.
+       */
+      mount === '' && <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    }
     <SEO
       title={title}
       description={description}
