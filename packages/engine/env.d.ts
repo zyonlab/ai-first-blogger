@@ -17,6 +17,15 @@ declare module 'virtual:aifb/themes' {
   export const themesDir: string;
 }
 
+declare module 'virtual:aifb/site-content-types' {
+  /**
+   * Content types the site declared in `<templatesDir>/content-types/*.ts`.
+   * `unknown[]` rather than `EngineContentType[]`: this file is ambient and
+   * cannot import, and the registry asserts the shape where it merges them.
+   */
+  export const siteTypes: unknown[];
+}
+
 declare module 'virtual:aifb/renderers' {
   /** Card components by name — the engine's, with the site's laid over them. */
   export const cards: Record<string, unknown>;

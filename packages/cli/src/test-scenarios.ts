@@ -1560,6 +1560,122 @@ try {
     expect(gate.code === 0, `a site with tag archives should pass the gate:\n${gate.out.slice(-900)}`);
   });
 
+  /**
+   * A site could always decline an engine content type and never add one.
+   * The registry's own comment explained why declining had to work from
+   * `site/` — "a site cannot delete a file inside node_modules" — and the same
+   * sentence was true of adding, which is what this closes.
+   */
+  await scenario('a site can bring a content type the engine does not ship', async () => {
+    await loadExample();
+
+    await fs.mkdir(path.join(root, 'site/templates/content-types'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/content-types/notes.ts'),
+      [
+        "import { z } from 'astro:content';",
+        "import { defineContentType } from 'aifb-engine/content-types/types';",
+        "import { absoluteUrl } from 'aifb-engine/lib/seo';",
+        '',
+        'export default defineContentType({',
+        "  name: 'notes',",
+        "  card: 'ArticleCard',",
+        "  detail: 'PostDetail',",
+        "  sortBy: 'pubDate',",
+        '  schema: z.object({',
+        '    title: z.string(),',
+        '    description: z.string(),',
+        '    slug: z.string(),',
+        '    pubDate: z.coerce.date(),',
+        '    draft: z.boolean().default(false),',
+        '    category: z.string(),',
+        '    tags: z.array(z.string()).default([]),',
+        '  }),',
+        '  jsonLd: (entry, { canonical }) => [{',
+        "    '@context': 'https://schema.org',",
+        "    '@type': 'CreativeWork',",
+        '    name: entry.data.title,',
+        '    description: entry.data.description,',
+        '    url: absoluteUrl(canonical),',
+        '  }],',
+        '});',
+        '',
+      ].join('\n'),
+    );
+
+    // Declared code is not published code — site/content-types.yaml still decides.
+    expect((await build()).code === 0, 'a type nobody declared should simply not be published');
+    expect(!(await exists('dist/notes')), 'an undeclared type must not produce pages');
+
+    await fs.appendFile(
+      path.join(root, 'site/content-types.yaml'),
+      [
+        '',
+        'notes:',
+        '  route: notes',
+        '  label: Note',
+        '  listTitle: Notes',
+        '  listDescription: 没写成文章的东西，先记在这里，够长了再拆出去。',
+        '  surfaces:',
+        '    nav: 40',
+        '    rss: true',
+        '    llms: { limit: 6 }',
+        '',
+      ].join('\n'),
+    );
+    await fs.mkdir(path.join(root, 'content/notes'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'content/notes/proxy-detection.mdx'),
+      [
+        '---',
+        'title: 判断进程有没有走代理',
+        'description: 一段用来确认某个进程到底有没有经过本地代理的排查笔记，包含两条命令和它们各自的盲区。',
+        'slug: proxy-detection',
+        'pubDate: 2026-03-04',
+        'category: llm-reliability',
+        '---',
+        '',
+        '先确认代理端口在听，再确认这个进程真的连上去了 —— 这两件事经常只成立一半。端口在听只说明代理还活着，',
+        '不说明任何一个进程选择了它；进程建立了连接也不说明它把流量都交了出去，很多客户端只对一部分域名走代理。',
+        '',
+        '`lsof -nP -iTCP -sTCP:ESTABLISHED` 能看到进程当前连到哪里，但它看不到已经结束的短连接，所以对一次性的',
+        '请求基本没用。抓包能看到全部，代价是要先知道抓哪张网卡，而在有虚拟网卡的机器上这一步本身就容易搞错。',
+        '',
+        '两条命令的盲区不一样，所以我一般两条都跑：前者确认长连接的去向，后者确认那些一闪而过的请求有没有绕过去。',
+        '只跑其中一条得到的结论，我后来都推翻过至少一次。',
+        '',
+        '相关的排查思路写在 [重试那篇](/writing/why-retries-made-it-worse/) 里，',
+        '同一个主题下的其他内容在 [可靠性与降级](/topics/llm-reliability/)。',
+        '',
+      ].join('\n'),
+    );
+
+    const built = await build();
+    expect(built.code === 0, `a declared site type should build:\n${built.out.slice(-800)}`);
+    expect(await exists('dist/notes/index.html'), 'the list page should exist');
+    expect(await exists('dist/notes/proxy-detection/index.html'), 'and the detail page');
+    expect((await dist('index.html')).includes('href="/notes/"'), 'and it should register itself in the nav');
+    expect((await dist('rss.xml')).includes('proxy-detection'), 'a declared surface should carry its entries');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a site-defined type should clear the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a type declared in YAML with no module anywhere is still named', async () => {
+    await loadExample();
+    await fs.appendFile(
+      path.join(root, 'site/content-types.yaml'),
+      '\nrecipes:\n  route: recipes\n  label: Recipe\n  listTitle: Recipes\n  listDescription: TODO\n  surfaces:\n    rss: true\n',
+    );
+    const result = await build();
+    expect(result.code !== 0, 'a declared type with no module should fail the build');
+    expect(result.out.includes('recipes'), `the failure should name the type:\n${result.out.slice(-500)}`);
+    expect(
+      result.out.includes('site/templates/content-types/'),
+      `and should say where a site puts its own:\n${result.out.slice(-500)}`,
+    );
+  });
+
   /* ---------------------------------------------------------------- *
    * The URL space a site chooses. See #21 and #26.
    * ---------------------------------------------------------------- */

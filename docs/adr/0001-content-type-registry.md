@@ -112,3 +112,39 @@ pnpm validate  # C-04: 0 orphan pages
 ```
 
 Walkthrough: [`../recipes/add-content-type.md`](../recipes/add-content-type.md).
+
+## Amendment (0.6.0): the menu is extensible from `site/`
+
+The original decision made the registry a **menu**: the engine ships the type
+modules, `site/content-types.yaml` picks from them. That was right about where
+the schema lives and wrong about who may add to the list.
+
+`content-types/index.ts` justified the asymmetry in one sentence — "a site
+cannot delete a file inside `node_modules`, so it could never decline a type it
+did not want" — and the same sentence is true of adding one. A site installed
+from npm had three options for a content shape the engine does not ship: patch
+`node_modules`, fork the engine, or reuse a type whose schema is wrong. The
+recipe documented the first as normal, because every path in it was
+`packages/engine/...` — it was written for someone working inside this
+repository.
+
+So `site/templates/content-types/*.ts` is merged into `engineTypes`, the same
+way `cards/` and `details/` are merged into the component sets, and a file
+named after a shipped type replaces it.
+
+What does **not** change:
+
+- The schema half is still code. A zod schema, JSON-LD and component keys do
+  not belong in YAML, and none of them moved there.
+- It is still two halves. A module offers a type; `site/content-types.yaml`
+  publishes it. Dropping a file in produces nothing on its own, which keeps
+  "which types does this site publish" one question with one answer.
+- A declared key with no module anywhere is still an error that names the type.
+
+Why a directory and not `engine({ contentTypes: [myType] })`, which is the
+shape the issue proposed: these modules import `z` from `astro:content`.
+`astro.config` is evaluated before that module graph exists, so a config that
+imported one could not load at all. The virtual module is the same mechanism
+`renderersPlugin` already uses for the same reason.
+
+Reported as a boundary defect: [#24](https://github.com/zyonlab/ai-first-blogger/issues/24).

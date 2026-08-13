@@ -11,6 +11,7 @@ site/templates/
   components/<Name>.astro    shadows packages/engine/components/<Name>.astro
   cards/<Name>.astro         shadows (or adds to) the card set
   details/<Name>.astro       shadows (or adds to) the detail set
+  content-types/<name>.ts    shadows (or adds to) the content type menu
   layouts/<Name>.astro       shadows BaseLayout / PageLayout
   styles/global.css          shadows the engine's base stylesheet
   pages/<route>.astro        replaces an injected route at the same URL
@@ -37,6 +38,13 @@ import { site } from '@config/site';
 Cards and details are merged by name, so `site/templates/cards/TimelineCard.astro`
 both **adds** a card a content type can point at and, if it is called
 `ArticleCard.astro`, **replaces** the shipped one.
+
+`content-types/` is merged the same way, and is the one directory here whose
+files are not markup: a content type's schema, JSON-LD and component keys are
+code, which is why they cannot live in YAML (ADR 0001), and this is where a
+site puts its own. It is also the only entry with a second step — a module here
+offers a type; `site/content-types.yaml` publishes it. See
+[`../recipes/add-content-type.md`](../recipes/add-content-type.md).
 
 ## Before overriding a page, check the intent layer
 

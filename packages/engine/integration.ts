@@ -146,6 +146,7 @@ const BUILD_INFO = path.join('.aifb', 'build.json');
 
 const THEMES_MODULE = 'virtual:aifb/themes';
 const RENDERERS_MODULE = 'virtual:aifb/renderers';
+const SITE_TYPES_MODULE = 'virtual:aifb/site-content-types';
 
 /**
  * Directories a site may shadow, mirroring the engine's own layout.
@@ -252,6 +253,51 @@ function aliases(root: string, templatesDir: string, hasMermaid: boolean) {
     : [{ find: /^mermaid$/, replacement: path.join(here, 'lib', 'mermaid-absent.ts') }];
 
   return [...engineAliases, ...optionalMermaid];
+}
+
+/**
+ * Content types the site brought with it: `<templatesDir>/content-types/*.ts`.
+ *
+ * A site could always *decline* an engine type by leaving it out of
+ * site/content-types.yaml, and never add one. `content-types/index.ts` said why
+ * the declining direction had to work — "a site cannot delete a file inside
+ * node_modules" — and the same sentence is true of adding, which nobody
+ * noticed. A Ghost migration with a content shape that is not a post, a video,
+ * a project or a case study had three options: patch node_modules, fork the
+ * engine, or reuse a type whose schema is wrong.
+ *
+ * The schema half genuinely is mechanism — a zod schema, JSON-LD and component
+ * keys are code, and ADR 0001/0002 are right that it does not belong in YAML.
+ * What was missing was a way to *register* that code from outside the package,
+ * which is what this is.
+ *
+ * A virtual module rather than an `engine({ contentTypes })` option, because
+ * these modules import `z` from `astro:content`: astro.config is evaluated
+ * before that module graph exists, so a config that imported one could not
+ * load at all. The same reason `renderersPlugin` exists, and it works the same
+ * way — the site's directory is read second, so a site file named after an
+ * engine type replaces it.
+ */
+function siteTypesPlugin(root: string, templatesDir: string) {
+  const resolved = `\0${SITE_TYPES_MODULE}`;
+  const dir = path.resolve(root, templatesDir, 'content-types');
+
+  return {
+    name: 'aifb:site-content-types',
+    resolveId: (id: string) => (id === SITE_TYPES_MODULE ? resolved : undefined),
+    load(id: string) {
+      if (id !== resolved) return undefined;
+      if (!fs.existsSync(dir)) return 'export const siteTypes = [];\n';
+
+      const files = fs
+        .readdirSync(dir)
+        .filter((name) => /\.(ts|js|mjs)$/.test(name))
+        .sort();
+
+      const imports = files.map((file, index) => `import t${index} from ${JSON.stringify(path.join(dir, file))};`);
+      return `${imports.join('\n')}\nexport const siteTypes = [${files.map((_, index) => `t${index}`).join(', ')}];\n`;
+    },
+  };
 }
 
 /**
@@ -544,6 +590,7 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
               themesPlugin(fileURLToPath(config.root), themesDir),
               templatesPlugin(fileURLToPath(config.root), templatesDir),
               renderersPlugin(fileURLToPath(config.root), templatesDir),
+              siteTypesPlugin(fileURLToPath(config.root), templatesDir),
             ],
             resolve: {
               alias: aliases(fileURLToPath(config.root), templatesDir, hasMermaid),

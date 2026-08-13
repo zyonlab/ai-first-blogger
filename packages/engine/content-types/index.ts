@@ -17,9 +17,28 @@ import posts from './posts';
 import projects from './projects';
 import videos from './videos';
 import type { ContentTypeDef, EngineContentType } from './types';
+import { siteTypes } from 'virtual:aifb/site-content-types';
 
-/** The mechanism half of every type the engine knows how to render. */
-const engineTypes: EngineContentType[] = [posts, videos, projects, caseStudies];
+/** The mechanism half of every type the engine ships. */
+const shipped: EngineContentType[] = [posts, videos, projects, caseStudies];
+
+/**
+ * …plus the types the site brought with it, from
+ * `site/templates/content-types/*.ts`.
+ *
+ * The site's are laid over the engine's by name, the same way its cards and
+ * detail components are: a file named `posts.ts` replaces the shipped `posts`
+ * rather than colliding with it. That is the escape hatch for a site whose
+ * articles need a field the engine's schema does not have — previously a fork.
+ *
+ * Both halves are still required. Declaring a type here does not publish it;
+ * site/content-types.yaml does, which is what keeps "which types exist" one
+ * question with one answer.
+ */
+const byName = new Map(shipped.map((type) => [type.name, type]));
+for (const type of siteTypes as EngineContentType[]) byName.set(type.name, type);
+
+const engineTypes: EngineContentType[] = [...byName.values()];
 
 /* ------------------------------------------------------------------ *
  * Merge.
@@ -37,7 +56,7 @@ const engineTypes: EngineContentType[] = [posts, videos, projects, caseStudies];
  * missing for reasons nobody can see.
  * ------------------------------------------------------------------ */
 
-const engineByName = new Map(engineTypes.map((type) => [type.name, type]));
+const engineByName = byName;
 
 const missing = Object.keys(siteContentTypes).filter((name) => !engineByName.has(name));
 if (missing.length > 0) {
@@ -47,7 +66,8 @@ if (missing.length > 0) {
         .map(
           (name) =>
             `- site/content-types.yaml declares "${name}", but the engine has no content type by that name.\n` +
-            `  Available: ${[...engineByName.keys()].join(', ')}. Remove the key, or add the module to the engine.`,
+            `  Available: ${[...engineByName.keys()].join(', ')}. Remove the key, add the module to the engine, ` +
+            'or declare your own in site/templates/content-types/.',
         )
         .join('\n'),
   );

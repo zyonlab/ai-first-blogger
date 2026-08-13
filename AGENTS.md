@@ -68,7 +68,8 @@ invented and caught later by C-03.
 | Writing style | `site/voice.md` |
 | Colours and typography | `site/themes/<name>.css` |
 | Markup — a component, layout, card or whole page | `site/templates/<kind>/<Name>.astro` |
-| A content type's schema, JSON-LD, components | the engine — `aifb-engine/content-types/<name>.ts` |
+| A content type's schema, JSON-LD, components — one the engine ships | the engine — `aifb-engine/content-types/<name>.ts` |
+| A content type's schema, JSON-LD, components — one only this site has | `site/templates/content-types/<name>.ts`, then declare it in `site/content-types.yaml` |
 | UI chrome strings | the engine — `aifb-engine/i18n/<locale>.ts` |
 
 Never add these by hand — they are derived: navigation entries, list pages, detail
