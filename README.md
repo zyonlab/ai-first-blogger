@@ -104,7 +104,7 @@ yet.
 | | Cost |
 |---|---|
 | Rebrand for a different subject and language | edit `site/*.yaml`, no code |
-| Add a content type | 1 yaml block + 1 engine file + 1 content directory |
+| Add a content type | 1 yaml block + 1 `.ts` file + 1 content directory — the `.ts` goes in `site/templates/content-types/` on an installed site |
 | Add a theme | 1 CSS file + 1 line |
 | Add a locale | 1 message file + 2 lines |
 | Publish the same site in two languages | `locales:` in `site/site.yaml`, then `i18n:` blocks for the copy |
@@ -174,7 +174,7 @@ cp -r examples/agent-native-engineer/site/. site/
 | `site/taxonomy.yaml` | pillars, topics, series, tags — the source of the category vocabulary |
 | `site/content-types.yaml` | each content type's route, labels and surfaces |
 | `site/policy.yaml` | thresholds and switches — what counts as publishable |
-| `site/pages.yaml` | About / Uses / Newsletter / Work-with-me copy |
+| `site/pages.yaml` | About / Uses / Newsletter / Work-with-me copy, and `own:` for pages this site adds |
 | `site/voice.md` | writing style: frontmatter for the analyser, prose for the agent |
 | `site/redirects.yaml` | URL history — emitted as `_redirects`, targets verified at build |
 | `site/themes/<name>.css` | the design token set |

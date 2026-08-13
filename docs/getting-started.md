@@ -33,6 +33,12 @@ one, and mount the blog under a prefix — `engine({ mount: '/blog' })`. See
 The site builds and runs with no content at all — that is the shipped state. Astro
 logs one "collection is empty" notice per content type until you add your first file.
 
+**Diagrams are opt-in.** `mermaid` is an optional peer, because 11.x is a lot of
+weight for a site that publishes none. Without it a ```mermaid fence renders as a
+readable code block and the build says so once; `pnpm add mermaid` turns the
+diagrams on. Nothing else needs installing — `aifb-engine` declares what it
+imports.
+
 ## 2. Brand (5 min)
 
 Edit **`site/site.yaml`** only.

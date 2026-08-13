@@ -27,7 +27,13 @@ export default defineConfig({
 | `themesDir` | `'site/themes'` | Where the site keeps its theme token files. |
 | `templatesDir` | `'site/templates'` | Where the site keeps markup overrides — see [templates.md](./templates.md). |
 | `mount` | `'/'` | The prefix every injected route lives under. |
-| `pages` | all | Whitelist of the fixed pages: `about`, `newsletter`, `series`, `tags`, `topics`, `uses`, `work-with-me`. |
+| `pages` | all | Whitelist of the fixed pages: `about`, `newsletter`, `series`, `tags`, `topics`, `uses`, `work-with-me`. Names are the page's **key**, not its URL segment — a site that moved its tag archive to `/tag/` still writes `tags` here. |
+
+Three things that look like options and are not, because they are the site's
+decisions rather than the installation's: the archive prefixes (`routes:` in
+`site/taxonomy.yaml`), pages this site adds (`own:` in `site/pages.yaml`), and
+content types it brings (`site/templates/content-types/*.ts`). See
+[site-config-contract.md](./site-config-contract.md).
 
 There is one export beside `engine()`. `sitemapOptions()` returns what
 `@astrojs/sitemap` needs to know about the site's languages — `{}` until
