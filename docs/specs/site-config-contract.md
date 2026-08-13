@@ -50,7 +50,7 @@ most likely to tune the ones it could only tune by forking the engine.
 | `site/taxonomy.yaml` | pillars, topics, series — and the category vocabulary derived from them | Always |
 | `site/content-types.yaml` | route, label, list copy and surfaces per content type | When adding a type |
 | `site/policy.yaml` | thresholds and switches | When the defaults do not fit |
-| `site/pages.yaml` | copy for the fixed pages — a key per page the site publishes | Always |
+| `site/pages.yaml` | copy for the fixed pages, plus `own:` — pages this site adds | Always |
 | `site/voice.md` | writing style — signals for the analyser, prose for the agent | When the voice changes |
 | `site/themes/<name>.css` | the token set | When restyling |
 | `site/templates/**` | markup that shadows the engine's, file for file | When tokens are not enough |
@@ -68,6 +68,32 @@ files. Enforce the line with the format, not with discipline.
 The cost is literal types. `TopicSlug` used to be a union derived from the topic
 map; it is now `string`, validated at runtime by `isCategory`. `taxonomy.md` had
 already made that trade when it replaced `z.enum` with `refine`.
+
+### Pages this site adds: `own`
+
+The engine ships seven fixed pages. A site that needs another — Privacy, Now,
+a pricing page — declares it:
+
+```yaml
+# site/pages.yaml
+own:
+  privacy:
+    title: Privacy
+    description: What this site collects, and what it does not.
+```
+
+and renders it from `site/templates/pages/privacy.astro`, reading its copy with
+`requireOwnPage('privacy', locale)`.
+
+Declaring is the step that creates the URL. A file on its own still injects
+nothing — the same rule that makes `engine({ pages })` a whitelist rather than a
+suggestion — and a declaration with no template fails the build rather than
+publishing a 404. The name cannot take a URL an archive, a content type or a
+locale prefix already owns.
+
+What this buys over the host's own `src/pages/`: the page moves with `mount`,
+it is in the engine's page inventory, `engineHref('/privacy/')` resolves like
+any other engine route, and it gets `BaseLayout`'s head without rewiring it.
 
 ### The landing page: `home`
 

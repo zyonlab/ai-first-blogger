@@ -1561,6 +1561,98 @@ try {
   });
 
   /**
+   * A Ghost site arrives with several pages the engine's fixed list of seven
+   * does not have — Privacy, Now, Uses. `site/templates/pages/` could only
+   * override a route the engine already injects; a new file there produced a
+   * warning and no page.
+   */
+  await scenario('a site can declare a page the engine does not ship', async () => {
+    await loadExample();
+
+    // A file alone is still nothing: the URL has to be declared.
+    await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/privacy.astro'),
+      [
+        '---',
+        "import PageLayout from '@layouts/PageLayout.astro';",
+        "import { requireOwnPage } from '@config/pages';",
+        "import { localeOfPath, pagePath } from '@config/routes';",
+        '',
+        'const locale = localeOfPath(Astro.url.pathname);',
+        "const { title, description } = requireOwnPage('privacy', locale);",
+        '---',
+        '',
+        '<PageLayout title={title} description={description} canonical={Astro.url.pathname}>',
+        '  <p>本站不收集任何个人信息，也没有接入统计脚本。评论走邮件。</p>',
+        '</PageLayout>',
+        '',
+      ].join('\n'),
+    );
+    expect((await build()).code === 0, 'an undeclared template should not break the build');
+    expect(!(await exists('dist/privacy')), 'a file on its own must not conjure a URL');
+
+    await fs.appendFile(
+      path.join(root, 'site/pages.yaml'),
+      '\nown:\n  privacy:\n    title: 隐私\n    description: 这个站收集什么、不收集什么，以及为什么没有统计脚本。\n',
+    );
+    await fs.appendFile(path.join(root, 'site/site.yaml'), '  - { href: /privacy/, label: 隐私, order: 95 }\n');
+    expect((await build()).code === 0, 'a declared page should build');
+    const page = await dist('privacy/index.html');
+    expect(page.includes('隐私'), 'the page should render its declared copy');
+    expect(page.includes('rel="canonical"'), 'and it should get the engine head, not a bare document');
+    // An engine route, so a nav entry naming it resolves like any other.
+    expect((await dist('index.html')).includes('href="/privacy/"'), 'the nav entry should resolve');
+
+    const gate = await validate();
+    expect(gate.code === 0, `a declared page should clear the gate:\n${gate.out.slice(-900)}`);
+  });
+
+  await scenario('a declared page moves with the mount, and says so when it cannot render', async () => {
+    await mountExample();
+    await fs.appendFile(
+      path.join(root, 'site/pages.yaml'),
+      '\nown:\n  privacy:\n    title: 隐私\n    description: 这个站收集什么、不收集什么。\n',
+    );
+
+    // Declared with nothing to render it.
+    const orphan = await build();
+    expect(orphan.code !== 0, 'a declaration with no template should fail the build');
+    expect(orphan.out.includes('privacy.astro'), `the failure should name the file it wants:\n${orphan.out.slice(-500)}`);
+
+    await fs.mkdir(path.join(root, 'site/templates/pages'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'site/templates/pages/privacy.astro'),
+      [
+        '---',
+        "import PageLayout from '@layouts/PageLayout.astro';",
+        "import { requireOwnPage } from '@config/pages';",
+        "import { localeOfPath } from '@config/routes';",
+        '',
+        'const locale = localeOfPath(Astro.url.pathname);',
+        "const { title, description } = requireOwnPage('privacy', locale);",
+        '---',
+        '',
+        '<PageLayout title={title} description={description} canonical={Astro.url.pathname}>',
+        '  <p>本站不收集任何个人信息。</p>',
+        '</PageLayout>',
+        '',
+      ].join('\n'),
+    );
+    expect((await build()).code === 0, 'a mounted declared page should build');
+    expect(await exists(`dist${MOUNT}/privacy/index.html`), 'the page should live inside the mount');
+    expect(!(await exists('dist/privacy')), 'and nowhere at the origin root');
+  });
+
+  await scenario('a declared page cannot take a URL something else owns', async () => {
+    await loadExample();
+    await fs.appendFile(path.join(root, 'site/pages.yaml'), '\nown:\n  writing:\n    title: X\n    description: Y\n');
+    const result = await build();
+    expect(result.code !== 0, 'a page claiming a content type route should fail the build');
+    expect(result.out.includes('collides with'), `the failure should say what it collides with:\n${result.out.slice(-500)}`);
+  });
+
+  /**
    * A site could always decline an engine content type and never add one.
    * The registry's own comment explained why declining had to work from
    * `site/` — "a site cannot delete a file inside node_modules" — and the same

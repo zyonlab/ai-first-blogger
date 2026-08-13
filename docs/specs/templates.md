@@ -21,11 +21,15 @@ Nothing to register. A file that exists wins; a file that does not falls through
 to the engine. `templatesDir` in `astro.config.mjs` moves the directory.
 
 One boundary on the last row: an override replaces the page at a URL the engine
-injects. It cannot create one. A page excluded by `engine({ pages })` is not
-injected even when `site/templates/pages/` has a file for it — the build warns
-and injects nothing, because a whitelist an override can quietly undo is not a
-whitelist. Serve your own page there from the site's own `src/pages/` instead.
-See [`engine-options.md`](./engine-options.md).
+injects. It cannot create one by existing. A page excluded by `engine({ pages })`
+is not injected even when `site/templates/pages/` has a file for it — the build
+warns and injects nothing, because a whitelist an override can quietly undo is
+not a whitelist. See [`engine-options.md`](./engine-options.md).
+
+To add a page the engine does not ship, **declare** it under `own:` in
+`site/pages.yaml` and put the template here under that name. Declaring is what
+creates the URL; the file is what renders it. See
+[`site-config-contract.md`](./site-config-contract.md).
 
 ```astro
 ---

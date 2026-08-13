@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 import { cloudflarePages } from './deploy/cloudflare';
 import { fail } from './config/load';
-import { pageCopyProblems } from './config/pages';
+import { ownPages, pageCopyProblems } from './config/pages';
 import {
   LOCALE_SEGMENT,
   OPTIONAL_PAGES,
@@ -669,10 +669,42 @@ export function engine(options: EngineOptions = {}): AstroIntegration[] {
           }
         }
 
+        /**
+         * Pages the site declared in `site/pages.yaml`.
+         *
+         * Declared, not discovered: a file alone still injects nothing, which
+         * is the same rule that makes `engine({ pages })` a whitelist rather
+         * than a suggestion. The file is required, though — a declaration with
+         * nothing to render it is a URL that would 404 on a site that believes
+         * it published a page.
+         */
+        const missingTemplates = ownPages
+          .map((page) => ({ page, file: path.join(siteRoutes, `${page.name}.astro`) }))
+          .filter((item) => !fs.existsSync(item.file));
+        if (missingTemplates.length > 0) {
+          fail(
+            'site/pages.yaml',
+            missingTemplates.map(
+              ({ page, file }) =>
+                `own."${page.name}" is declared but ${path.relative(projectRoot, file)} does not exist. ` +
+                'Add the template, or remove the declaration — a declared page with nothing to render is a 404.',
+            ),
+          );
+        }
+
+        for (const page of ownPages) {
+          injectRoute({
+            pattern: routePattern(`/${page.name}`),
+            entrypoint: path.join(siteRoutes, `${page.name}.astro`),
+            prerender: true,
+          });
+        }
+
         logger.info(
-          `${selected.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
+          `${selected.length + ownPages.length} route(s) injected${routing.mount === '' ? '' : ` under ${routing.mount}/`}` +
             `${isMultiLocale ? ` in ${siteLocales.length} locales (${siteLocales.map((locale) => locale.tag).join(', ')})` : ''}` +
             `${overridden > 0 ? `, ${overridden} overridden by ${templatesDir}/pages` : ''}` +
+            `${ownPages.length > 0 ? `, ${ownPages.length} declared by site/pages.yaml` : ''}` +
             `${declined.length > 0 ? `, ${declined.length} declined` : ''}`,
         );
 

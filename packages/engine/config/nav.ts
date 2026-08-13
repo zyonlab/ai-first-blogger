@@ -18,6 +18,7 @@ import {
   withLocale,
   type Locale,
 } from './routes';
+import { ownPages } from './pages';
 import { staticNavItems, staticNavItemsFor } from './site';
 
 export { staticNavItems };
@@ -64,6 +65,13 @@ export function engineHref(href: string, locale: Locale = defaultLocale): string
       return withLocale(segment === name ? href : href.replace(`/${name}/`, `/${segment}/`), locale);
     }
     if (segment !== name && href.startsWith(`/${segment}/`)) return withLocale(href, locale);
+  }
+
+  // A page the site declared is an engine route like any other: it moves with
+  // the mount, which is the whole reason declaring it beats putting it in the
+  // host's own src/pages/.
+  for (const page of ownPages) {
+    if (href === `/${page.name}/` || href.startsWith(`/${page.name}/`)) return withLocale(href, locale);
   }
 
   // Routes are not localised — `/writing/` is `/writing/` in every language,
