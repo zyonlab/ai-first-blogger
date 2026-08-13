@@ -2190,6 +2190,28 @@ try {
    * ---------------------------------------------------------------- */
   console.log('\nghost migration');
 
+  /**
+   * Ghost writes `"feature_image": null` for any post without one — the column
+   * exists and holds null, which a default parameter does not catch. The
+   * fixture used to omit the key instead, so every scenario here ran the
+   * `undefined` path and the null path was never executed by anything.
+   */
+  await scenario('a post with no feature image does not end the run', async () => {
+    await loadExample();
+    await loadGhostExport();
+    const result = await migrateGhost();
+    expect(result.code === 0, `a null feature_image should not crash the run:\n${result.out.slice(-600)}`);
+
+    // Every published post, not just the ones before the first null.
+    expect((await migrated('the-storm-we-caused')) !== undefined, 'the post with an image should be written');
+    const bare = await migrated('an-unverified-note');
+    expect(bare !== undefined, 'the post without one should be written too');
+    expect(!Object.hasOwn(bare!, 'heroImage'), `a post with no feature image should carry no heroImage: ${JSON.stringify(bare)}`);
+
+    // The run announced itself as finished, which it could not do before.
+    expect(await exists('migration/report.md'), 'a completed run writes its report');
+  });
+
   await scenario("an admin export's tags reach the migrated frontmatter", async () => {
     await loadExample();
     await loadGhostExport();
